@@ -1,0 +1,46 @@
+{
+  "expo": {
+    "name": "薬育ポケット",
+    "slug": "yaku-iku-pocket",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "yakuiku",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#E8F5E9"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.yakuiku.pocket",
+      "infoPlist": {
+        "NSCameraUsageDescription": "植物をスキャンして図鑑に収録するためにカメラを使用します。"
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#E8F5E9"
+      },
+      "package": "com.yakuiku.pocket",
+      "permissions": ["android.permission.CAMERA"]
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static",
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "植物をスキャンして図鑑に収録するためにカメラを使用します。"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
