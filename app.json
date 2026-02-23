@@ -8,21 +8,25 @@
     "scheme": "yakuiku",
     "userInterfaceStyle": "light",
     "splash": {
+      "image": "./assets/splash.png",
       "resizeMode": "contain",
       "backgroundColor": "#E8F5E9"
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.yakuiku.pocket",
+      "bundleIdentifier": "com.ueki.yakuiku-pocket",
+      "buildNumber": "1",
       "infoPlist": {
         "NSCameraUsageDescription": "植物をスキャンして図鑑に収録するためにカメラを使用します。"
       }
     },
     "android": {
       "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#E8F5E9"
       },
-      "package": "com.yakuiku.pocket",
+      "package": "com.ueki.yakuiku-pocket",
+      "versionCode": 1,
       "permissions": ["android.permission.CAMERA"]
     },
     "web": {
