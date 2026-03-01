@@ -32,9 +32,11 @@ export default function HomeScreen() {
     (p) => p.rarity >= 4 && discoveredPlantIds.includes(p.id)
   );
 
-  const recentPlants = PLANTS.filter((p) =>
-    discoveredPlantIds.includes(p.id)
-  ).slice(-6).reverse();
+  const recentPlants = [...discoveredPlantIds]
+    .reverse()
+    .slice(0, 6)
+    .map((id) => PLANTS.find((p) => p.id === id))
+    .filter((p): p is (typeof PLANTS)[number] => p !== undefined);
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>

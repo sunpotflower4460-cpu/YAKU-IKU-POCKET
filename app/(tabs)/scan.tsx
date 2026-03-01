@@ -6,6 +6,7 @@ import {
   Animated,
   Pressable,
   Easing,
+  Alert,
 } from 'react-native';
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import { Ionicons } from '@expo/vector-icons';
@@ -122,8 +123,10 @@ export default function ScanScreen() {
       setUsedRealAI(scanResult.usedRealAI);
       setScanState('done');
       setModalVisible(true);
-    } catch {
+    } catch (err) {
+      console.error('[Scan] Error:', err);
       setScanState('idle');
+      Alert.alert('スキャン失敗', 'もう一度お試しください。');
     }
   }
 

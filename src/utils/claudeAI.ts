@@ -78,7 +78,7 @@ ${PLANT_NAMES_LIST}
   const text: string = data?.content?.[0]?.text ?? '';
 
   // Extract JSON block from response
-  const jsonMatch = text.match(/\{[\s\S]*?\}/);
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
   if (!jsonMatch) {
     throw new Error(`No JSON found in Claude response: ${text}`);
   }

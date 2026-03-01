@@ -35,7 +35,7 @@ export function ScanResultModal({
 
   useEffect(() => {
     if (visible) {
-      Animated.sequence([
+      const animation = Animated.sequence([
         Animated.spring(scaleAnim, {
           toValue: 1,
           tension: 60,
@@ -56,7 +56,9 @@ export function ScanResultModal({
             }),
           ])
         ),
-      ]).start();
+      ]);
+      animation.start();
+      return () => animation.stop();
     } else {
       scaleAnim.setValue(0);
       glowAnim.setValue(0);

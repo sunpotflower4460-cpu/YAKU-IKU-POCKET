@@ -15,12 +15,6 @@ import { DangerBadge } from '../../src/components/DangerBadge';
 import { DisclaimerBanner } from '../../src/components/DisclaimerBanner';
 import { Colors } from '../../src/constants/colors';
 
-const DANGER_HEADER_COLORS = {
-  GREEN: ['#1B5E20', '#2E7D32'] as const,
-  YELLOW: ['#E65100', '#F57F17'] as const,
-  RED: ['#7B0000', '#C62828'] as const,
-};
-
 export default function PlantDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const navigation = useNavigation();
@@ -42,8 +36,6 @@ export default function PlantDetailScreen() {
       </View>
     );
   }
-
-  const headerColors = DANGER_HEADER_COLORS[plant.danger];
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
