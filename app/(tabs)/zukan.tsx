@@ -83,6 +83,34 @@ export default function ZukanScreen() {
           {discoveredCount}/{PLANTS.length} 種類発見
         </Text>
 
+        {/* Rarity completion bars */}
+        <View style={styles.rarityRow}>
+          {([1, 2, 3, 4, 5] as const).map((rarity) => {
+            const rarityColor = [Colors.rarity1, Colors.rarity2, Colors.rarity3, Colors.rarity4, Colors.rarity5][rarity - 1];
+            const total = PLANTS.filter((p) => p.rarity === rarity).length;
+            const found = PLANTS.filter(
+              (p) => p.rarity === rarity && discoveredPlantIds.includes(p.id)
+            ).length;
+            const pct = total > 0 ? found / total : 0;
+            return (
+              <View key={rarity} style={styles.rarityItem}>
+                <Text style={[styles.rarityStar, { color: rarityColor }]}>
+                  {'★'.repeat(rarity)}
+                </Text>
+                <View style={styles.rarityMiniBar}>
+                  <View
+                    style={[
+                      styles.rarityMiniFill,
+                      { width: `${pct * 100}%`, backgroundColor: rarityColor },
+                    ]}
+                  />
+                </View>
+                <Text style={styles.rarityCount}>{found}/{total}</Text>
+              </View>
+            );
+          })}
+        </View>
+
         {/* Search */}
         <View style={styles.searchBox}>
           <Text style={styles.searchIcon}>🔍</Text>
@@ -288,6 +316,37 @@ const styles = StyleSheet.create({
   },
   headerTitle: { fontSize: 22, fontWeight: '900', color: '#FFFFFF' },
   headerSub: { fontSize: 13, color: '#A5D6A7', marginTop: 2, marginBottom: 12 },
+  rarityRow: {
+    flexDirection: 'row',
+    gap: 6,
+    marginBottom: 12,
+  },
+  rarityItem: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 3,
+  },
+  rarityStar: {
+    fontSize: 7,
+    fontWeight: '900',
+    letterSpacing: -1,
+  },
+  rarityMiniBar: {
+    width: '100%',
+    height: 4,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  rarityMiniFill: {
+    height: '100%',
+    borderRadius: 2,
+  },
+  rarityCount: {
+    fontSize: 9,
+    color: 'rgba(255,255,255,0.75)',
+    fontWeight: '700',
+  },
   searchBox: {
     flexDirection: 'row',
     alignItems: 'center',

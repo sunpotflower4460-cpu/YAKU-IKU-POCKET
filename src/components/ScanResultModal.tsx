@@ -1,10 +1,10 @@
-import React, { useEffect, useRef } from 'react';
-
 // Must match RARITY_XP in useGameStore.ts
 const RARITY_XP_DISPLAY: Record<number, number> = {
   1: 30, 2: 80, 3: 150, 4: 250, 5: 500,
 };
 const XP_RESCAN = 15;
+
+import React, { useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -14,10 +14,28 @@ import {
   Pressable,
   ScrollView,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Plant } from '../types';
 import { Colors } from '../constants/colors';
 import { RarityStars } from './RarityStars';
 import { DangerBadge } from './DangerBadge';
+
+// Gradient header color per rarity
+const RARITY_GRADIENT: Record<number, [string, string, string]> = {
+  1: ['#424242', '#757575', '#9E9E9E'],
+  2: ['#1B5E20', '#2E7D32', '#43A047'],
+  3: ['#0D47A1', '#1565C0', '#1976D2'],
+  4: ['#4A148C', '#6A1B9A', '#8E24AA'],
+  5: ['#BF360C', '#D84315', '#FF8F00'],
+};
+
+const RARITY_LABEL: Record<number, string> = {
+  1: 'コモン',
+  2: 'アンコモン',
+  3: 'レア',
+  4: 'スーパーレア',
+  5: 'レジェンダリー',
+};
 
 interface Props {
   visible: boolean;
@@ -39,44 +57,71 @@ export function ScanResultModal({
   onScanAgain,
 }: Props) {
   const scaleAnim = useRef(new Animated.Value(0)).current;
-  const glowAnim = useRef(new Animated.Value(0)).current;
+  const shimmerAnim = useRef(new Animated.Value(0)).current;
+  const sparkleAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    if (visible) {
-      const animation = Animated.sequence([
-        Animated.spring(scaleAnim, {
-          toValue: 1,
-          tension: 60,
-          friction: 6,
-          useNativeDriver: true,
-        }),
-        Animated.loop(
+    if (visible && plant) {
+      // Card entrance
+      const entry = Animated.spring(scaleAnim, {
+        toValue: 1,
+        tension: 60,
+        friction: 6,
+        useNativeDriver: true,
+      });
+      entry.start();
+
+      let shimmerLoop: Animated.CompositeAnimation | null = null;
+      let sparkleLoop: Animated.CompositeAnimation | null = null;
+
+      // Shimmer + sparkle for ★4/★5 new discoveries
+      if (plant.rarity >= 4 && isNewDiscovery) {
+        shimmerLoop = Animated.loop(
           Animated.sequence([
-            Animated.timing(glowAnim, {
-              toValue: 1,
-              duration: 800,
-              useNativeDriver: true,
-            }),
-            Animated.timing(glowAnim, {
-              toValue: 0,
-              duration: 800,
-              useNativeDriver: true,
-            }),
+            Animated.timing(shimmerAnim, { toValue: 1, duration: 700, useNativeDriver: true }),
+            Animated.timing(shimmerAnim, { toValue: 0.6, duration: 700, useNativeDriver: true }),
           ])
-        ),
-      ]);
-      animation.start();
-      return () => animation.stop();
+        );
+        shimmerLoop.start();
+
+        sparkleLoop = Animated.loop(
+          Animated.sequence([
+            Animated.timing(sparkleAnim, { toValue: 1, duration: 500, useNativeDriver: true }),
+            Animated.timing(sparkleAnim, { toValue: 0, duration: 500, useNativeDriver: true }),
+          ])
+        );
+        sparkleLoop.start();
+      }
+
+      return () => {
+        entry.stop();
+        shimmerLoop?.stop();
+        sparkleLoop?.stop();
+      };
     } else {
       scaleAnim.setValue(0);
-      glowAnim.setValue(0);
+      shimmerAnim.setValue(0);
+      sparkleAnim.setValue(0);
     }
-  }, [visible]);
+  }, [visible, plant, isNewDiscovery]);
 
   if (!plant) return null;
 
   const isDangerous = plant.danger === 'RED';
   const isWarning = plant.danger === 'YELLOW';
+  const isRare = plant.rarity >= 4;
+  const isLegendary = plant.rarity === 5;
+  const gradientColors = RARITY_GRADIENT[plant.rarity] ?? RARITY_GRADIENT[1];
+
+  const emojiScale = shimmerAnim.interpolate({
+    inputRange: [0.6, 1],
+    outputRange: [1, 1.14],
+  });
+
+  const sparkleOpacity = sparkleAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 0.28],
+  });
 
   return (
     <Modal
@@ -86,21 +131,67 @@ export function ScanResultModal({
       statusBarTranslucent
     >
       <View style={styles.overlay}>
-        <Animated.View
-          style={[styles.card, { transform: [{ scale: scaleAnim }] }]}
-        >
-          {/* Header */}
-          {isNewDiscovery && (
-            <View style={styles.newBanner}>
-              <Text style={styles.newBannerText}>✨ 新発見！ NEW DISCOVERY ✨</Text>
-            </View>
-          )}
+        <Animated.View style={[styles.card, { transform: [{ scale: scaleAnim }] }]}>
 
+          {/* ── Gradient header ── */}
+          <LinearGradient colors={gradientColors} style={styles.gradientHeader}>
+
+            {/* Sparkle overlay for rare discoveries */}
+            {isRare && (
+              <Animated.View
+                style={[styles.sparkleOverlay, { opacity: sparkleOpacity }]}
+                pointerEvents="none"
+              />
+            )}
+
+            {/* New discovery / rarity label */}
+            {isNewDiscovery && (
+              <View style={[
+                styles.newLabel,
+                isLegendary && styles.newLabelLegendary,
+                isRare && !isLegendary && styles.newLabelSuperRare,
+              ]}>
+                <Text style={styles.newLabelText}>
+                  {isLegendary
+                    ? '🏆 LEGENDARY FIND!'
+                    : isRare
+                    ? '⭐ SUPER RARE!'
+                    : '✨ NEW DISCOVERY'}
+                </Text>
+              </View>
+            )}
+
+            {/* Emoji */}
+            <Animated.View
+              style={[
+                styles.emojiContainer,
+                isDangerous && styles.dangerEmojiContainer,
+                isRare && { transform: [{ scale: emojiScale }] },
+              ]}
+            >
+              <Text style={styles.emoji}>{plant.emoji}</Text>
+            </Animated.View>
+
+            {/* Names */}
+            <Text style={styles.plantName}>{plant.name}</Text>
+            <Text style={styles.plantNameEn}>{plant.nameEn}</Text>
+            <Text style={styles.plantNameLatin}>{plant.nameLatin}</Text>
+
+            {/* Rarity */}
+            <View style={styles.headerBadgeRow}>
+              <View style={styles.rarityLabelBadge}>
+                <Text style={styles.rarityLabelText}>{RARITY_LABEL[plant.rarity]}</Text>
+              </View>
+              <RarityStars rarity={plant.rarity} size="lg" />
+            </View>
+          </LinearGradient>
+
+          {/* ── Scrollable content ── */}
           <ScrollView
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.content}
           >
-            {/* Danger alert */}
+            {/* Danger alerts */}
             {isDangerous && (
               <View style={styles.alertRed}>
                 <Text style={styles.alertRedText}>
@@ -116,30 +207,8 @@ export function ScanResultModal({
               </View>
             )}
 
-            {/* Plant emoji */}
-            <Animated.View
-              style={[
-                styles.emojiContainer,
-                isDangerous && styles.dangerEmojiContainer,
-                {
-                  opacity: glowAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [0.8, 1],
-                  }),
-                },
-              ]}
-            >
-              <Text style={styles.emoji}>{plant.emoji}</Text>
-            </Animated.View>
-
-            {/* Name */}
-            <Text style={styles.plantName}>{plant.name}</Text>
-            <Text style={styles.plantNameEn}>{plant.nameEn}</Text>
-            <Text style={styles.plantNameLatin}>{plant.nameLatin}</Text>
-
-            {/* Badges */}
+            {/* Danger badge */}
             <View style={styles.badgeRow}>
-              <RarityStars rarity={plant.rarity} size="lg" />
               <DangerBadge danger={plant.danger} />
             </View>
 
@@ -147,12 +216,7 @@ export function ScanResultModal({
             <View style={styles.confidenceContainer}>
               <Text style={styles.confidenceLabel}>AI認識精度</Text>
               <View style={styles.confidenceBar}>
-                <View
-                  style={[
-                    styles.confidenceFill,
-                    { width: `${confidence}%` },
-                  ]}
-                />
+                <View style={[styles.confidenceFill, { width: `${confidence}%` }]} />
               </View>
               <Text style={styles.confidenceValue}>{confidence}%</Text>
             </View>
@@ -183,12 +247,7 @@ export function ScanResultModal({
 
             {/* Warning note */}
             {plant.warningNote && (
-              <View
-                style={[
-                  styles.warningBox,
-                  isDangerous && styles.warningBoxRed,
-                ]}
-              >
+              <View style={[styles.warningBox, isDangerous && styles.warningBoxRed]}>
                 <Text style={[styles.warningText, isDangerous && styles.warningTextRed]}>
                   {plant.warningNote}
                 </Text>
@@ -201,21 +260,15 @@ export function ScanResultModal({
             </Text>
           </ScrollView>
 
-          {/* Actions */}
+          {/* ── Actions ── */}
           <View style={styles.actions}>
-            <Pressable
-              style={[styles.btn, styles.btnSecondary]}
-              onPress={onScanAgain}
-            >
+            <Pressable style={[styles.btn, styles.btnSecondary]} onPress={onScanAgain}>
               <Text style={styles.btnSecondaryText}>もう一度スキャン</Text>
             </Pressable>
-            <Pressable
-              style={[styles.btn, styles.btnPrimary]}
-              onPress={onAddToZukan}
-            >
+            <Pressable style={[styles.btn, styles.btnPrimary]} onPress={onAddToZukan}>
               <Text style={styles.btnPrimaryText}>
                 📖 図鑑に登録{isNewDiscovery
-                  ? ` +${plant ? (RARITY_XP_DISPLAY[plant.rarity] ?? 100) : '??'}XP`
+                  ? ` +${RARITY_XP_DISPLAY[plant.rarity] ?? 100}XP`
                   : ` +${XP_RESCAN}XP`}
               </Text>
             </Pressable>
@@ -238,7 +291,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.bgCard,
     borderRadius: 24,
     width: '100%',
-    maxHeight: '90%',
+    maxHeight: '92%',
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
@@ -246,19 +299,104 @@ const styles = StyleSheet.create({
     shadowRadius: 16,
     elevation: 16,
   },
-  newBanner: {
-    backgroundColor: Colors.rarity5,
-    paddingVertical: 10,
+
+  // ── Gradient header ──
+  gradientHeader: {
+    paddingTop: 20,
+    paddingBottom: 20,
+    paddingHorizontal: 20,
     alignItems: 'center',
+    position: 'relative',
+    overflow: 'hidden',
   },
-  newBannerText: {
+  sparkleOverlay: {
+    position: 'absolute',
+    inset: 0,
+    backgroundColor: '#FFFFFF',
+  },
+  newLabel: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 5,
+    marginBottom: 10,
+  },
+  newLabelSuperRare: {
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.4)',
+  },
+  newLabelLegendary: {
+    backgroundColor: 'rgba(255,215,0,0.3)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,215,0,0.6)',
+  },
+  newLabelText: {
     color: '#FFFFFF',
     fontWeight: '900',
-    fontSize: 14,
-    letterSpacing: 1,
+    fontSize: 13,
+    letterSpacing: 0.5,
   },
+  emojiContainer: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 10,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.25)',
+  },
+  dangerEmojiContainer: {
+    backgroundColor: 'rgba(255,0,0,0.2)',
+    borderColor: 'rgba(255,100,100,0.4)',
+  },
+  emoji: { fontSize: 54 },
+  plantName: {
+    fontSize: 24,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    textAlign: 'center',
+    textShadowColor: 'rgba(0,0,0,0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+  },
+  plantNameEn: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.85)',
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  plantNameLatin: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.65)',
+    fontStyle: 'italic',
+    marginTop: 2,
+    marginBottom: 10,
+  },
+  headerBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+  },
+  rarityLabelBadge: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+  },
+  rarityLabelText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+
+  // ── Content ──
   content: {
-    padding: 20,
+    padding: 18,
     alignItems: 'center',
   },
   alertRed: {
@@ -273,7 +411,7 @@ const styles = StyleSheet.create({
   alertRedText: {
     color: Colors.dangerRed,
     fontWeight: '700',
-    fontSize: 13,
+    fontSize: 12,
     textAlign: 'center',
   },
   alertYellow: {
@@ -291,60 +429,21 @@ const styles = StyleSheet.create({
     fontSize: 12,
     textAlign: 'center',
   },
-  emojiContainer: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: Colors.primaryPale,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  dangerEmojiContainer: {
-    backgroundColor: '#FFEBEE',
-  },
-  emoji: {
-    fontSize: 56,
-  },
-  plantName: {
-    fontSize: 26,
-    fontWeight: '900',
-    color: Colors.text,
-    textAlign: 'center',
-  },
-  plantNameEn: {
-    fontSize: 16,
-    color: Colors.textSecondary,
-    fontWeight: '600',
-    marginTop: 2,
-  },
-  plantNameLatin: {
-    fontSize: 12,
-    color: Colors.textMuted,
-    fontStyle: 'italic',
-    marginTop: 2,
-    marginBottom: 10,
-  },
   badgeRow: {
     flexDirection: 'row',
     gap: 10,
     alignItems: 'center',
-    marginBottom: 12,
-    flexWrap: 'wrap',
+    marginBottom: 14,
     justifyContent: 'center',
   },
   confidenceContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginBottom: 14,
+    marginBottom: 12,
     width: '100%',
   },
-  confidenceLabel: {
-    fontSize: 11,
-    color: Colors.textMuted,
-    width: 60,
-  },
+  confidenceLabel: { fontSize: 11, color: Colors.textMuted, width: 60 },
   confidenceBar: {
     flex: 1,
     height: 8,
@@ -367,7 +466,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     paddingHorizontal: 10,
     paddingVertical: 4,
-    marginBottom: 14,
+    marginBottom: 12,
     borderWidth: 1,
   },
   aiBadgeReal: {
@@ -378,16 +477,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5F5F5',
     borderColor: '#E0E0E0',
   },
-  aiBadgeText: {
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  aiBadgeTextReal: {
-    color: Colors.primaryDark,
-  },
-  aiBadgeTextMock: {
-    color: Colors.textMuted,
-  },
+  aiBadgeText: { fontSize: 11, fontWeight: '700' },
+  aiBadgeTextReal: { color: Colors.primaryDark },
+  aiBadgeTextMock: { color: Colors.textMuted },
   description: {
     fontSize: 13,
     color: Colors.textSecondary,
@@ -395,32 +487,21 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 14,
   },
-  effectsContainer: {
-    width: '100%',
-    marginBottom: 12,
-  },
+  effectsContainer: { width: '100%', marginBottom: 12 },
   sectionTitle: {
     fontSize: 13,
     fontWeight: '700',
     color: Colors.text,
     marginBottom: 8,
   },
-  effectTags: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-  },
+  effectTags: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   effectTag: {
     backgroundColor: Colors.primaryPale,
     borderRadius: 12,
     paddingHorizontal: 10,
     paddingVertical: 4,
   },
-  effectText: {
-    fontSize: 12,
-    color: Colors.primaryDark,
-    fontWeight: '600',
-  },
+  effectText: { fontSize: 12, color: Colors.primaryDark, fontWeight: '600' },
   warningBox: {
     backgroundColor: Colors.dangerYellowBg,
     borderColor: '#FFD54F',
@@ -450,10 +531,12 @@ const styles = StyleSheet.create({
     lineHeight: 15,
     marginTop: 4,
   },
+
+  // ── Actions ──
   actions: {
     flexDirection: 'row',
     gap: 10,
-    padding: 16,
+    padding: 14,
     borderTopWidth: 1,
     borderTopColor: Colors.border,
   },
@@ -463,20 +546,8 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     alignItems: 'center',
   },
-  btnPrimary: {
-    backgroundColor: Colors.primary,
-  },
-  btnSecondary: {
-    backgroundColor: Colors.primaryPale,
-  },
-  btnPrimaryText: {
-    color: '#FFFFFF',
-    fontWeight: '800',
-    fontSize: 13,
-  },
-  btnSecondaryText: {
-    color: Colors.primaryDark,
-    fontWeight: '700',
-    fontSize: 13,
-  },
+  btnPrimary: { backgroundColor: Colors.primary },
+  btnSecondary: { backgroundColor: Colors.primaryPale },
+  btnPrimaryText: { color: '#FFFFFF', fontWeight: '800', fontSize: 13 },
+  btnSecondaryText: { color: Colors.primaryDark, fontWeight: '700', fontSize: 13 },
 });

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -11,9 +11,11 @@ import {
   Share,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
 import { PLANTS } from '../../src/data/plants';
 import { useGameStore } from '../../src/store/useGameStore';
 import { DisclaimerBanner } from '../../src/components/DisclaimerBanner';
+import { DangerBadge } from '../../src/components/DangerBadge';
 import { Colors } from '../../src/constants/colors';
 
 const TITLES = [
@@ -105,8 +107,21 @@ const ACHIEVEMENTS: AchievementDef[] = [
   },
 ];
 
+function formatScanDate(iso: string): string {
+  const d = new Date(iso);
+  const now = new Date();
+  const diffMs = now.getTime() - d.getTime();
+  const diffH = Math.floor(diffMs / 3_600_000);
+  const diffD = Math.floor(diffMs / 86_400_000);
+  if (diffH < 1) return 'たった今';
+  if (diffH < 24) return `${diffH}時間前`;
+  if (diffD < 7) return `${diffD}日前`;
+  return `${d.getMonth() + 1}/${d.getDate()}`;
+}
+
 export default function ProfileScreen() {
-  const { playerName, xp, discoveredPlantIds, setPlayerName, streak, getLevel, getXpForCurrentLevel, getXpToNextLevel } = useGameStore();
+  const router = useRouter();
+  const { playerName, xp, discoveredPlantIds, setPlayerName, streak, getLevel, getXpForCurrentLevel, getXpToNextLevel, scanHistory } = useGameStore();
   const [editNameVisible, setEditNameVisible] = useState(false);
   const [tempName, setTempName] = useState(playerName);
 
@@ -147,6 +162,15 @@ export default function ProfileScreen() {
   const rarity5Count = PLANTS.filter(
     (p) => p.rarity === 5 && discoveredPlantIds.includes(p.id)
   ).length;
+
+  const recentScans = useMemo(
+    () =>
+      scanHistory.slice(0, 10).flatMap((record) => {
+        const plant = PLANTS.find((p) => p.id === record.plantId);
+        return plant ? [{ record, plant }] : [];
+      }),
+    [scanHistory]
+  );
 
   function handleSaveName() {
     if (tempName.trim().length > 0) {
@@ -252,6 +276,33 @@ export default function ProfileScreen() {
             );
           })}
         </View>
+      </View>
+
+      {/* Scan History */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>📋 スキャン履歴</Text>
+        {recentScans.length === 0 ? (
+          <View style={styles.emptyHistory}>
+            <Text style={styles.emptyHistoryText}>まだスキャン履歴がありません</Text>
+          </View>
+        ) : (
+          <View style={styles.historyList}>
+            {recentScans.map(({ record, plant }) => (
+              <Pressable
+                key={record.id}
+                style={styles.historyItem}
+                onPress={() => router.push(`/plant/${plant.id}`)}
+              >
+                <Text style={styles.historyEmoji}>{plant.emoji}</Text>
+                <View style={styles.historyInfo}>
+                  <Text style={styles.historyName}>{plant.name}</Text>
+                  <Text style={styles.historyTime}>{formatScanDate(record.scannedAt)}</Text>
+                </View>
+                <DangerBadge danger={plant.danger} size="sm" />
+              </Pressable>
+            ))}
+          </View>
+        )}
       </View>
 
       {/* Disclaimer */}
@@ -460,6 +511,47 @@ const styles = StyleSheet.create({
     marginTop: 3,
   },
 
+  emptyHistory: {
+    backgroundColor: Colors.bgCard,
+    borderRadius: 12,
+    padding: 20,
+    alignItems: 'center',
+  },
+  emptyHistoryText: {
+    fontSize: 13,
+    color: Colors.textMuted,
+  },
+  historyList: {
+    backgroundColor: Colors.bgCard,
+    borderRadius: 14,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.07,
+    shadowRadius: 5,
+    elevation: 3,
+  },
+  historyItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+    gap: 10,
+  },
+  historyEmoji: { fontSize: 26 },
+  historyInfo: { flex: 1 },
+  historyName: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: Colors.text,
+  },
+  historyTime: {
+    fontSize: 11,
+    color: Colors.textMuted,
+    marginTop: 2,
+  },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',

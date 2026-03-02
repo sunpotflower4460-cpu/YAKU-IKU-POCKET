@@ -7,10 +7,9 @@ import {
   Pressable,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
+import { useLocalSearchParams, useNavigation } from 'expo-router';
 import { useLayoutEffect } from 'react';
 import { getPlantById } from '../../src/data/plants';
-import { useGameStore } from '../../src/store/useGameStore';
 import { RarityStars } from '../../src/components/RarityStars';
 import { DangerBadge } from '../../src/components/DangerBadge';
 import { DisclaimerBanner } from '../../src/components/DisclaimerBanner';
@@ -19,10 +18,8 @@ import { Colors } from '../../src/constants/colors';
 export default function PlantDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const navigation = useNavigation();
-  const { discoveredPlantIds } = useGameStore();
 
   const plant = getPlantById(id ?? '');
-  const isDiscovered = plant ? discoveredPlantIds.includes(plant.id) : false;
 
   useLayoutEffect(() => {
     if (plant) {
