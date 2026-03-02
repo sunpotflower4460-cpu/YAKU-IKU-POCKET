@@ -3,8 +3,8 @@ import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
   Pressable,
+  ScrollView,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -14,11 +14,15 @@ import { PLANTS, TOTAL_PLANTS } from '../../src/data/plants';
 import { DisclaimerBanner } from '../../src/components/DisclaimerBanner';
 import { Colors } from '../../src/constants/colors';
 import { getCurrentSeason, SEASON_CONFIG } from '../../src/utils/season';
+import { getDailyChallenges, getChallengePct, Challenge } from '../../src/data/challenges';
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { discoveredPlantIds, playerName, xp, getLevel, getXpForCurrentLevel } =
-    useGameStore();
+  const {
+    discoveredPlantIds, playerName, xp, getLevel, getXpForCurrentLevel,
+    todayScanCount, todayNewCount, todayMaxRarity, todayDangers, todayCategories,
+    claimedChallengeIds, claimChallenge,
+  } = useGameStore();
 
   const level = getLevel();
   const xpCurrent = getXpForCurrentLevel();
@@ -27,6 +31,11 @@ export default function HomeScreen() {
 
   const season = getCurrentSeason();
   const seasonCfg = SEASON_CONFIG[season];
+
+  // Daily quest data
+  const todayDateStr = new Date().toISOString().split('T')[0];
+  const dailyChallenges = getDailyChallenges(todayDateStr);
+  const dailySnap = { todayScanCount, todayNewCount, todayMaxRarity, todayDangers, todayCategories };
 
   const discoveredCount = discoveredPlantIds.length;
   const greenCount = PLANTS.filter(
@@ -127,6 +136,26 @@ export default function HomeScreen() {
         </Pressable>
       </View>
 
+      {/* Daily Quests */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>📋 今日のクエスト</Text>
+        {dailyChallenges.map((challenge) => {
+          const pct = getChallengePct(challenge, dailySnap);
+          const claimed = claimedChallengeIds.includes(challenge.id);
+          const done = pct >= 1;
+          return (
+            <QuestCard
+              key={challenge.id}
+              challenge={challenge}
+              pct={pct}
+              claimed={claimed}
+              done={done}
+              onClaim={() => claimChallenge(challenge.id, challenge.xpReward)}
+            />
+          );
+        })}
+      </View>
+
       {/* Recent Discoveries */}
       {recentPlants.length > 0 && (
         <View style={styles.section}>
@@ -206,6 +235,58 @@ export default function HomeScreen() {
       <DisclaimerBanner />
       <View style={styles.bottomPad} />
     </ScrollView>
+  );
+}
+
+function QuestCard({
+  challenge,
+  pct,
+  claimed,
+  done,
+  onClaim,
+}: {
+  challenge: Challenge;
+  pct: number;
+  claimed: boolean;
+  done: boolean;
+  onClaim: () => void;
+}) {
+  return (
+    <View style={[styles.questCard, claimed && styles.questCardClaimed]}>
+      <View style={styles.questHeader}>
+        <Text style={styles.questEmoji}>{claimed ? '✅' : challenge.emoji}</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.questTitle, claimed && styles.questTextMuted]}>
+            {challenge.title}
+          </Text>
+          <Text style={[styles.questDesc, claimed && styles.questTextMuted]}>
+            {challenge.desc}
+          </Text>
+        </View>
+        <View style={[styles.questXpBadge, claimed && { backgroundColor: '#E0E0E0' }]}>
+          <Text style={[styles.questXpText, claimed && { color: '#9E9E9E' }]}>
+            {claimed ? '受取済' : `+${challenge.xpReward}XP`}
+          </Text>
+        </View>
+      </View>
+
+      <View style={styles.questProgressRow}>
+        <View style={styles.questBarBg}>
+          <View
+            style={[
+              styles.questBarFill,
+              { width: `${pct * 100}%` },
+              claimed && { backgroundColor: '#9E9E9E' },
+            ]}
+          />
+        </View>
+        {done && !claimed ? (
+          <Pressable style={styles.questClaimBtn} onPress={onClaim}>
+            <Text style={styles.questClaimText}>受け取る</Text>
+          </Pressable>
+        ) : null}
+      </View>
+    </View>
   );
 }
 
@@ -402,4 +483,62 @@ const styles = StyleSheet.create({
   progressValue: { fontSize: 12, fontWeight: '700', color: Colors.text, width: 36, textAlign: 'right' },
 
   bottomPad: { height: 24 },
+
+  // Quest card
+  questCard: {
+    backgroundColor: Colors.bgCard,
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 5,
+    elevation: 3,
+  },
+  questCardClaimed: {
+    backgroundColor: '#F5F5F5',
+  },
+  questHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    marginBottom: 10,
+  },
+  questEmoji: { fontSize: 24, lineHeight: 28 },
+  questTitle: { fontSize: 13, fontWeight: '800', color: Colors.text },
+  questDesc: { fontSize: 11, color: Colors.textSecondary, marginTop: 2 },
+  questTextMuted: { color: Colors.textMuted },
+  questXpBadge: {
+    backgroundColor: Colors.primaryPale,
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    alignSelf: 'flex-start',
+  },
+  questXpText: { fontSize: 11, fontWeight: '800', color: Colors.primaryDark },
+  questProgressRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  questBarBg: {
+    flex: 1,
+    height: 8,
+    backgroundColor: '#E8F5E9',
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  questBarFill: {
+    height: '100%',
+    backgroundColor: Colors.primary,
+    borderRadius: 4,
+  },
+  questClaimBtn: {
+    backgroundColor: Colors.primaryDark,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  questClaimText: { fontSize: 11, fontWeight: '800', color: '#FFFFFF' },
 });

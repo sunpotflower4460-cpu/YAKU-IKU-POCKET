@@ -1,11 +1,16 @@
 import { Tabs } from 'expo-router';
+import { useEffect } from 'react';
 import { View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../src/constants/colors';
+import { useGameStore } from '../../src/store/useGameStore';
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>['name'];
 
 export default function TabLayout() {
+  const startSession = useGameStore((s) => s.startSession);
+  useEffect(() => { startSession(); }, []);
+
   return (
     <Tabs
       screenOptions={{

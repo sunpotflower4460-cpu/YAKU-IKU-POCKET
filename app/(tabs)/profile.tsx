@@ -8,6 +8,7 @@ import {
   TextInput,
   Alert,
   Modal,
+  Share,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { PLANTS } from '../../src/data/plants';
@@ -105,7 +106,7 @@ const ACHIEVEMENTS: AchievementDef[] = [
 ];
 
 export default function ProfileScreen() {
-  const { playerName, xp, discoveredPlantIds, setPlayerName } = useGameStore();
+  const { playerName, xp, discoveredPlantIds, setPlayerName, streak } = useGameStore();
   const [editNameVisible, setEditNameVisible] = useState(false);
   const [tempName, setTempName] = useState(playerName);
 
@@ -115,6 +116,24 @@ export default function ProfileScreen() {
   const title = getTitle(level);
 
   const discoveredCount = discoveredPlantIds.length;
+  const totalPlants = PLANTS.length;
+
+  async function handleShare() {
+    const streakLine = streak > 1 ? `🔥 ${streak}日連続ログイン中！\n` : '';
+    const msg =
+      `🌿 薬育ポケット コレクション報告\n\n` +
+      `プレイヤー: ${playerName}\n` +
+      `称号: ${title}\n` +
+      `レベル: ${level}  総XP: ${xp}\n` +
+      `図鑑: ${discoveredCount}/${totalPlants}種類発見\n` +
+      `${streakLine}\n` +
+      `#薬育ポケット #野草図鑑 #養生ライフ`;
+    try {
+      await Share.share({ message: msg });
+    } catch {
+      Alert.alert('シェアできませんでした');
+    }
+  }
   const greenCount = PLANTS.filter(
     (p) => p.danger === 'GREEN' && discoveredPlantIds.includes(p.id)
   ).length;
@@ -176,6 +195,19 @@ export default function ProfileScreen() {
           <Text style={styles.xpLabel}>
             {xpCurrent} / {XP_PER_LEVEL} XP（次のレベルまで{XP_PER_LEVEL - xpCurrent}XP）
           </Text>
+        </View>
+
+        {/* Streak + Share */}
+        <View style={styles.heroBottomRow}>
+          <View style={styles.streakBadge}>
+            <Text style={styles.streakEmoji}>🔥</Text>
+            <Text style={styles.streakText}>
+              {streak > 0 ? `${streak}日連続` : '今日から開始'}
+            </Text>
+          </View>
+          <Pressable style={styles.shareBtn} onPress={handleShare}>
+            <Text style={styles.shareBtnText}>📤 シェア</Text>
+          </Pressable>
         </View>
       </LinearGradient>
 
@@ -333,6 +365,34 @@ const styles = StyleSheet.create({
 
   section: { paddingHorizontal: 16, paddingTop: 20 },
   sectionTitle: { fontSize: 16, fontWeight: '800', color: Colors.text, marginBottom: 12 },
+
+  heroBottomRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 14,
+    gap: 12,
+  },
+  streakBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  streakEmoji: { fontSize: 18 },
+  streakText: { fontSize: 13, fontWeight: '800', color: '#FFFFFF' },
+  shareBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  shareBtnText: { fontSize: 13, fontWeight: '800', color: '#FFFFFF' },
 
   statsGrid: {
     flexDirection: 'row',
