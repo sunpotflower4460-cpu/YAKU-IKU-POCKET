@@ -182,14 +182,7 @@ export default function HomeScreen() {
                 <Text style={styles.recentName} numberOfLines={1}>
                   {plant.name}
                 </Text>
-                <Text
-                  style={[
-                    styles.recentDanger,
-                    plant.danger === 'RED' && styles.dangerRed,
-                    plant.danger === 'YELLOW' && styles.dangerYellow,
-                    plant.danger === 'GREEN' && styles.dangerGreen,
-                  ]}
-                >
+                <Text style={styles.recentDanger}>
                   {plant.danger === 'GREEN'
                     ? '🟢'
                     : plant.danger === 'YELLOW'
@@ -455,9 +448,6 @@ const styles = StyleSheet.create({
   recentEmoji: { fontSize: 30, marginBottom: 5 },
   recentName: { fontSize: 11, fontWeight: '700', color: Colors.text, textAlign: 'center' },
   recentDanger: { fontSize: 13, marginTop: 5 },
-  dangerRed: {},
-  dangerYellow: {},
-  dangerGreen: {},
 
   progressCard: {
     backgroundColor: Colors.bgCard,

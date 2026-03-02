@@ -20,7 +20,6 @@ export function DisclaimerBanner({ compact = false }: Props) {
   return (
     <View style={styles.banner}>
       <View style={styles.titleRow}>
-        <View style={styles.titleAccent} />
         <Text style={styles.title}>免責事項・安全上の注意</Text>
       </View>
       <Text style={styles.body}>
@@ -49,9 +48,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     marginBottom: 8,
-  },
-  titleAccent: {
-    width: 0,
   },
   title: {
     fontSize: 12,

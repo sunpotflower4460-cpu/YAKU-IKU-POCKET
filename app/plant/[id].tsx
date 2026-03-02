@@ -28,7 +28,7 @@ export default function PlantDetailScreen() {
     if (plant) {
       navigation.setOptions({ title: plant.name });
     }
-  }, [plant]);
+  }, [plant, navigation]);
 
   if (!plant) {
     return (

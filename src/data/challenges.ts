@@ -78,14 +78,13 @@ export function getDailyChallenges(dateStr: string): Challenge[] {
   seed = Math.abs(seed);
 
   const n = CHALLENGES.length;
-  const picked: number[] = [];
+  const pickedSet = new Set<number>();
   let s = seed;
-  while (picked.length < 3) {
+  while (pickedSet.size < 3) {
     s = (s * 9301 + 49297) % 233280;
-    const idx = s % n;
-    if (!picked.includes(idx)) picked.push(idx);
+    pickedSet.add(s % n);
   }
-  return picked.map((i) => CHALLENGES[i]);
+  return [...pickedSet].map((i) => CHALLENGES[i]);
 }
 
 /** 0..1 progress for a challenge given today's activity snapshot. */

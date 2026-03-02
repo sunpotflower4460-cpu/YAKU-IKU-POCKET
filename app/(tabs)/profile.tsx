@@ -106,12 +106,13 @@ const ACHIEVEMENTS: AchievementDef[] = [
 ];
 
 export default function ProfileScreen() {
-  const { playerName, xp, discoveredPlantIds, setPlayerName, streak } = useGameStore();
+  const { playerName, xp, discoveredPlantIds, setPlayerName, streak, getLevel, getXpForCurrentLevel, getXpToNextLevel } = useGameStore();
   const [editNameVisible, setEditNameVisible] = useState(false);
   const [tempName, setTempName] = useState(playerName);
 
-  const level = Math.floor(xp / 500) + 1;
-  const xpCurrent = xp % 500;
+  const level = getLevel();
+  const xpCurrent = getXpForCurrentLevel();
+  const xpToNext = getXpToNextLevel();
   const XP_PER_LEVEL = 500;
   const title = getTitle(level);
 
@@ -193,7 +194,7 @@ export default function ProfileScreen() {
             />
           </View>
           <Text style={styles.xpLabel}>
-            {xpCurrent} / {XP_PER_LEVEL} XP（次のレベルまで{XP_PER_LEVEL - xpCurrent}XP）
+            {xpCurrent} / {XP_PER_LEVEL} XP（次のレベルまで{xpToNext}XP）
           </Text>
         </View>
 

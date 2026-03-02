@@ -12,11 +12,11 @@ interface Props {
 }
 
 const RARITY_COLOR: Record<number, string> = {
-  1: '#9E9E9E',
-  2: '#4CAF50',
-  3: '#2196F3',
-  4: '#9C27B0',
-  5: '#FF8F00',
+  1: Colors.rarity1,
+  2: Colors.rarity2,
+  3: Colors.rarity3,
+  4: Colors.rarity4,
+  5: Colors.rarity5,
 };
 
 const RARITY_BG: Record<number, string> = {
