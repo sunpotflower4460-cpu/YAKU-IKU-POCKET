@@ -33,10 +33,15 @@ export const Colors = {
 
   // UI
   border: '#C8E6C9',
+  cardBorder: '#DCF0DC',
   shadow: '#000000',
-  overlay: 'rgba(0,0,0,0.5)',
+  overlay: 'rgba(0,0,0,0.55)',
   scanLine: '#00FF41',
   tabBar: '#FFFFFF',
   tabActive: '#2E7D32',
-  tabInactive: '#9E9E9E',
+  tabInactive: '#AAAAAA',
+
+  // Extra
+  primaryMid: '#388E3C',
+  bgSection: '#EBF4EB',
 };

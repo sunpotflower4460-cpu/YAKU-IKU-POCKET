@@ -1,22 +1,9 @@
 import { Tabs } from 'expo-router';
+import { View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../src/constants/colors';
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>['name'];
-
-interface TabConfig {
-  name: string;
-  title: string;
-  icon: IoniconsName;
-  iconFocused: IoniconsName;
-}
-
-const TABS: TabConfig[] = [
-  { name: 'index', title: 'ホーム', icon: 'home-outline', iconFocused: 'home' },
-  { name: 'scan', title: 'スキャン', icon: 'camera-outline', iconFocused: 'camera' },
-  { name: 'zukan', title: '図鑑', icon: 'book-outline', iconFocused: 'book' },
-  { name: 'profile', title: 'マイページ', icon: 'person-outline', iconFocused: 'person' },
-];
 
 export default function TabLayout() {
   return (
@@ -25,11 +12,16 @@ export default function TabLayout() {
         tabBarActiveTintColor: Colors.tabActive,
         tabBarInactiveTintColor: Colors.tabInactive,
         tabBarStyle: {
-          backgroundColor: Colors.tabBar,
-          borderTopColor: Colors.border,
-          borderTopWidth: 1,
-          paddingBottom: 4,
-          height: 60,
+          backgroundColor: '#FFFFFF',
+          borderTopWidth: 0,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: -3 },
+          shadowOpacity: 0.08,
+          shadowRadius: 10,
+          elevation: 12,
+          height: 68,
+          paddingBottom: 10,
+          paddingTop: 6,
         },
         tabBarLabelStyle: {
           fontSize: 10,
@@ -40,22 +32,59 @@ export default function TabLayout() {
         headerTitleStyle: { fontWeight: '800', fontSize: 18 },
       }}
     >
-      {TABS.map((tab) => (
-        <Tabs.Screen
-          key={tab.name}
-          name={tab.name}
-          options={{
-            title: tab.title,
-            tabBarIcon: ({ color, focused, size }) => (
-              <Ionicons
-                name={focused ? tab.iconFocused : tab.icon}
-                size={size}
-                color={color}
-              />
-            ),
-          }}
-        />
-      ))}
+      <Tabs.Screen
+        name="index"
+        options={{
+          title: 'ホーム',
+          tabBarIcon: ({ color, focused, size }) => (
+            <Ionicons name={focused ? 'home' : 'home-outline'} size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="scan"
+        options={{
+          title: 'スキャン',
+          tabBarIcon: ({ focused }) => (
+            <View
+              style={{
+                backgroundColor: focused ? Colors.primaryDark : Colors.primary,
+                width: 52,
+                height: 32,
+                borderRadius: 16,
+                justifyContent: 'center',
+                alignItems: 'center',
+                shadowColor: Colors.primary,
+                shadowOffset: { width: 0, height: 3 },
+                shadowOpacity: 0.45,
+                shadowRadius: 6,
+                elevation: 6,
+              }}
+            >
+              <Ionicons name={focused ? 'camera' : 'camera-outline'} size={20} color="#FFFFFF" />
+            </View>
+          ),
+          tabBarActiveTintColor: Colors.primary,
+        }}
+      />
+      <Tabs.Screen
+        name="zukan"
+        options={{
+          title: '図鑑',
+          tabBarIcon: ({ color, focused, size }) => (
+            <Ionicons name={focused ? 'book' : 'book-outline'} size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: 'マイページ',
+          tabBarIcon: ({ color, focused, size }) => (
+            <Ionicons name={focused ? 'person' : 'person-outline'} size={size} color={color} />
+          ),
+        }}
+      />
     </Tabs>
   );
 }

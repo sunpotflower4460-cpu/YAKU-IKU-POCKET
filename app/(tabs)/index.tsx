@@ -117,7 +117,18 @@ export default function HomeScreen() {
             {recentPlants.map((plant) => (
               <Pressable
                 key={plant.id}
-                style={styles.recentCard}
+                style={[
+                  styles.recentCard,
+                  {
+                    borderTopWidth: 3,
+                    borderTopColor:
+                      plant.danger === 'RED'
+                        ? '#EF9A9A'
+                        : plant.danger === 'YELLOW'
+                        ? '#FFD54F'
+                        : '#81C784',
+                  },
+                ]}
                 onPress={() => router.push(`/plant/${plant.id}`)}
               >
                 <Text style={styles.recentEmoji}>{plant.emoji}</Text>
@@ -266,18 +277,20 @@ const styles = StyleSheet.create({
   statCard: {
     flex: 1,
     backgroundColor: Colors.bgCard,
-    borderRadius: 12,
-    padding: 12,
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 8,
     alignItems: 'center',
+    overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.10,
+    shadowRadius: 6,
+    elevation: 4,
   },
-  statIcon: { fontSize: 20, marginBottom: 4 },
-  statValue: { fontSize: 20, fontWeight: '900' },
-  statLabel: { fontSize: 10, color: Colors.textMuted, marginTop: 2 },
+  statIcon: { fontSize: 22, marginBottom: 6 },
+  statValue: { fontSize: 22, fontWeight: '900', lineHeight: 26 },
+  statLabel: { fontSize: 10, color: Colors.textMuted, marginTop: 3, fontWeight: '600' },
 
   actionRow: {
     flexDirection: 'row',
@@ -308,20 +321,23 @@ const styles = StyleSheet.create({
 
   recentCard: {
     backgroundColor: Colors.bgCard,
-    borderRadius: 12,
-    padding: 12,
+    borderRadius: 14,
+    paddingTop: 14,
+    paddingBottom: 10,
+    paddingHorizontal: 10,
     marginRight: 10,
     alignItems: 'center',
-    width: 80,
+    width: 88,
+    overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 3,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 5,
+    elevation: 3,
   },
-  recentEmoji: { fontSize: 28, marginBottom: 4 },
+  recentEmoji: { fontSize: 30, marginBottom: 5 },
   recentName: { fontSize: 11, fontWeight: '700', color: Colors.text, textAlign: 'center' },
-  recentDanger: { fontSize: 14, marginTop: 4 },
+  recentDanger: { fontSize: 13, marginTop: 5 },
   dangerRed: {},
   dangerYellow: {},
   dangerGreen: {},
@@ -341,9 +357,9 @@ const styles = StyleSheet.create({
   progressLabel: { fontSize: 12, color: Colors.textSecondary, width: 110, fontWeight: '600' },
   progressBarContainer: {
     flex: 1,
-    height: 10,
-    backgroundColor: '#E0E0E0',
-    borderRadius: 5,
+    height: 12,
+    backgroundColor: '#E8F5E9',
+    borderRadius: 6,
     overflow: 'hidden',
   },
   progressFill: { height: '100%', borderRadius: 5 },

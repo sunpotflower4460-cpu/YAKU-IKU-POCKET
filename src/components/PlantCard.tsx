@@ -11,54 +11,66 @@ interface Props {
   onPress: () => void;
 }
 
-const RARITY_GLOW: Record<number, string> = {
-  1: '#E0E0E0',
-  2: '#C8E6C9',
-  3: '#BBDEFB',
-  4: '#E1BEE7',
-  5: '#FFE0B2',
+const RARITY_COLOR: Record<number, string> = {
+  1: '#9E9E9E',
+  2: '#4CAF50',
+  3: '#2196F3',
+  4: '#9C27B0',
+  5: '#FF8F00',
+};
+
+const RARITY_BG: Record<number, string> = {
+  1: '#F5F5F5',
+  2: '#F1F8E9',
+  3: '#E3F2FD',
+  4: '#F3E5F5',
+  5: '#FFF8E1',
 };
 
 export function PlantCard({ plant, discovered, onPress }: Props) {
-  const glowColor = RARITY_GLOW[plant.rarity];
+  const rarityColor = RARITY_COLOR[plant.rarity];
+  const rarityBg = RARITY_BG[plant.rarity];
 
   return (
     <Pressable
       style={({ pressed }) => [
         styles.card,
-        { borderColor: glowColor, opacity: pressed ? 0.85 : 1 },
+        pressed && styles.cardPressed,
         plant.danger === 'RED' && discovered && styles.dangerCard,
       ]}
       onPress={onPress}
     >
-      {/* Emoji / Silhouette */}
-      <View
-        style={[styles.emojiContainer, { backgroundColor: glowColor + '80' }]}
-      >
-        <Text style={[styles.emoji, !discovered && styles.hidden]}>
-          {plant.emoji}
-        </Text>
-        {!discovered && <Text style={styles.unknown}>？</Text>}
-      </View>
+      {/* Rarity color strip at top */}
+      <View style={[styles.rarityStrip, { backgroundColor: rarityColor }]} />
 
-      {/* Info */}
-      <View style={styles.info}>
-        <Text
-          style={[styles.name, !discovered && styles.unknownText]}
-          numberOfLines={1}
-        >
-          {discovered ? plant.name : '？？？'}
-        </Text>
-        <Text style={styles.category}>{plant.category}</Text>
-        <RarityStars rarity={plant.rarity} size="sm" />
-        {discovered && (
-          <DangerBadge danger={plant.danger} size="sm" />
+      {/* Emoji circle */}
+      <View style={[styles.emojiWrap, { backgroundColor: rarityBg }]}>
+        {discovered ? (
+          <Text style={styles.emoji}>{plant.emoji}</Text>
+        ) : (
+          <Text style={styles.questionMark}>？</Text>
         )}
       </View>
 
-      {/* New badge */}
+      {/* Plant name */}
+      <Text
+        style={[styles.name, !discovered && styles.unknownName]}
+        numberOfLines={2}
+      >
+        {discovered ? plant.name : '？？？'}
+      </Text>
+
+      {/* Rarity stars */}
+      <RarityStars rarity={plant.rarity} size="sm" />
+
+      {/* Danger badge (discovered only) */}
+      {discovered && <DangerBadge danger={plant.danger} size="sm" />}
+
+      {/* Checkmark badge for discovered */}
       {discovered && (
-        <View style={[styles.discoveredDot, { backgroundColor: glowColor }]} />
+        <View style={[styles.checkBadge, { backgroundColor: rarityColor }]}>
+          <Text style={styles.checkText}>✓</Text>
+        </View>
       )}
     </Pressable>
   );
@@ -67,66 +79,78 @@ export function PlantCard({ plant, discovered, onPress }: Props) {
 const styles = StyleSheet.create({
   card: {
     backgroundColor: Colors.bgCard,
-    borderRadius: 12,
-    borderWidth: 2,
-    padding: 10,
+    borderRadius: 14,
+    paddingTop: 14,
+    paddingBottom: 10,
+    paddingHorizontal: 6,
     alignItems: 'center',
     flex: 1,
     margin: 4,
-    shadowColor: Colors.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 3,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.10,
+    shadowRadius: 6,
+    elevation: 4,
+    gap: 4,
+  },
+  cardPressed: {
+    opacity: 0.82,
+    transform: [{ scale: 0.97 }],
   },
   dangerCard: {
-    borderColor: '#EF9A9A',
     backgroundColor: '#FFF5F5',
   },
-  emojiContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+  rarityStrip: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 4,
+    borderTopLeftRadius: 14,
+    borderTopRightRadius: 14,
+  },
+  emojiWrap: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 6,
+    marginBottom: 2,
   },
   emoji: {
     fontSize: 32,
   },
-  hidden: {
-    opacity: 0,
-    position: 'absolute',
-  },
-  unknown: {
-    fontSize: 28,
+  questionMark: {
+    fontSize: 26,
     color: '#BDBDBD',
     fontWeight: '900',
   },
-  info: {
-    alignItems: 'center',
-    gap: 2,
-    width: '100%',
-  },
   name: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
     color: Colors.text,
     textAlign: 'center',
+    lineHeight: 15,
+    minHeight: 30,
+    paddingHorizontal: 2,
   },
-  unknownText: {
+  unknownName: {
     color: '#BDBDBD',
   },
-  category: {
-    fontSize: 9,
-    color: Colors.textMuted,
-  },
-  discoveredDot: {
+  checkBadge: {
     position: 'absolute',
-    top: 6,
+    top: 8,
     right: 6,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  checkText: {
+    color: '#FFFFFF',
+    fontSize: 9,
+    fontWeight: '900',
   },
 });

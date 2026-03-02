@@ -6,6 +6,7 @@ import {
   ScrollView,
   Pressable,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { useLayoutEffect } from 'react';
 import { getPlantById } from '../../src/data/plants';
@@ -40,18 +41,15 @@ export default function PlantDetailScreen() {
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       {/* Hero */}
-      <View
-        style={[
-          styles.hero,
-          {
-            backgroundColor:
-              plant.danger === 'RED'
-                ? '#7B0000'
-                : plant.danger === 'YELLOW'
-                ? '#E65100'
-                : '#1B5E20',
-          },
-        ]}
+      <LinearGradient
+        colors={
+          plant.danger === 'RED'
+            ? ['#3A0000', '#7B0000', '#C62828']
+            : plant.danger === 'YELLOW'
+            ? ['#5D1A00', '#E65100', '#F57F17']
+            : ['#1B5E20', '#2E7D32', '#43A047']
+        }
+        style={styles.hero}
       >
         {/* Danger alert banner */}
         {plant.danger === 'RED' && (
@@ -94,7 +92,7 @@ export default function PlantDetailScreen() {
         <View style={styles.categoryChip}>
           <Text style={styles.categoryText}>{plant.category}</Text>
         </View>
-      </View>
+      </LinearGradient>
 
       {/* Body */}
       <View style={styles.body}>
