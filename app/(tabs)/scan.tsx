@@ -112,7 +112,7 @@ export default function ScanScreen() {
       if (cameraRef.current) {
         const photo = await cameraRef.current.takePictureAsync({
           base64: true,
-          quality: 0.6,
+          quality: 0.8,
           exif: false,
         });
         base64Image = photo?.base64 ?? undefined;
@@ -321,6 +321,7 @@ export default function ScanScreen() {
         plant={result?.plant ?? null}
         confidence={result?.confidence ?? 0}
         isNewDiscovery={result?.isNewDiscovery ?? false}
+        usedRealAI={usedRealAI}
         onAddToZukan={handleAddToZukan}
         onScanAgain={handleScanAgain}
       />

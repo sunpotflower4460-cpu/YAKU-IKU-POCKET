@@ -18,6 +18,7 @@ interface Props {
   plant: Plant | null;
   confidence: number;
   isNewDiscovery: boolean;
+  usedRealAI: boolean;
   onAddToZukan: () => void;
   onScanAgain: () => void;
 }
@@ -27,6 +28,7 @@ export function ScanResultModal({
   plant,
   confidence,
   isNewDiscovery,
+  usedRealAI,
   onAddToZukan,
   onScanAgain,
 }: Props) {
@@ -147,6 +149,13 @@ export function ScanResultModal({
                 />
               </View>
               <Text style={styles.confidenceValue}>{confidence}%</Text>
+            </View>
+
+            {/* AI Mode Badge */}
+            <View style={[styles.aiBadge, usedRealAI ? styles.aiBadgeReal : styles.aiBadgeMock]}>
+              <Text style={[styles.aiBadgeText, usedRealAI ? styles.aiBadgeTextReal : styles.aiBadgeTextMock]}>
+                {usedRealAI ? '🤖 Claude AI' : '🎲 モックAI'}
+              </Text>
             </View>
 
             {/* Description */}
@@ -345,6 +354,31 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: Colors.primary,
     width: 36,
+  },
+  aiBadge: {
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    marginBottom: 14,
+    borderWidth: 1,
+  },
+  aiBadgeReal: {
+    backgroundColor: Colors.primaryPale,
+    borderColor: Colors.primaryLight,
+  },
+  aiBadgeMock: {
+    backgroundColor: '#F5F5F5',
+    borderColor: '#E0E0E0',
+  },
+  aiBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  aiBadgeTextReal: {
+    color: Colors.primaryDark,
+  },
+  aiBadgeTextMock: {
+    color: Colors.textMuted,
   },
   description: {
     fontSize: 13,
