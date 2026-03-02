@@ -2,9 +2,17 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ScanRecord } from '../types';
+import { PLANTS } from '../data/plants';
 
-const XP_PER_DISCOVERY = 100;
-const XP_PER_RESCAN = 10;
+// XP gained on first discovery, scaled by rarity
+const RARITY_XP: Record<number, number> = {
+  1: 30,   // ★ common
+  2: 80,   // ★★ uncommon
+  3: 150,  // ★★★ rare
+  4: 250,  // ★★★★ super rare
+  5: 500,  // ★★★★★ legendary
+};
+const XP_PER_RESCAN = 15; // already-discovered plant scanned again
 const XP_PER_LEVEL = 500;
 
 interface GameState {
@@ -38,7 +46,9 @@ export const useGameStore = create<GameState>()(
       discoverPlant: (plantId: string) => {
         const { discoveredPlantIds } = get();
         const isNew = !discoveredPlantIds.includes(plantId);
-        const gainedXp = isNew ? XP_PER_DISCOVERY : XP_PER_RESCAN;
+        const plant = PLANTS.find((p) => p.id === plantId);
+        const rarity = plant?.rarity ?? 1;
+        const gainedXp = isNew ? (RARITY_XP[rarity] ?? 100) : XP_PER_RESCAN;
 
         set((state) => ({
           discoveredPlantIds: isNew

@@ -13,6 +13,7 @@ import { useGameStore } from '../../src/store/useGameStore';
 import { PLANTS, TOTAL_PLANTS } from '../../src/data/plants';
 import { DisclaimerBanner } from '../../src/components/DisclaimerBanner';
 import { Colors } from '../../src/constants/colors';
+import { getCurrentSeason, SEASON_CONFIG } from '../../src/utils/season';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -23,6 +24,9 @@ export default function HomeScreen() {
   const xpCurrent = getXpForCurrentLevel();
   const XP_PER_LEVEL = 500;
   const xpProgress = xpCurrent / XP_PER_LEVEL;
+
+  const season = getCurrentSeason();
+  const seasonCfg = SEASON_CONFIG[season];
 
   const discoveredCount = discoveredPlantIds.length;
   const greenCount = PLANTS.filter(
@@ -68,6 +72,20 @@ export default function HomeScreen() {
           </View>
         </View>
       </LinearGradient>
+
+      {/* Seasonal Banner */}
+      <View style={[styles.seasonBanner, { backgroundColor: seasonCfg.bg }]}>
+        <Text style={styles.seasonEmoji}>{seasonCfg.emoji}</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.seasonTitle, { color: seasonCfg.color }]}>
+            {season}の養生シーズン
+          </Text>
+          <Text style={styles.seasonDesc}>{seasonCfg.desc}</Text>
+        </View>
+        <View style={[styles.seasonBadge, { backgroundColor: seasonCfg.color }]}>
+          <Text style={styles.seasonBadgeText}>出現UP</Text>
+        </View>
+      </View>
 
       {/* Stats Row */}
       <View style={styles.statsRow}>
@@ -240,6 +258,24 @@ function ProgressRow({
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bg },
+
+  // Seasonal banner
+  seasonBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    gap: 10,
+  },
+  seasonEmoji: { fontSize: 24 },
+  seasonTitle: { fontSize: 13, fontWeight: '800' },
+  seasonDesc: { fontSize: 11, color: Colors.textSecondary, marginTop: 1 },
+  seasonBadge: {
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  seasonBadgeText: { fontSize: 10, fontWeight: '800', color: '#FFFFFF' },
   hero: { paddingTop: 60, paddingBottom: 24, paddingHorizontal: 20 },
   heroContent: {},
   appTitle: { fontSize: 24, fontWeight: '900', color: '#FFFFFF', letterSpacing: 1 },

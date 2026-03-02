@@ -14,10 +14,13 @@ import { PlantCard } from '../../src/components/PlantCard';
 import { DisclaimerBanner } from '../../src/components/DisclaimerBanner';
 import { Colors } from '../../src/constants/colors';
 import { DangerLevel, PlantCategory } from '../../src/types';
+import { getCurrentSeason, SEASON_CONFIG, isPlantInSeason } from '../../src/utils/season';
 
 type FilterDiscovered = 'all' | 'discovered' | 'undiscovered';
 type FilterDanger = 'all' | DangerLevel;
 type FilterCategory = 'all' | PlantCategory;
+type FilterSeason = 'all' | 'current';
+type SortRarity = 'none' | 'desc' | 'asc';
 
 export default function ZukanScreen() {
   const router = useRouter();
@@ -28,9 +31,14 @@ export default function ZukanScreen() {
     useState<FilterDiscovered>('all');
   const [filterDanger, setFilterDanger] = useState<FilterDanger>('all');
   const [filterCategory, setFilterCategory] = useState<FilterCategory>('all');
+  const [filterSeason, setFilterSeason] = useState<FilterSeason>('all');
+  const [sortRarity, setSortRarity] = useState<SortRarity>('none');
+
+  const currentSeason = getCurrentSeason();
+  const seasonCfg = SEASON_CONFIG[currentSeason];
 
   const filtered = useMemo(() => {
-    return PLANTS.filter((plant) => {
+    let result = PLANTS.filter((plant) => {
       const isDiscovered = discoveredPlantIds.includes(plant.id);
 
       if (filterDiscovered === 'discovered' && !isDiscovered) return false;
@@ -38,7 +46,10 @@ export default function ZukanScreen() {
       if (filterDanger !== 'all' && plant.danger !== filterDanger) return false;
       if (filterCategory !== 'all' && plant.category !== filterCategory)
         return false;
+      if (filterSeason === 'current' && !isPlantInSeason(plant.season, currentSeason))
+        return false;
 
+      // Search applies only to discovered plants (undiscovered names are hidden)
       if (search && isDiscovered) {
         const q = search.toLowerCase();
         if (
@@ -51,7 +62,15 @@ export default function ZukanScreen() {
 
       return true;
     });
-  }, [discoveredPlantIds, filterDiscovered, filterDanger, filterCategory, search]);
+
+    if (sortRarity === 'desc') {
+      result = [...result].sort((a, b) => b.rarity - a.rarity);
+    } else if (sortRarity === 'asc') {
+      result = [...result].sort((a, b) => a.rarity - b.rarity);
+    }
+
+    return result;
+  }, [discoveredPlantIds, filterDiscovered, filterDanger, filterCategory, filterSeason, sortRarity, search, currentSeason]);
 
   const discoveredCount = discoveredPlantIds.length;
 
@@ -69,7 +88,7 @@ export default function ZukanScreen() {
           <Text style={styles.searchIcon}>🔍</Text>
           <TextInput
             style={styles.searchInput}
-            placeholder="名前で検索..."
+            placeholder="発見済みの植物を検索..."
             placeholderTextColor={Colors.textMuted}
             value={search}
             onChangeText={setSearch}
@@ -139,6 +158,42 @@ export default function ZukanScreen() {
               activeColor="#FF8F00"
             />
           ))}
+        </FilterRow>
+
+        <FilterRow label="季節">
+          <FilterChip
+            label="すべて"
+            active={filterSeason === 'all'}
+            onPress={() => setFilterSeason('all')}
+            activeColor={Colors.primary}
+          />
+          <FilterChip
+            label={`${seasonCfg.emoji} 今の季節`}
+            active={filterSeason === 'current'}
+            onPress={() => setFilterSeason('current')}
+            activeColor={seasonCfg.color}
+          />
+        </FilterRow>
+
+        <FilterRow label="並び順">
+          <FilterChip
+            label="デフォルト"
+            active={sortRarity === 'none'}
+            onPress={() => setSortRarity('none')}
+            activeColor={Colors.primaryDark}
+          />
+          <FilterChip
+            label="★ 多い順"
+            active={sortRarity === 'desc'}
+            onPress={() => setSortRarity('desc')}
+            activeColor="#FF8F00"
+          />
+          <FilterChip
+            label="★ 少ない順"
+            active={sortRarity === 'asc'}
+            onPress={() => setSortRarity('asc')}
+            activeColor={Colors.rarity1}
+          />
         </FilterRow>
       </View>
 
