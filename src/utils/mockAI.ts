@@ -25,6 +25,7 @@ export interface ScanResult {
   plant: Plant;
   confidence: number; // 0-100
   isNewDiscovery: boolean;
+  reason?: string; // AI判断根拠テキスト（Claude使用時のみ）
 }
 
 /**

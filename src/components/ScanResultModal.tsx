@@ -38,6 +38,8 @@ interface Props {
   confidence: number;
   isNewDiscovery: boolean;
   usedRealAI: boolean;
+  reason?: string;
+  claudeFailed?: boolean;
   onAddToZukan: () => void;
   onScanAgain: () => void;
 }
@@ -48,6 +50,8 @@ export function ScanResultModal({
   confidence,
   isNewDiscovery,
   usedRealAI,
+  reason,
+  claudeFailed,
   onAddToZukan,
   onScanAgain,
 }: Props) {
@@ -186,6 +190,15 @@ export function ScanResultModal({
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.content}
           >
+            {/* Claude fallback notice */}
+            {claudeFailed && (
+              <View style={styles.fallbackNotice}>
+                <Text style={styles.fallbackText}>
+                  ⚠️ Claude AI に接続できませんでした。モックAIで代替しています。
+                </Text>
+              </View>
+            )}
+
             {/* Danger alerts */}
             {isDangerous && (
               <View style={styles.alertRed}>
@@ -222,6 +235,14 @@ export function ScanResultModal({
                 {usedRealAI ? '🤖 Claude AI' : '🎲 モックAI'}
               </Text>
             </View>
+
+            {/* Claude AI reason */}
+            {usedRealAI && reason && (
+              <View style={styles.reasonBox}>
+                <Text style={styles.reasonLabel}>🔬 AIの判断根拠</Text>
+                <Text style={styles.reasonText}>{reason}</Text>
+              </View>
+            )}
 
             {/* Description */}
             <Text style={styles.description}>{plant.description}</Text>
@@ -475,6 +496,39 @@ const styles = StyleSheet.create({
   aiBadgeText: { fontSize: 11, fontWeight: '700' },
   aiBadgeTextReal: { color: Colors.primaryDark },
   aiBadgeTextMock: { color: Colors.textMuted },
+  reasonBox: {
+    backgroundColor: Colors.primaryPale,
+    borderLeftWidth: 3,
+    borderLeftColor: Colors.primaryLight,
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 12,
+    width: '100%',
+  },
+  reasonLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: Colors.primaryDark,
+    marginBottom: 4,
+  },
+  reasonText: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    lineHeight: 18,
+  },
+  fallbackNotice: {
+    backgroundColor: '#FFF8E1',
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 10,
+    width: '100%',
+  },
+  fallbackText: {
+    fontSize: 11,
+    color: '#E65100',
+    textAlign: 'center',
+    lineHeight: 16,
+  },
   description: {
     fontSize: 13,
     color: Colors.textSecondary,

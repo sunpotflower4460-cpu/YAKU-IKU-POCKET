@@ -18,7 +18,7 @@ const CLAUDE_API_KEY = process.env.EXPO_PUBLIC_CLAUDE_API_KEY ?? '';
 export async function scanPlant(
   discoveredIds: string[],
   base64Image?: string
-): Promise<ScanResult & { usedRealAI: boolean }> {
+): Promise<ScanResult & { usedRealAI: boolean; claudeFailed?: boolean }> {
   if (base64Image && CLAUDE_API_KEY) {
     try {
       const result = await recognizePlantWithClaude(
@@ -29,7 +29,8 @@ export async function scanPlant(
       return { ...result, usedRealAI: true };
     } catch (err) {
       console.warn('[AI] Claude Vision failed, falling back to mock:', err);
-      // Fall through to mock
+      const fallback = await recognizePlant(discoveredIds);
+      return { ...fallback, usedRealAI: false, claudeFailed: true };
     }
   }
 

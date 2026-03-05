@@ -39,6 +39,8 @@ export default function ScanScreen() {
     plant: Plant;
     confidence: number;
     isNewDiscovery: boolean;
+    reason?: string;
+    claudeFailed?: boolean;
   } | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
 
@@ -260,7 +262,9 @@ export default function ScanScreen() {
               {scanState === 'idle'
                 ? '🌿 植物にカメラをかざしてください'
                 : scanState === 'scanning'
-                ? '🔍 AIが解析しています...'
+                ? (CLAUDE_API_KEY
+                    ? '🤖 Claude Vision AI が解析しています...'
+                    : '🎲 モックAIで植物を識別中...')
                 : '✅ スキャン完了'}
             </Text>
           </View>
@@ -335,6 +339,8 @@ export default function ScanScreen() {
         confidence={result?.confidence ?? 0}
         isNewDiscovery={result?.isNewDiscovery ?? false}
         usedRealAI={usedRealAI}
+        reason={result?.reason}
+        claudeFailed={result?.claudeFailed}
         onAddToZukan={handleAddToZukan}
         onScanAgain={handleScanAgain}
       />

@@ -125,5 +125,5 @@ export async function recognizePlantWithClaude(
 
   const isNewDiscovery = !discoveredIds.includes(plant.id);
 
-  return { plant, confidence, isNewDiscovery };
+  return { plant, confidence, isNewDiscovery, reason: result.reason };
 }
