@@ -1,5 +1,6 @@
-import React from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import React, { useRef } from 'react';
+import { View, Text, StyleSheet, Pressable, Animated } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { Plant } from '../types';
 import { Colors } from '../constants/colors';
 import { RarityStars } from './RarityStars';
@@ -30,53 +31,109 @@ const RARITY_BG: Record<number, string> = {
 export function PlantCard({ plant, discovered, onPress }: Props) {
   const rarityColor = RARITY_COLOR[plant.rarity];
   const rarityBg = RARITY_BG[plant.rarity];
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  function handlePressIn() {
+    Animated.spring(scaleAnim, {
+      toValue: 0.93,
+      tension: 300,
+      friction: 14,
+      useNativeDriver: true,
+    }).start();
+  }
+
+  function handlePressOut() {
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      tension: 200,
+      friction: 10,
+      useNativeDriver: true,
+    }).start();
+  }
+
+  function handlePress() {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    onPress();
+  }
+
+  const isLegendary = plant.rarity === 5;
+  const isSuperRare = plant.rarity === 4;
 
   return (
-    <Pressable
-      style={({ pressed }) => [
-        styles.card,
-        pressed && styles.cardPressed,
-        plant.danger === 'RED' && discovered && styles.dangerCard,
-      ]}
-      onPress={onPress}
+    <Animated.View
+      style={[styles.wrapper, { transform: [{ scale: scaleAnim }] }]}
     >
-      {/* Rarity color strip at top */}
-      <View style={[styles.rarityStrip, { backgroundColor: rarityColor }]} />
-
-      {/* Emoji circle */}
-      <View style={[styles.emojiWrap, { backgroundColor: rarityBg }]}>
-        {discovered ? (
-          <Text style={styles.emoji}>{plant.emoji}</Text>
-        ) : (
-          <Text style={styles.questionMark}>？</Text>
-        )}
-      </View>
-
-      {/* Plant name */}
-      <Text
-        style={[styles.name, !discovered && styles.unknownName]}
-        numberOfLines={2}
+      <Pressable
+        style={[
+          styles.card,
+          plant.danger === 'RED' && discovered && styles.dangerCard,
+          (isLegendary || isSuperRare) && discovered && styles.rareCard,
+        ]}
+        onPress={handlePress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
       >
-        {discovered ? plant.name : '？？？'}
-      </Text>
+        {/* Rarity color strip at top */}
+        <View style={[styles.rarityStrip, { backgroundColor: rarityColor }]} />
 
-      {/* Rarity stars */}
-      <RarityStars rarity={plant.rarity} size="sm" />
+        {/* Subtle glow background for rare cards */}
+        {(isLegendary || isSuperRare) && discovered && (
+          <View
+            style={[styles.rarityGlow, { backgroundColor: rarityColor + '14' }]}
+          />
+        )}
 
-      {/* Danger badge (discovered only) */}
-      {discovered && <DangerBadge danger={plant.danger} size="sm" />}
-
-      {/* Checkmark badge for discovered */}
-      {discovered && (
-        <View style={[styles.checkBadge, { backgroundColor: rarityColor }]}>
-          <Text style={styles.checkText}>✓</Text>
+        {/* Emoji circle */}
+        <View
+          style={[
+            styles.emojiWrap,
+            { backgroundColor: discovered ? rarityBg : '#EEEEEE' },
+          ]}
+        >
+          {discovered ? (
+            <Text style={styles.emoji}>{plant.emoji}</Text>
+          ) : (
+            <Text style={styles.questionMark}>？</Text>
+          )}
         </View>
-      )}
-    </Pressable>
+
+        {/* Plant name */}
+        <Text
+          style={[styles.name, !discovered && styles.unknownName]}
+          numberOfLines={2}
+        >
+          {discovered ? plant.name : '？？？'}
+        </Text>
+
+        {/* Rarity stars */}
+        <RarityStars rarity={plant.rarity} size="sm" />
+
+        {/* Danger badge (discovered only) */}
+        {discovered && <DangerBadge danger={plant.danger} size="sm" />}
+
+        {/* Hint indicator for undiscovered */}
+        {!discovered && (
+          <View style={styles.hintChip}>
+            <Text style={styles.hintChipText}>ヒント</Text>
+          </View>
+        )}
+
+        {/* Checkmark badge for discovered */}
+        {discovered && (
+          <View style={[styles.checkBadge, { backgroundColor: rarityColor }]}>
+            <Text style={styles.checkText}>✓</Text>
+          </View>
+        )}
+      </Pressable>
+    </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
+  wrapper: {
+    flex: 1,
+    margin: 4,
+  },
   card: {
     backgroundColor: Colors.bgCard,
     borderRadius: 14,
@@ -84,8 +141,6 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
     paddingHorizontal: 6,
     alignItems: 'center',
-    flex: 1,
-    margin: 4,
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 3 },
@@ -94,12 +149,13 @@ const styles = StyleSheet.create({
     elevation: 4,
     gap: 4,
   },
-  cardPressed: {
-    opacity: 0.82,
-    transform: [{ scale: 0.97 }],
-  },
   dangerCard: {
     backgroundColor: '#FFF5F5',
+  },
+  rareCard: {
+    shadowOpacity: 0.18,
+    shadowRadius: 8,
+    elevation: 6,
   },
   rarityStrip: {
     position: 'absolute',
@@ -110,6 +166,13 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 14,
     borderTopRightRadius: 14,
   },
+  rarityGlow: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
   emojiWrap: {
     width: 58,
     height: 58,
@@ -118,9 +181,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 2,
   },
-  emoji: {
-    fontSize: 32,
-  },
+  emoji: { fontSize: 32 },
   questionMark: {
     fontSize: 26,
     color: '#BDBDBD',
@@ -135,9 +196,7 @@ const styles = StyleSheet.create({
     minHeight: 30,
     paddingHorizontal: 2,
   },
-  unknownName: {
-    color: '#BDBDBD',
-  },
+  unknownName: { color: '#BDBDBD' },
   checkBadge: {
     position: 'absolute',
     top: 8,
@@ -152,5 +211,16 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 9,
     fontWeight: '900',
+  },
+  hintChip: {
+    backgroundColor: Colors.primaryPale,
+    borderRadius: 6,
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+  },
+  hintChipText: {
+    fontSize: 8,
+    fontWeight: '700',
+    color: Colors.primaryDark,
   },
 });

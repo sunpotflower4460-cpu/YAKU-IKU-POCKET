@@ -1,33 +1,48 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   Pressable,
   ScrollView,
+  Animated,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useGameStore } from '../../src/store/useGameStore';
+import * as Haptics from 'expo-haptics';
+import { useGameStore, XP_PER_LEVEL } from '../../src/store/useGameStore';
 import { PLANTS, TOTAL_PLANTS } from '../../src/data/plants';
 import { DisclaimerBanner } from '../../src/components/DisclaimerBanner';
 import { Colors } from '../../src/constants/colors';
 import { getCurrentSeason, SEASON_CONFIG } from '../../src/utils/season';
 import { getDailyChallenges, getChallengePct, Challenge } from '../../src/data/challenges';
 
+// Milestones: [ threshold, emoji, title, desc ]
+const MILESTONES: [number, string, string, string][] = [
+  [1,  '🌱', '初めての発見！',   '図鑑の旅が始まりました！'],
+  [10, '📚', '10種類発見！',    '図鑑収録が進んできました！'],
+  [25, '🏅', '25種類発見！',    '半分制覇しました！'],
+  [50, '🏆', '図鑑完成！',      '全50種類を発見しました！'],
+];
+
 export default function HomeScreen() {
   const router = useRouter();
   const {
     discoveredPlantIds, playerName, xp, getLevel, getXpForCurrentLevel,
     todayScanCount, todayNewCount, todayMaxRarity, todayDangers, todayCategories,
-    claimedChallengeIds, claimChallenge,
+    claimedChallengeIds, claimChallenge, lastCelebrated, setLastCelebrated,
   } = useGameStore();
 
   const level = getLevel();
   const xpCurrent = getXpForCurrentLevel();
-  const XP_PER_LEVEL = 500;
   const xpProgress = xpCurrent / XP_PER_LEVEL;
+
+  // Milestone detection
+  const discoveredCount = discoveredPlantIds.length;
+  const reachedMilestone = [...MILESTONES].reverse().find(([n]) => discoveredCount >= n);
+  const pendingMilestone =
+    reachedMilestone && reachedMilestone[0] > lastCelebrated ? reachedMilestone : null;
 
   const season = getCurrentSeason();
   const seasonCfg = SEASON_CONFIG[season];
@@ -37,7 +52,6 @@ export default function HomeScreen() {
   const dailyChallenges = getDailyChallenges(todayDateStr);
   const dailySnap = { todayScanCount, todayNewCount, todayMaxRarity, todayDangers, todayCategories };
 
-  const discoveredCount = discoveredPlantIds.length;
   const greenCount = PLANTS.filter(
     (p) => p.danger === 'GREEN' && discoveredPlantIds.includes(p.id)
   ).length;
@@ -50,6 +64,21 @@ export default function HomeScreen() {
     .slice(0, 6)
     .map((id) => PLANTS.find((p) => p.id === id))
     .filter((p): p is (typeof PLANTS)[number] => p !== undefined);
+
+  // Animated XP bar
+  const xpAnim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(xpAnim, {
+      toValue: xpProgress,
+      duration: 800,
+      useNativeDriver: false,
+    }).start();
+  }, [xpProgress]);
+  const xpBarWidth = xpAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0%', '100%'],
+    extrapolate: 'clamp',
+  });
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
@@ -73,14 +102,36 @@ export default function HomeScreen() {
                 XP {xpCurrent} / {XP_PER_LEVEL}
               </Text>
               <View style={styles.xpBar}>
-                <View
-                  style={[styles.xpFill, { width: `${xpProgress * 100}%` }]}
+                <Animated.View
+                  style={[styles.xpFill, { width: xpBarWidth }]}
                 />
               </View>
             </View>
           </View>
         </View>
       </LinearGradient>
+
+      {/* Milestone Banner */}
+      {pendingMilestone && (
+        <LinearGradient
+          colors={['#E65100', '#FF8F00', '#FFB300']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.milestoneBanner}
+        >
+          <Text style={styles.milestoneEmoji}>{pendingMilestone[1]}</Text>
+          <View style={styles.milestoneText}>
+            <Text style={styles.milestoneTitle}>{pendingMilestone[2]}</Text>
+            <Text style={styles.milestoneDesc}>{pendingMilestone[3]}</Text>
+          </View>
+          <Pressable
+            style={styles.milestoneDismiss}
+            onPress={() => setLastCelebrated(pendingMilestone[0])}
+          >
+            <Ionicons name="checkmark" size={18} color="#FFFFFF" />
+          </Pressable>
+        </LinearGradient>
+      )}
 
       {/* Seasonal Banner */}
       <View style={[styles.seasonBanner, { backgroundColor: seasonCfg.bg }]}>
@@ -274,7 +325,13 @@ function QuestCard({
           />
         </View>
         {done && !claimed ? (
-          <Pressable style={styles.questClaimBtn} onPress={onClaim}>
+          <Pressable
+            style={styles.questClaimBtn}
+            onPress={() => {
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              onClaim();
+            }}
+          >
             <Text style={styles.questClaimText}>受け取る</Text>
           </Pressable>
         ) : null}
@@ -332,6 +389,27 @@ function ProgressRow({
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bg },
+
+  // Milestone banner
+  milestoneBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 12,
+  },
+  milestoneEmoji: { fontSize: 28 },
+  milestoneText: { flex: 1 },
+  milestoneTitle: { fontSize: 14, fontWeight: '900', color: '#FFFFFF' },
+  milestoneDesc: { fontSize: 11, color: 'rgba(255,255,255,0.85)', marginTop: 1 },
+  milestoneDismiss: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
 
   // Seasonal banner
   seasonBanner: {

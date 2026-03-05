@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import { scanPlant } from '../../src/utils/aiRecognition';
 import { useGameStore } from '../../src/store/useGameStore';
@@ -103,6 +104,8 @@ export default function ScanScreen() {
 
   async function handleScan() {
     if (scanState !== 'idle') return;
+    // Haptic feedback: medium impact on scan start
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setScanState('scanning');
 
     try {
@@ -121,10 +124,20 @@ export default function ScanScreen() {
       const scanResult = await scanPlant(discoveredPlantIds, base64Image);
       setResult(scanResult);
       setUsedRealAI(scanResult.usedRealAI);
+
+      // Haptic feedback: success notification on scan complete
+      if (scanResult.isNewDiscovery) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      } else {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
+
       setScanState('done');
       setModalVisible(true);
     } catch (err) {
       console.error('[Scan] Error:', err);
+      // Error haptic
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       setScanState('idle');
       Alert.alert('スキャン失敗', 'もう一度お試しください。');
     }

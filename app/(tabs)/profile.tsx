@@ -17,23 +17,8 @@ import { useGameStore } from '../../src/store/useGameStore';
 import { DisclaimerBanner } from '../../src/components/DisclaimerBanner';
 import { DangerBadge } from '../../src/components/DangerBadge';
 import { Colors } from '../../src/constants/colors';
-
-const TITLES = [
-  { minLevel: 1, label: '見習いハーバリスト 🌱' },
-  { minLevel: 3, label: 'ハーブ採取師 🌿' },
-  { minLevel: 5, label: '野草マスター 🍃' },
-  { minLevel: 8, label: '薬草鑑定士 🔬' },
-  { minLevel: 12, label: '養生の達人 🏆' },
-  { minLevel: 20, label: '伝説の薬育師 ⭐' },
-];
-
-function getTitle(level: number): string {
-  let title = TITLES[0].label;
-  for (const t of TITLES) {
-    if (level >= t.minLevel) title = t.label;
-  }
-  return title;
-}
+import { getPlayerTitle } from '../../src/utils/playerTitle';
+import { XP_PER_LEVEL } from '../../src/store/useGameStore';
 
 interface AchievementDef {
   id: string;
@@ -128,8 +113,7 @@ export default function ProfileScreen() {
   const level = getLevel();
   const xpCurrent = getXpForCurrentLevel();
   const xpToNext = getXpToNextLevel();
-  const XP_PER_LEVEL = 500;
-  const title = getTitle(level);
+  const title = getPlayerTitle(level);
 
   const discoveredCount = discoveredPlantIds.length;
   const totalPlants = PLANTS.length;

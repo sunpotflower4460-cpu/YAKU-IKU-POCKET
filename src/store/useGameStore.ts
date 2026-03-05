@@ -4,17 +4,17 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ScanRecord } from '../types';
 import { PLANTS } from '../data/plants';
 
-// ─── XP constants ───────────────────────────────────────────────────────────
+// ─── XP constants (exported for display in UI) ──────────────────────────────
 // First discovery: weighted by rarity
-const RARITY_XP: Record<number, number> = {
+export const RARITY_XP: Record<number, number> = {
   1: 30,   // ★ common
   2: 80,   // ★★ uncommon
   3: 150,  // ★★★ rare
   4: 250,  // ★★★★ super rare
   5: 500,  // ★★★★★ legendary
 };
-const XP_PER_RESCAN = 15; // re-scanning a known plant
-const XP_PER_LEVEL = 500;
+export const XP_PER_RESCAN = 15; // re-scanning a known plant
+export const XP_PER_LEVEL = 500;
 
 function todayStr(): string {
   return new Date().toISOString().split('T')[0]; // YYYY-MM-DD (UTC)
@@ -43,12 +43,16 @@ interface GameState {
   todayCategories: string[];
   claimedChallengeIds: string[];
 
+  // Milestone celebration (persisted so dismissed banners don't reappear)
+  lastCelebrated: number;
+
   // Actions
   startSession: () => void;
   discoverPlant: (plantId: string) => void;
   addScan: (plantId: string) => void;
   setPlayerName: (name: string) => void;
   claimChallenge: (challengeId: string, xpReward: number) => void;
+  setLastCelebrated: (count: number) => void;
 
   // Computed helpers
   getLevel: () => number;
@@ -75,6 +79,7 @@ export const useGameStore = create<GameState>()(
       todayDangers: [],
       todayCategories: [],
       claimedChallengeIds: [],
+      lastCelebrated: 0,
 
       // ── Session start: call once on app mount ────────────────────────────
       startSession: () => {
@@ -154,6 +159,7 @@ export const useGameStore = create<GameState>()(
       },
 
       setPlayerName: (name: string) => set({ playerName: name }),
+      setLastCelebrated: (count: number) => set({ lastCelebrated: count }),
 
       // ── Claim a completed daily quest ─────────────────────────────────────
       claimChallenge: (challengeId: string, xpReward: number) => {

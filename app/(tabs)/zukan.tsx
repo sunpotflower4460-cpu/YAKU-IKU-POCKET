@@ -6,14 +6,17 @@ import {
   FlatList,
   Pressable,
   TextInput,
+  Modal,
 } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import { PLANTS } from '../../src/data/plants';
 import { useGameStore } from '../../src/store/useGameStore';
 import { PlantCard } from '../../src/components/PlantCard';
+import { RarityStars } from '../../src/components/RarityStars';
 import { DisclaimerBanner } from '../../src/components/DisclaimerBanner';
 import { Colors } from '../../src/constants/colors';
-import { DangerLevel, PlantCategory } from '../../src/types';
+import { DangerLevel, Plant, PlantCategory } from '../../src/types';
 import { getCurrentSeason, SEASON_CONFIG, isPlantInSeason } from '../../src/utils/season';
 
 type FilterDiscovered = 'all' | 'discovered' | 'undiscovered';
@@ -25,6 +28,8 @@ type SortRarity = 'none' | 'desc' | 'asc';
 export default function ZukanScreen() {
   const router = useRouter();
   const { discoveredPlantIds } = useGameStore();
+
+  const [hintPlant, setHintPlant] = useState<Plant | null>(null);
 
   const [search, setSearch] = useState('');
   const [filterDiscovered, setFilterDiscovered] =
@@ -120,7 +125,16 @@ export default function ZukanScreen() {
             placeholderTextColor={Colors.textMuted}
             value={search}
             onChangeText={setSearch}
+            returnKeyType="search"
           />
+          {search.length > 0 && (
+            <Pressable
+              onPress={() => setSearch('')}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Text style={styles.searchClear}>✕</Text>
+            </Pressable>
+          )}
         </View>
       </View>
 
@@ -230,12 +244,74 @@ export default function ZukanScreen() {
         {filtered.length}種類を表示
       </Text>
 
+      {/* Hint Modal — undiscovered plant clue */}
+      <Modal
+        visible={hintPlant !== null}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setHintPlant(null)}
+      >
+        <Pressable style={styles.hintOverlay} onPress={() => setHintPlant(null)}>
+          {/* Inner card — stop propagation so tapping card doesn't close */}
+          <Pressable style={styles.hintCard} onPress={() => {}}>
+            {hintPlant && (
+              <>
+                <Text style={styles.hintTitle}>🔍 ミステリー植物のヒント</Text>
+
+                {/* Mystery silhouette */}
+                <View style={styles.hintMystery}>
+                  <Text style={styles.hintQuestion}>？</Text>
+                </View>
+
+                {/* Hint rows */}
+                <View style={styles.hintRows}>
+                  <HintRow label="📅 旬の時期" value={hintPlant.season} />
+                  <HintRow
+                    label="📂 カテゴリ"
+                    value={hintPlant.category === '野草' ? '🌿 野草' : '🫚 スパイス・ハーブ'}
+                  />
+                  <HintRow
+                    label="⚠️ 危険度"
+                    value={
+                      hintPlant.danger === 'GREEN'
+                        ? '🟢 安全（食用可）'
+                        : hintPlant.danger === 'YELLOW'
+                        ? '🟡 要注意'
+                        : '🔴 危険（有毒）'
+                    }
+                  />
+                  <View style={styles.hintRowItem}>
+                    <Text style={styles.hintLabel}>✨ レアリティ</Text>
+                    <RarityStars rarity={hintPlant.rarity} size="sm" />
+                  </View>
+                </View>
+
+                <Text style={styles.hintFooter}>
+                  📷 スキャンして発見しよう！
+                </Text>
+
+                <Pressable
+                  style={styles.hintCloseBtn}
+                  onPress={() => setHintPlant(null)}
+                >
+                  <Text style={styles.hintCloseBtnText}>閉じる</Text>
+                </Pressable>
+              </>
+            )}
+          </Pressable>
+        </Pressable>
+      </Modal>
+
       {/* Grid */}
       <FlatList
         data={filtered}
         keyExtractor={(item) => item.id}
         numColumns={3}
         contentContainerStyle={styles.grid}
+        keyboardShouldPersistTaps="handled"
+        removeClippedSubviews={true}
+        maxToRenderPerBatch={15}
+        windowSize={10}
         renderItem={({ item }) => (
           <PlantCard
             plant={item}
@@ -243,6 +319,9 @@ export default function ZukanScreen() {
             onPress={() => {
               if (discoveredPlantIds.includes(item.id)) {
                 router.push(`/plant/${item.id}`);
+              } else {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setHintPlant(item);
               }
             }}
           />
@@ -261,6 +340,15 @@ export default function ZukanScreen() {
           </View>
         }
       />
+    </View>
+  );
+}
+
+function HintRow({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.hintRowItem}>
+      <Text style={styles.hintLabel}>{label}</Text>
+      <Text style={styles.hintValue}>{value}</Text>
     </View>
   );
 }
@@ -297,7 +385,10 @@ function FilterChip({
         styles.chip,
         active && { backgroundColor: activeColor, borderColor: activeColor },
       ]}
-      onPress={onPress}
+      onPress={() => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        onPress();
+      }}
     >
       <Text style={[styles.chipText, active && styles.chipTextActive]}>
         {label}
@@ -358,6 +449,7 @@ const styles = StyleSheet.create({
   },
   searchIcon: { fontSize: 14 },
   searchInput: { flex: 1, color: '#FFFFFF', fontSize: 14 },
+  searchClear: { fontSize: 14, color: 'rgba(255,255,255,0.7)', paddingHorizontal: 4 },
 
   filtersContainer: {
     backgroundColor: Colors.bgCard,
@@ -398,4 +490,93 @@ const styles = StyleSheet.create({
   emptyEmoji: { fontSize: 48, marginBottom: 12 },
   emptyText: { fontSize: 14, color: Colors.textMuted, textAlign: 'center' },
   footerPad: { paddingTop: 16 },
+
+  // ── Hint Modal ───────────────────────────────────────────────────────────
+  hintOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    justifyContent: 'flex-end',
+  },
+  hintCard: {
+    backgroundColor: Colors.bgCard,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    padding: 24,
+    paddingBottom: 40,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 16,
+  },
+  hintTitle: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: Colors.text,
+    textAlign: 'center',
+    marginBottom: 18,
+  },
+  hintMystery: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#E0E0E0',
+    alignSelf: 'center',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+    borderWidth: 3,
+    borderColor: '#BDBDBD',
+  },
+  hintQuestion: {
+    fontSize: 36,
+    fontWeight: '900',
+    color: '#9E9E9E',
+  },
+  hintRows: {
+    backgroundColor: Colors.bg,
+    borderRadius: 14,
+    paddingVertical: 6,
+    marginBottom: 18,
+  },
+  hintRowItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  hintLabel: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+    fontWeight: '600',
+  },
+  hintValue: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: Colors.text,
+    textAlign: 'right',
+    flex: 1,
+    marginLeft: 12,
+  },
+  hintFooter: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: Colors.primary,
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  hintCloseBtn: {
+    backgroundColor: Colors.primaryPale,
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  hintCloseBtnText: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: Colors.primaryDark,
+  },
 });

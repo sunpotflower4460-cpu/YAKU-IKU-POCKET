@@ -1,10 +1,5 @@
-// Must match RARITY_XP in useGameStore.ts
-const RARITY_XP_DISPLAY: Record<number, number> = {
-  1: 30, 2: 80, 3: 150, 4: 250, 5: 500,
-};
-const XP_RESCAN = 15;
-
 import React, { useEffect, useRef } from 'react';
+import { RARITY_XP, XP_PER_RESCAN } from '../store/useGameStore';
 import {
   View,
   Text,
@@ -268,8 +263,8 @@ export function ScanResultModal({
             <Pressable style={[styles.btn, styles.btnPrimary]} onPress={onAddToZukan}>
               <Text style={styles.btnPrimaryText}>
                 📖 図鑑に登録{isNewDiscovery
-                  ? ` +${RARITY_XP_DISPLAY[plant.rarity] ?? 100}XP`
-                  : ` +${XP_RESCAN}XP`}
+                  ? ` +${RARITY_XP[plant.rarity] ?? 100}XP`
+                  : ` +${XP_PER_RESCAN}XP`}
               </Text>
             </Pressable>
           </View>
