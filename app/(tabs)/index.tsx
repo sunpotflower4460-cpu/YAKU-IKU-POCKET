@@ -51,6 +51,9 @@ export default function HomeScreen() {
   const todayDateStr = new Date().toISOString().split('T')[0];
   const dailyChallenges = getDailyChallenges(todayDateStr);
   const dailySnap = { todayScanCount, todayNewCount, todayMaxRarity, todayDangers, todayCategories };
+  const allQuestsClaimed =
+    dailyChallenges.length > 0 &&
+    dailyChallenges.every((c) => claimedChallengeIds.includes(c.id));
 
   const greenCount = PLANTS.filter(
     (p) => p.danger === 'GREEN' && discoveredPlantIds.includes(p.id)
@@ -205,6 +208,17 @@ export default function HomeScreen() {
             />
           );
         })}
+        {allQuestsClaimed && (
+          <View style={styles.questAllDone}>
+            <Text style={styles.questAllDoneEmoji}>🎉</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.questAllDoneTitle}>今日のクエスト達成！</Text>
+              <Text style={styles.questAllDoneDesc}>
+                明日また新しいクエストが届きます
+              </Text>
+            </View>
+          </View>
+        )}
       </View>
 
       {/* Recent Discoveries */}
@@ -609,4 +623,26 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   questClaimText: { fontSize: 11, fontWeight: '800', color: '#FFFFFF' },
+
+  questAllDone: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: Colors.primaryPale,
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: Colors.primaryLight,
+  },
+  questAllDoneEmoji: { fontSize: 28 },
+  questAllDoneTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: Colors.primaryDark,
+  },
+  questAllDoneDesc: {
+    fontSize: 11,
+    color: Colors.textSecondary,
+    marginTop: 2,
+  },
 });

@@ -7,17 +7,19 @@ import {
   Pressable,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useLocalSearchParams, useNavigation } from 'expo-router';
+import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { useLayoutEffect } from 'react';
 import { getPlantById } from '../../src/data/plants';
 import { RarityStars } from '../../src/components/RarityStars';
 import { DangerBadge } from '../../src/components/DangerBadge';
 import { DisclaimerBanner } from '../../src/components/DisclaimerBanner';
 import { Colors } from '../../src/constants/colors';
+import { RARITY_XP } from '../../src/store/useGameStore';
 
 export default function PlantDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const navigation = useNavigation();
+  const router = useRouter();
 
   const plant = getPlantById(id ?? '');
 
@@ -129,6 +131,9 @@ export default function PlantDetailScreen() {
               }
             </Text>
           </View>
+          <Text style={styles.rarityXpHint}>
+            初回発見 +{RARITY_XP[plant.rarity]}XP
+          </Text>
         </Section>
 
         {/* Warning note */}
@@ -154,6 +159,14 @@ export default function PlantDetailScreen() {
 
         {/* Disclaimer */}
         <DisclaimerBanner />
+
+        {/* Scan CTA */}
+        <Pressable
+          style={styles.scanCta}
+          onPress={() => router.push('/(tabs)/scan')}
+        >
+          <Text style={styles.scanCtaText}>📷 スキャンを続ける</Text>
+        </Pressable>
 
         <View style={{ height: 32 }} />
       </View>
@@ -316,6 +329,25 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   rarityLabel: { fontSize: 14, fontWeight: '700', color: Colors.textSecondary },
+  rarityXpHint: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.rarity5,
+    marginTop: 8,
+  },
+  scanCta: {
+    backgroundColor: Colors.primary,
+    borderRadius: 16,
+    paddingVertical: 16,
+    marginHorizontal: 16,
+    marginTop: 8,
+    alignItems: 'center',
+  },
+  scanCtaText: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
 
   warningNote: {
     backgroundColor: Colors.dangerYellowBg,

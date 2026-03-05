@@ -90,6 +90,15 @@ const ACHIEVEMENTS: AchievementDef[] = [
     check: (ids) =>
       PLANTS.filter((p) => p.rarity === 5).some((p) => ids.includes(p.id)),
   },
+  {
+    id: 'all_categories',
+    icon: '🌈',
+    label: 'バランス型',
+    desc: '野草とハーブ両方を発見した',
+    check: (ids) =>
+      PLANTS.some((p) => p.category === '野草' && ids.includes(p.id)) &&
+      PLANTS.some((p) => p.category === 'スパイス・ハーブ' && ids.includes(p.id)),
+  },
 ];
 
 function formatScanDate(iso: string): string {
@@ -316,6 +325,8 @@ export default function ProfileScreen() {
               placeholder="名前を入力..."
               maxLength={20}
               autoFocus
+              keyboardType="default"
+              autoCapitalize="words"
             />
             <View style={styles.modalBtns}>
               <Pressable

@@ -30,6 +30,7 @@ export default function ZukanScreen() {
   const { discoveredPlantIds } = useGameStore();
 
   const [hintPlant, setHintPlant] = useState<Plant | null>(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const [search, setSearch] = useState('');
   const [filterDiscovered, setFilterDiscovered] =
@@ -38,6 +39,23 @@ export default function ZukanScreen() {
   const [filterCategory, setFilterCategory] = useState<FilterCategory>('all');
   const [filterSeason, setFilterSeason] = useState<FilterSeason>('all');
   const [sortRarity, setSortRarity] = useState<SortRarity>('none');
+
+  const activeFilterCount = [
+    filterDiscovered !== 'all',
+    filterDanger !== 'all',
+    filterCategory !== 'all',
+    filterSeason !== 'all',
+    sortRarity !== 'none',
+  ].filter(Boolean).length;
+
+  function resetFilters() {
+    setFilterDiscovered('all');
+    setFilterDanger('all');
+    setFilterCategory('all');
+    setFilterSeason('all');
+    setSortRarity('none');
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  }
 
   const currentSeason = getCurrentSeason();
   const seasonCfg = SEASON_CONFIG[currentSeason];
@@ -140,6 +158,34 @@ export default function ZukanScreen() {
 
       {/* Filters */}
       <View style={styles.filtersContainer}>
+        {/* Toggle row */}
+        <View style={styles.filterToggleRow}>
+          <Pressable
+            style={styles.filterToggleBtn}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setFiltersOpen((v) => !v);
+            }}
+          >
+            <Text style={styles.filterToggleText}>
+              {filtersOpen ? '▲' : '▼'} フィルター
+            </Text>
+            {activeFilterCount > 0 && (
+              <View style={styles.filterBadge}>
+                <Text style={styles.filterBadgeText}>{activeFilterCount}</Text>
+              </View>
+            )}
+          </Pressable>
+          {activeFilterCount > 0 && (
+            <Pressable style={styles.filterResetBtn} onPress={resetFilters}>
+              <Text style={styles.filterResetText}>リセット</Text>
+            </Pressable>
+          )}
+        </View>
+
+        {/* Collapsible filter rows */}
+        {filtersOpen && (
+          <>
         {/* Discovery filter */}
         <FilterRow label="状態">
           {(
@@ -237,6 +283,8 @@ export default function ZukanScreen() {
             activeColor={Colors.rarity1}
           />
         </FilterRow>
+          </>
+        )}
       </View>
 
       {/* Count */}
@@ -454,10 +502,55 @@ const styles = StyleSheet.create({
   filtersContainer: {
     backgroundColor: Colors.bgCard,
     paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingTop: 8,
+    paddingBottom: 10,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
     gap: 6,
+  },
+  filterToggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingBottom: 2,
+  },
+  filterToggleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 4,
+  },
+  filterToggleText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.primaryDark,
+  },
+  filterBadge: {
+    backgroundColor: Colors.primary,
+    borderRadius: 8,
+    minWidth: 16,
+    height: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+  },
+  filterBadgeText: {
+    fontSize: 9,
+    fontWeight: '900',
+    color: '#FFFFFF',
+  },
+  filterResetBtn: {
+    backgroundColor: Colors.bg,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  filterResetText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: Colors.textSecondary,
   },
   filterRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   filterLabel: {
@@ -538,6 +631,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     paddingVertical: 6,
     marginBottom: 18,
+    overflow: 'hidden',
   },
   hintRowItem: {
     flexDirection: 'row',
