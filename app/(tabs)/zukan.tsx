@@ -19,7 +19,7 @@ import { Colors } from '../../src/constants/colors';
 import { DangerLevel, Plant, PlantCategory } from '../../src/types';
 import { getCurrentSeason, SEASON_CONFIG, isPlantInSeason } from '../../src/utils/season';
 
-type FilterDiscovered = 'all' | 'discovered' | 'undiscovered';
+type FilterDiscovered = 'all' | 'discovered' | 'undiscovered' | 'favorites';
 type FilterDanger = 'all' | DangerLevel;
 type FilterCategory = 'all' | PlantCategory;
 type FilterSeason = 'all' | 'current';
@@ -27,7 +27,7 @@ type SortRarity = 'none' | 'desc' | 'asc';
 
 export default function ZukanScreen() {
   const router = useRouter();
-  const { discoveredPlantIds, scanHistory } = useGameStore();
+  const { discoveredPlantIds, scanHistory, favoritePlantIds, toggleFavorite } = useGameStore();
 
   // plantId → 最新スキャンの imageUri マップ（scanHistory は新しい順）
   const imageUriMap = useMemo(() => {
@@ -74,9 +74,11 @@ export default function ZukanScreen() {
   const filtered = useMemo(() => {
     let result = PLANTS.filter((plant) => {
       const isDiscovered = discoveredPlantIds.includes(plant.id);
+      const isFav = favoritePlantIds.includes(plant.id);
 
       if (filterDiscovered === 'discovered' && !isDiscovered) return false;
       if (filterDiscovered === 'undiscovered' && isDiscovered) return false;
+      if (filterDiscovered === 'favorites' && !isFav) return false;
       if (filterDanger !== 'all' && plant.danger !== filterDanger) return false;
       if (filterCategory !== 'all' && plant.category !== filterCategory)
         return false;
@@ -104,7 +106,7 @@ export default function ZukanScreen() {
     }
 
     return result;
-  }, [discoveredPlantIds, filterDiscovered, filterDanger, filterCategory, filterSeason, sortRarity, search, currentSeason]);
+  }, [discoveredPlantIds, favoritePlantIds, filterDiscovered, filterDanger, filterCategory, filterSeason, sortRarity, search, currentSeason]);
 
   const discoveredCount = discoveredPlantIds.length;
 
@@ -204,6 +206,7 @@ export default function ZukanScreen() {
               ['all', 'すべて'],
               ['discovered', '発見済み'],
               ['undiscovered', '未発見'],
+              ['favorites', '❤️ お気に入り'],
             ] as [FilterDiscovered, string][]
           ).map(([val, label]) => (
             <FilterChip
@@ -211,7 +214,7 @@ export default function ZukanScreen() {
               label={label}
               active={filterDiscovered === val}
               onPress={() => setFilterDiscovered(val)}
-              activeColor={Colors.primary}
+              activeColor={val === 'favorites' ? '#E91E63' : Colors.primary}
             />
           ))}
         </FilterRow>
@@ -376,6 +379,7 @@ export default function ZukanScreen() {
             plant={item}
             discovered={discoveredPlantIds.includes(item.id)}
             imageUri={imageUriMap[item.id]}
+            isFavorite={favoritePlantIds.includes(item.id)}
             onPress={() => {
               if (discoveredPlantIds.includes(item.id)) {
                 router.push(`/plant/${item.id}`);
@@ -384,6 +388,7 @@ export default function ZukanScreen() {
                 setHintPlant(item);
               }
             }}
+            onFavorite={() => toggleFavorite(item.id)}
           />
         )}
         ListEmptyComponent={

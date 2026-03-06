@@ -10,7 +10,9 @@ interface Props {
   plant: Plant;
   discovered: boolean;
   imageUri?: string;
+  isFavorite?: boolean;
   onPress: () => void;
+  onFavorite?: () => void;
 }
 
 const RARITY_COLOR: Record<number, string> = {
@@ -29,7 +31,7 @@ const RARITY_BG: Record<number, string> = {
   5: '#FFF8E1',
 };
 
-export function PlantCard({ plant, discovered, imageUri, onPress }: Props) {
+export function PlantCard({ plant, discovered, imageUri, isFavorite, onPress, onFavorite }: Props) {
   const rarityColor = RARITY_COLOR[plant.rarity];
   const rarityBg = RARITY_BG[plant.rarity];
   const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -135,6 +137,21 @@ export function PlantCard({ plant, discovered, imageUri, onPress }: Props) {
             <Text style={styles.checkText}>✓</Text>
           </View>
         )}
+
+        {/* Favorite heart button */}
+        {discovered && onFavorite && (
+          <Pressable
+            style={styles.heartBtn}
+            onPress={(e) => {
+              e.stopPropagation?.();
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              onFavorite();
+            }}
+            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+          >
+            <Text style={styles.heartIcon}>{isFavorite ? '❤️' : '🤍'}</Text>
+          </Pressable>
+        )}
       </Pressable>
     </Animated.View>
   );
@@ -229,6 +246,14 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 9,
     fontWeight: '900',
+  },
+  heartBtn: {
+    position: 'absolute',
+    bottom: 6,
+    right: 5,
+  },
+  heartIcon: {
+    fontSize: 13,
   },
   hintChip: {
     backgroundColor: Colors.primaryPale,

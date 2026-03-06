@@ -9,6 +9,7 @@ import {
   Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Haptics from 'expo-haptics';
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { useLayoutEffect } from 'react';
 import { getPlantById } from '../../src/data/plants';
@@ -22,9 +23,10 @@ export default function PlantDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const navigation = useNavigation();
   const router = useRouter();
-  const { scanHistory } = useGameStore();
+  const { scanHistory, favoritePlantIds, toggleFavorite } = useGameStore();
 
   const plant = getPlantById(id ?? '');
+  const isFavorite = favoritePlantIds.includes(id ?? '');
 
   // 最新スキャンの写真 URI を取得
   const plantImageUri = scanHistory.find(
@@ -118,6 +120,20 @@ export default function PlantDetailScreen() {
               <Text style={styles.photoIndicatorText}>📷 あなたの撮影写真</Text>
             </View>
           )}
+
+          {/* お気に入りボタン */}
+          <Pressable
+            style={styles.favoriteBtn}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              toggleFavorite(id ?? '');
+            }}
+          >
+            <Text style={styles.favoriteBtnIcon}>{isFavorite ? '❤️' : '🤍'}</Text>
+            <Text style={styles.favoriteBtnText}>
+              {isFavorite ? 'お気に入り済み' : 'お気に入りに追加'}
+            </Text>
+          </Pressable>
         </LinearGradient>
       </View>
 
@@ -322,6 +338,24 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.85)',
     fontSize: 11,
     fontWeight: '600',
+  },
+  favoriteBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 14,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    borderRadius: 20,
+    paddingHorizontal: 18,
+    paddingVertical: 9,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
+  },
+  favoriteBtnIcon: { fontSize: 18 },
+  favoriteBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
 
   body: { padding: 16 },

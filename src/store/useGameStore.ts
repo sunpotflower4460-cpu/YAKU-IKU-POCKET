@@ -46,6 +46,9 @@ interface GameState {
   // Milestone celebration (persisted so dismissed banners don't reappear)
   lastCelebrated: number;
 
+  // Favorites
+  favoritePlantIds: string[];
+
   // Actions
   startSession: () => void;
   discoverPlant: (plantId: string) => void;
@@ -53,6 +56,7 @@ interface GameState {
   setPlayerName: (name: string) => void;
   claimChallenge: (challengeId: string, xpReward: number) => void;
   setLastCelebrated: (count: number) => void;
+  toggleFavorite: (plantId: string) => void;
 
   // Computed helpers
   getLevel: () => number;
@@ -80,6 +84,7 @@ export const useGameStore = create<GameState>()(
       todayCategories: [],
       claimedChallengeIds: [],
       lastCelebrated: 0,
+      favoritePlantIds: [],
 
       // ── Session start: call once on app mount ────────────────────────────
       startSession: () => {
@@ -161,6 +166,14 @@ export const useGameStore = create<GameState>()(
 
       setPlayerName: (name: string) => set({ playerName: name }),
       setLastCelebrated: (count: number) => set({ lastCelebrated: count }),
+
+      toggleFavorite: (plantId: string) => {
+        set((state) => ({
+          favoritePlantIds: state.favoritePlantIds.includes(plantId)
+            ? state.favoritePlantIds.filter((id) => id !== plantId)
+            : [...state.favoritePlantIds, plantId],
+        }));
+      },
 
       // ── Claim a completed daily quest ─────────────────────────────────────
       claimChallenge: (challengeId: string, xpReward: number) => {
