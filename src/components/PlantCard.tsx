@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { View, Text, StyleSheet, Pressable, Animated, Image } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { Plant } from '../types';
@@ -57,9 +57,10 @@ export function PlantCard({ plant, discovered, imageUri, onPress }: Props) {
     onPress();
   }
 
+  const [imgError, setImgError] = useState(false);
   const isLegendary = plant.rarity === 5;
   const isSuperRare = plant.rarity === 4;
-  const showPhoto = discovered && !!imageUri;
+  const showPhoto = discovered && !!imageUri && !imgError;
 
   return (
     <Animated.View
@@ -98,6 +99,7 @@ export function PlantCard({ plant, discovered, imageUri, onPress }: Props) {
               source={{ uri: imageUri }}
               style={styles.plantPhoto}
               resizeMode="cover"
+              onError={() => setImgError(true)}
             />
           ) : discovered ? (
             <Text style={styles.emoji}>{plant.emoji}</Text>
@@ -191,9 +193,7 @@ const styles = StyleSheet.create({
     marginBottom: 2,
     overflow: 'hidden',
   },
-  emojiWrapPhoto: {
-    backgroundColor: '#000',
-  },
+  emojiWrapPhoto: {},
   plantPhoto: {
     width: 58,
     height: 58,

@@ -16,8 +16,7 @@ import { RarityStars } from '../../src/components/RarityStars';
 import { DangerBadge } from '../../src/components/DangerBadge';
 import { DisclaimerBanner } from '../../src/components/DisclaimerBanner';
 import { Colors } from '../../src/constants/colors';
-import { RARITY_XP } from '../../src/store/useGameStore';
-import { useGameStore } from '../../src/store/useGameStore';
+import { RARITY_XP, useGameStore } from '../../src/store/useGameStore';
 
 export default function PlantDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -244,6 +243,7 @@ const styles = StyleSheet.create({
   heroWrapper: {
     position: 'relative',
     overflow: 'hidden',
+    backgroundColor: '#1B5E20',
   },
   hero: {
     paddingTop: 32,

@@ -282,26 +282,12 @@ export default function ProfileScreen() {
         ) : (
           <View style={styles.historyList}>
             {recentScans.map(({ record, plant }) => (
-              <Pressable
+              <HistoryRow
                 key={record.id}
-                style={styles.historyItem}
+                record={record}
+                plant={plant}
                 onPress={() => router.push(`/plant/${plant.id}`)}
-              >
-                {record.imageUri ? (
-                  <Image
-                    source={{ uri: record.imageUri }}
-                    style={styles.historyThumb}
-                    resizeMode="cover"
-                  />
-                ) : (
-                  <Text style={styles.historyEmoji}>{plant.emoji}</Text>
-                )}
-                <View style={styles.historyInfo}>
-                  <Text style={styles.historyName}>{plant.name}</Text>
-                  <Text style={styles.historyTime}>{formatScanDate(record.scannedAt)}</Text>
-                </View>
-                <DangerBadge danger={plant.danger} size="sm" />
-              </Pressable>
+              />
             ))}
           </View>
         )}
@@ -355,6 +341,38 @@ export default function ProfileScreen() {
         </Pressable>
       </Modal>
     </ScrollView>
+  );
+}
+
+function HistoryRow({
+  record,
+  plant,
+  onPress,
+}: {
+  record: { id: string; plantId: string; scannedAt: string; imageUri?: string };
+  plant: { id: string; name: string; emoji: string; danger: 'GREEN' | 'YELLOW' | 'RED' };
+  onPress: () => void;
+}) {
+  const [imgError, setImgError] = useState(false);
+  const showThumb = !!record.imageUri && !imgError;
+  return (
+    <Pressable style={styles.historyItem} onPress={onPress}>
+      {showThumb ? (
+        <Image
+          source={{ uri: record.imageUri }}
+          style={styles.historyThumb}
+          resizeMode="cover"
+          onError={() => setImgError(true)}
+        />
+      ) : (
+        <Text style={styles.historyEmoji}>{plant.emoji}</Text>
+      )}
+      <View style={styles.historyInfo}>
+        <Text style={styles.historyName}>{plant.name}</Text>
+        <Text style={styles.historyTime}>{formatScanDate(record.scannedAt)}</Text>
+      </View>
+      <DangerBadge danger={plant.danger} size="sm" />
+    </Pressable>
   );
 }
 
