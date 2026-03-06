@@ -22,6 +22,7 @@ export interface ScanRecord {
   id: string;
   plantId: string;
   scannedAt: string; // ISO string
+  imageUri?: string; // user's captured photo URI
 }
 
 export interface UserProfile {

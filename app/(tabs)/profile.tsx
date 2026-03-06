@@ -9,6 +9,7 @@ import {
   Alert,
   Modal,
   Share,
+  Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -286,7 +287,15 @@ export default function ProfileScreen() {
                 style={styles.historyItem}
                 onPress={() => router.push(`/plant/${plant.id}`)}
               >
-                <Text style={styles.historyEmoji}>{plant.emoji}</Text>
+                {record.imageUri ? (
+                  <Image
+                    source={{ uri: record.imageUri }}
+                    style={styles.historyThumb}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <Text style={styles.historyEmoji}>{plant.emoji}</Text>
+                )}
                 <View style={styles.historyInfo}>
                   <Text style={styles.historyName}>{plant.name}</Text>
                   <Text style={styles.historyTime}>{formatScanDate(record.scannedAt)}</Text>
@@ -530,12 +539,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
     gap: 10,
   },
   historyEmoji: { fontSize: 26 },
+  historyThumb: {
+    width: 42,
+    height: 42,
+    borderRadius: 8,
+    backgroundColor: '#E0E0E0',
+  },
   historyInfo: { flex: 1 },
   historyName: {
     fontSize: 13,

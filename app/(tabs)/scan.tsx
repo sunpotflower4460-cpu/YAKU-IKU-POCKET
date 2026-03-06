@@ -35,6 +35,7 @@ export default function ScanScreen() {
   // Scan state
   const [scanState, setScanState] = useState<ScanState>('idle');
   const [usedRealAI, setUsedRealAI] = useState(false);
+  const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [result, setResult] = useState<{
     plant: Plant;
     confidence: number;
@@ -121,6 +122,7 @@ export default function ScanScreen() {
           exif: false,
         });
         base64Image = photo?.base64 ?? undefined;
+        setPhotoUri(photo?.uri ?? null);
       }
 
       const scanResult = await scanPlant(discoveredPlantIds, base64Image);
@@ -148,10 +150,11 @@ export default function ScanScreen() {
   function handleAddToZukan() {
     if (!result) return;
     discoverPlant(result.plant.id);
-    addScan(result.plant.id);
+    addScan(result.plant.id, photoUri ?? undefined);
     setModalVisible(false);
     setResult(null);
     setScanState('idle');
+    setPhotoUri(null);
     router.push(`/plant/${result.plant.id}`);
   }
 
@@ -159,6 +162,7 @@ export default function ScanScreen() {
     setModalVisible(false);
     setResult(null);
     setScanState('idle');
+    setPhotoUri(null);
   }
 
   // ── Permission not yet resolved ──
@@ -341,6 +345,7 @@ export default function ScanScreen() {
         usedRealAI={usedRealAI}
         reason={result?.reason}
         claudeFailed={result?.claudeFailed}
+        imageUri={photoUri ?? undefined}
         onAddToZukan={handleAddToZukan}
         onScanAgain={handleScanAgain}
       />

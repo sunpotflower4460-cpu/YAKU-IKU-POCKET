@@ -8,6 +8,8 @@ import {
   Animated,
   Pressable,
   ScrollView,
+  Image,
+  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Plant } from '../types';
@@ -22,6 +24,15 @@ const RARITY_GRADIENT: Record<number, [string, string, string]> = {
   3: ['#0D47A1', '#1565C0', '#1976D2'],
   4: ['#4A148C', '#6A1B9A', '#8E24AA'],
   5: ['#BF360C', '#D84315', '#FF8F00'],
+};
+
+// Semi-transparent variant (when user photo is shown as bg)
+const RARITY_GRADIENT_ALPHA: Record<number, [string, string, string]> = {
+  1: ['#424242CC', '#757575BB', '#9E9E9EAA'],
+  2: ['#1B5E20CC', '#2E7D32BB', '#43A047AA'],
+  3: ['#0D47A1CC', '#1565C0BB', '#1976D2AA'],
+  4: ['#4A148CCC', '#6A1B9ABB', '#8E24AAAA'],
+  5: ['#BF360CCC', '#D84315BB', '#FF8F00AA'],
 };
 
 const RARITY_LABEL: Record<number, string> = {
@@ -40,6 +51,7 @@ interface Props {
   usedRealAI: boolean;
   reason?: string;
   claudeFailed?: boolean;
+  imageUri?: string;
   onAddToZukan: () => void;
   onScanAgain: () => void;
 }
@@ -52,6 +64,7 @@ export function ScanResultModal({
   usedRealAI,
   reason,
   claudeFailed,
+  imageUri,
   onAddToZukan,
   onScanAgain,
 }: Props) {
@@ -110,7 +123,9 @@ export function ScanResultModal({
   const isWarning = plant.danger === 'YELLOW';
   const isRare = plant.rarity >= 4;
   const isLegendary = plant.rarity === 5;
-  const gradientColors = RARITY_GRADIENT[plant.rarity] ?? RARITY_GRADIENT[1];
+  const gradientColors = imageUri
+    ? (RARITY_GRADIENT_ALPHA[plant.rarity] ?? RARITY_GRADIENT_ALPHA[1])
+    : (RARITY_GRADIENT[plant.rarity] ?? RARITY_GRADIENT[1]);
 
   const emojiScale = shimmerAnim.interpolate({
     inputRange: [0.6, 1],
@@ -133,7 +148,19 @@ export function ScanResultModal({
         <Animated.View style={[styles.card, { transform: [{ scale: scaleAnim }] }]}>
 
           {/* ── Gradient header ── */}
-          <LinearGradient colors={gradientColors} style={styles.gradientHeader}>
+          <View style={styles.gradientHeader}>
+            {/* Blurred photo background (user's captured image) */}
+            {imageUri && (
+              <Image
+                source={{ uri: imageUri }}
+                style={StyleSheet.absoluteFill}
+                resizeMode="cover"
+                blurRadius={Platform.OS === 'ios' ? 8 : 3}
+              />
+            )}
+
+            {/* Color gradient overlay */}
+            <LinearGradient colors={gradientColors} style={StyleSheet.absoluteFill} />
 
             {/* Sparkle overlay for rare discoveries */}
             {isRare && (
@@ -183,7 +210,14 @@ export function ScanResultModal({
               </View>
               <RarityStars rarity={plant.rarity} size="lg" />
             </View>
-          </LinearGradient>
+
+            {/* Photo label */}
+            {imageUri && (
+              <View style={styles.photoLabel}>
+                <Text style={styles.photoLabelText}>📷 あなたの撮影写真</Text>
+              </View>
+            )}
+          </View>
 
           {/* ── Scrollable content ── */}
           <ScrollView
@@ -408,6 +442,18 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 11,
     fontWeight: '800',
+  },
+  photoLabel: {
+    marginTop: 8,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+  },
+  photoLabelText: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 10,
+    fontWeight: '600',
   },
 
   // ── Content ──

@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { View, Text, StyleSheet, Pressable, Animated } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Animated, Image } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { Plant } from '../types';
 import { Colors } from '../constants/colors';
@@ -9,6 +9,7 @@ import { DangerBadge } from './DangerBadge';
 interface Props {
   plant: Plant;
   discovered: boolean;
+  imageUri?: string;
   onPress: () => void;
 }
 
@@ -28,7 +29,7 @@ const RARITY_BG: Record<number, string> = {
   5: '#FFF8E1',
 };
 
-export function PlantCard({ plant, discovered, onPress }: Props) {
+export function PlantCard({ plant, discovered, imageUri, onPress }: Props) {
   const rarityColor = RARITY_COLOR[plant.rarity];
   const rarityBg = RARITY_BG[plant.rarity];
   const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -58,6 +59,7 @@ export function PlantCard({ plant, discovered, onPress }: Props) {
 
   const isLegendary = plant.rarity === 5;
   const isSuperRare = plant.rarity === 4;
+  const showPhoto = discovered && !!imageUri;
 
   return (
     <Animated.View
@@ -83,14 +85,21 @@ export function PlantCard({ plant, discovered, onPress }: Props) {
           />
         )}
 
-        {/* Emoji circle */}
+        {/* Emoji / Photo circle */}
         <View
           style={[
             styles.emojiWrap,
             { backgroundColor: discovered ? rarityBg : '#EEEEEE' },
+            showPhoto && styles.emojiWrapPhoto,
           ]}
         >
-          {discovered ? (
+          {showPhoto ? (
+            <Image
+              source={{ uri: imageUri }}
+              style={styles.plantPhoto}
+              resizeMode="cover"
+            />
+          ) : discovered ? (
             <Text style={styles.emoji}>{plant.emoji}</Text>
           ) : (
             <Text style={styles.questionMark}>？</Text>
@@ -180,6 +189,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 2,
+    overflow: 'hidden',
+  },
+  emojiWrapPhoto: {
+    backgroundColor: '#000',
+  },
+  plantPhoto: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
   },
   emoji: { fontSize: 32 },
   questionMark: {

@@ -49,7 +49,7 @@ interface GameState {
   // Actions
   startSession: () => void;
   discoverPlant: (plantId: string) => void;
-  addScan: (plantId: string) => void;
+  addScan: (plantId: string, imageUri?: string) => void;
   setPlayerName: (name: string) => void;
   claimChallenge: (challengeId: string, xpReward: number) => void;
   setLastCelebrated: (count: number) => void;
@@ -143,12 +143,13 @@ export const useGameStore = create<GameState>()(
       },
 
       // ── Record a scan ────────────────────────────────────────────────────
-      addScan: (plantId: string) => {
+      addScan: (plantId: string, imageUri?: string) => {
         const { todayDate } = get();
         const record: ScanRecord = {
           id: `scan_${Date.now()}`,
           plantId,
           scannedAt: new Date().toISOString(),
+          imageUri,
         };
         set((state) => ({
           scanHistory: [record, ...state.scanHistory].slice(0, 100),

@@ -27,7 +27,18 @@ type SortRarity = 'none' | 'desc' | 'asc';
 
 export default function ZukanScreen() {
   const router = useRouter();
-  const { discoveredPlantIds } = useGameStore();
+  const { discoveredPlantIds, scanHistory } = useGameStore();
+
+  // plantId → 最新スキャンの imageUri マップ（scanHistory は新しい順）
+  const imageUriMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const record of scanHistory) {
+      if (record.imageUri && !map[record.plantId]) {
+        map[record.plantId] = record.imageUri;
+      }
+    }
+    return map;
+  }, [scanHistory]);
 
   const [hintPlant, setHintPlant] = useState<Plant | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -364,6 +375,7 @@ export default function ZukanScreen() {
           <PlantCard
             plant={item}
             discovered={discoveredPlantIds.includes(item.id)}
+            imageUri={imageUriMap[item.id]}
             onPress={() => {
               if (discoveredPlantIds.includes(item.id)) {
                 router.push(`/plant/${item.id}`);

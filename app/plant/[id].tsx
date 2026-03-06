@@ -5,6 +5,8 @@ import {
   StyleSheet,
   ScrollView,
   Pressable,
+  Image,
+  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
@@ -15,13 +17,20 @@ import { DangerBadge } from '../../src/components/DangerBadge';
 import { DisclaimerBanner } from '../../src/components/DisclaimerBanner';
 import { Colors } from '../../src/constants/colors';
 import { RARITY_XP } from '../../src/store/useGameStore';
+import { useGameStore } from '../../src/store/useGameStore';
 
 export default function PlantDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const navigation = useNavigation();
   const router = useRouter();
+  const { scanHistory } = useGameStore();
 
   const plant = getPlantById(id ?? '');
+
+  // 最新スキャンの写真 URI を取得
+  const plantImageUri = scanHistory.find(
+    (r) => r.plantId === (id ?? '') && r.imageUri
+  )?.imageUri;
 
   useLayoutEffect(() => {
     if (plant) {
@@ -37,61 +46,81 @@ export default function PlantDetailScreen() {
     );
   }
 
+  const heroGradient: [string, string, string] = plant.danger === 'RED'
+    ? ['#3A0000', '#7B0000', '#C62828']
+    : plant.danger === 'YELLOW'
+    ? ['#5D1A00', '#E65100', '#F57F17']
+    : ['#1B5E20', '#2E7D32', '#43A047'];
+
+  // 写真がある場合はグラジエントを半透明にする
+  const gradientWithAlpha: [string, string, string] = plantImageUri
+    ? [heroGradient[0] + 'CC', heroGradient[1] + 'BB', heroGradient[2] + 'AA']
+    : heroGradient;
+
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       {/* Hero */}
-      <LinearGradient
-        colors={
-          plant.danger === 'RED'
-            ? ['#3A0000', '#7B0000', '#C62828']
-            : plant.danger === 'YELLOW'
-            ? ['#5D1A00', '#E65100', '#F57F17']
-            : ['#1B5E20', '#2E7D32', '#43A047']
-        }
-        style={styles.hero}
-      >
-        {/* Danger alert banner */}
-        {plant.danger === 'RED' && (
-          <View style={styles.alertBanner}>
-            <Text style={styles.alertBannerText}>
-              ☠️ 危険 — この植物は絶対に採取・摂取しないでください
-            </Text>
-          </View>
+      <View style={styles.heroWrapper}>
+        {/* ユーザーの撮影写真を背景に表示 */}
+        {plantImageUri && (
+          <Image
+            source={{ uri: plantImageUri }}
+            style={StyleSheet.absoluteFill}
+            resizeMode="cover"
+            blurRadius={Platform.OS === 'ios' ? 6 : 2}
+          />
         )}
-        {plant.danger === 'YELLOW' && (
-          <View style={styles.warningBanner}>
-            <Text style={styles.warningBannerText}>
-              ⚠️ 注意が必要な植物です
-            </Text>
+        <LinearGradient colors={gradientWithAlpha} style={styles.hero}>
+          {/* Danger alert banner */}
+          {plant.danger === 'RED' && (
+            <View style={styles.alertBanner}>
+              <Text style={styles.alertBannerText}>
+                ☠️ 危険 — この植物は絶対に採取・摂取しないでください
+              </Text>
+            </View>
+          )}
+          {plant.danger === 'YELLOW' && (
+            <View style={styles.warningBanner}>
+              <Text style={styles.warningBannerText}>
+                ⚠️ 注意が必要な植物です
+              </Text>
+            </View>
+          )}
+
+          {/* Emoji */}
+          <View
+            style={[
+              styles.emojiCircle,
+              plant.danger === 'RED' && { backgroundColor: 'rgba(255,0,0,0.2)' },
+            ]}
+          >
+            <Text style={styles.emoji}>{plant.emoji}</Text>
           </View>
-        )}
 
-        {/* Emoji */}
-        <View
-          style={[
-            styles.emojiCircle,
-            plant.danger === 'RED' && { backgroundColor: 'rgba(255,0,0,0.2)' },
-          ]}
-        >
-          <Text style={styles.emoji}>{plant.emoji}</Text>
-        </View>
+          {/* Names */}
+          <Text style={styles.plantName}>{plant.name}</Text>
+          <Text style={styles.plantNameEn}>{plant.nameEn}</Text>
+          <Text style={styles.plantNameLatin}>{plant.nameLatin}</Text>
 
-        {/* Names */}
-        <Text style={styles.plantName}>{plant.name}</Text>
-        <Text style={styles.plantNameEn}>{plant.nameEn}</Text>
-        <Text style={styles.plantNameLatin}>{plant.nameLatin}</Text>
+          {/* Badges */}
+          <View style={styles.badgeRow}>
+            <RarityStars rarity={plant.rarity} size="lg" />
+            <DangerBadge danger={plant.danger} />
+          </View>
 
-        {/* Badges */}
-        <View style={styles.badgeRow}>
-          <RarityStars rarity={plant.rarity} size="lg" />
-          <DangerBadge danger={plant.danger} />
-        </View>
+          {/* Category chip */}
+          <View style={styles.categoryChip}>
+            <Text style={styles.categoryText}>{plant.category}</Text>
+          </View>
 
-        {/* Category chip */}
-        <View style={styles.categoryChip}>
-          <Text style={styles.categoryText}>{plant.category}</Text>
-        </View>
-      </LinearGradient>
+          {/* 撮影写真バッジ */}
+          {plantImageUri && (
+            <View style={styles.photoIndicator}>
+              <Text style={styles.photoIndicatorText}>📷 あなたの撮影写真</Text>
+            </View>
+          )}
+        </LinearGradient>
+      </View>
 
       {/* Body */}
       <View style={styles.body}>
@@ -212,6 +241,10 @@ const styles = StyleSheet.create({
   notFound: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   notFoundText: { fontSize: 16, color: Colors.textMuted },
 
+  heroWrapper: {
+    position: 'relative',
+    overflow: 'hidden',
+  },
   hero: {
     paddingTop: 32,
     paddingBottom: 28,
@@ -278,6 +311,18 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
   },
   categoryText: { color: '#FFFFFF', fontSize: 12, fontWeight: '700' },
+  photoIndicator: {
+    marginTop: 10,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  photoIndicatorText: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 11,
+    fontWeight: '600',
+  },
 
   body: { padding: 16 },
   section: {
