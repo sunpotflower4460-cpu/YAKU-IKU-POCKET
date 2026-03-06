@@ -11,6 +11,7 @@ interface Props {
   discovered: boolean;
   imageUri?: string;
   isFavorite?: boolean;
+  hasNote?: boolean;
   onPress: () => void;
   onFavorite?: () => void;
 }
@@ -31,7 +32,7 @@ const RARITY_BG: Record<number, string> = {
   5: '#FFF8E1',
 };
 
-export function PlantCard({ plant, discovered, imageUri, isFavorite, onPress, onFavorite }: Props) {
+export function PlantCard({ plant, discovered, imageUri, isFavorite, hasNote, onPress, onFavorite }: Props) {
   const rarityColor = RARITY_COLOR[plant.rarity];
   const rarityBg = RARITY_BG[plant.rarity];
   const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -135,6 +136,13 @@ export function PlantCard({ plant, discovered, imageUri, isFavorite, onPress, on
         {discovered && (
           <View style={[styles.checkBadge, { backgroundColor: rarityColor }]}>
             <Text style={styles.checkText}>✓</Text>
+          </View>
+        )}
+
+        {/* Note indicator */}
+        {discovered && hasNote && (
+          <View style={styles.noteBadge}>
+            <Text style={styles.noteBadgeText}>✏️</Text>
           </View>
         )}
 
@@ -254,6 +262,14 @@ const styles = StyleSheet.create({
   },
   heartIcon: {
     fontSize: 13,
+  },
+  noteBadge: {
+    position: 'absolute',
+    top: 8,
+    left: 6,
+  },
+  noteBadgeText: {
+    fontSize: 11,
   },
   hintChip: {
     backgroundColor: Colors.primaryPale,

@@ -19,7 +19,7 @@ import { Colors } from '../../src/constants/colors';
 import { DangerLevel, Plant, PlantCategory } from '../../src/types';
 import { getCurrentSeason, SEASON_CONFIG, isPlantInSeason } from '../../src/utils/season';
 
-type FilterDiscovered = 'all' | 'discovered' | 'undiscovered' | 'favorites';
+type FilterDiscovered = 'all' | 'discovered' | 'undiscovered' | 'favorites' | 'noted';
 type FilterDanger = 'all' | DangerLevel;
 type FilterCategory = 'all' | PlantCategory;
 type FilterSeason = 'all' | 'current';
@@ -27,7 +27,7 @@ type SortRarity = 'none' | 'desc' | 'asc';
 
 export default function ZukanScreen() {
   const router = useRouter();
-  const { discoveredPlantIds, scanHistory, favoritePlantIds, toggleFavorite } = useGameStore();
+  const { discoveredPlantIds, scanHistory, favoritePlantIds, toggleFavorite, plantNotes } = useGameStore();
 
   // plantId → 最新スキャンの imageUri マップ（scanHistory は新しい順）
   const imageUriMap = useMemo(() => {
@@ -75,10 +75,12 @@ export default function ZukanScreen() {
     let result = PLANTS.filter((plant) => {
       const isDiscovered = discoveredPlantIds.includes(plant.id);
       const isFav = favoritePlantIds.includes(plant.id);
+      const hasNote = !!plantNotes[plant.id];
 
       if (filterDiscovered === 'discovered' && !isDiscovered) return false;
       if (filterDiscovered === 'undiscovered' && isDiscovered) return false;
       if (filterDiscovered === 'favorites' && !isFav) return false;
+      if (filterDiscovered === 'noted' && !hasNote) return false;
       if (filterDanger !== 'all' && plant.danger !== filterDanger) return false;
       if (filterCategory !== 'all' && plant.category !== filterCategory)
         return false;
@@ -106,7 +108,7 @@ export default function ZukanScreen() {
     }
 
     return result;
-  }, [discoveredPlantIds, favoritePlantIds, filterDiscovered, filterDanger, filterCategory, filterSeason, sortRarity, search, currentSeason]);
+  }, [discoveredPlantIds, favoritePlantIds, plantNotes, filterDiscovered, filterDanger, filterCategory, filterSeason, sortRarity, search, currentSeason]);
 
   const discoveredCount = discoveredPlantIds.length;
 
@@ -207,6 +209,7 @@ export default function ZukanScreen() {
               ['discovered', '発見済み'],
               ['undiscovered', '未発見'],
               ['favorites', '❤️ お気に入り'],
+              ['noted', '✏️ メモあり'],
             ] as [FilterDiscovered, string][]
           ).map(([val, label]) => (
             <FilterChip
@@ -214,7 +217,7 @@ export default function ZukanScreen() {
               label={label}
               active={filterDiscovered === val}
               onPress={() => setFilterDiscovered(val)}
-              activeColor={val === 'favorites' ? '#E91E63' : Colors.primary}
+              activeColor={val === 'favorites' ? '#E91E63' : val === 'noted' ? '#795548' : Colors.primary}
             />
           ))}
         </FilterRow>
@@ -380,6 +383,7 @@ export default function ZukanScreen() {
             discovered={discoveredPlantIds.includes(item.id)}
             imageUri={imageUriMap[item.id]}
             isFavorite={favoritePlantIds.includes(item.id)}
+            hasNote={!!plantNotes[item.id]}
             onPress={() => {
               if (discoveredPlantIds.includes(item.id)) {
                 router.push(`/plant/${item.id}`);

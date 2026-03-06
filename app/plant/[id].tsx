@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,8 @@ import {
   Pressable,
   Image,
   Platform,
+  TextInput,
+  Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
@@ -23,10 +25,40 @@ export default function PlantDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const navigation = useNavigation();
   const router = useRouter();
-  const { scanHistory, favoritePlantIds, toggleFavorite } = useGameStore();
+  const { scanHistory, favoritePlantIds, toggleFavorite, plantNotes, setPlantNote } = useGameStore();
 
   const plant = getPlantById(id ?? '');
   const isFavorite = favoritePlantIds.includes(id ?? '');
+  const savedNote = plantNotes[id ?? ''] ?? '';
+  const [noteText, setNoteText] = useState(savedNote);
+  const [noteSaved, setNoteSaved] = useState(false);
+
+  // savedNote が外から変わった場合（例: 別画面でリセット）に同期
+  useEffect(() => {
+    setNoteText(savedNote);
+  }, [savedNote]);
+
+  function handleSaveNote() {
+    setPlantNote(id ?? '', noteText);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    setNoteSaved(true);
+    setTimeout(() => setNoteSaved(false), 2000);
+  }
+
+  function handleDeleteNote() {
+    Alert.alert('メモを削除', 'このメモを削除してもよいですか？', [
+      { text: 'キャンセル', style: 'cancel' },
+      {
+        text: '削除',
+        style: 'destructive',
+        onPress: () => {
+          setNoteText('');
+          setPlantNote(id ?? '', '');
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        },
+      },
+    ]);
+  }
 
   // 最新スキャンの写真 URI を取得
   const plantImageUri = scanHistory.find(
@@ -200,6 +232,43 @@ export default function PlantDetailScreen() {
             </View>
           </Section>
         )}
+
+        {/* 養生メモ */}
+        <View style={styles.noteSection}>
+          <View style={styles.noteTitleRow}>
+            <Text style={styles.noteSectionTitle}>✏️ 養生メモ</Text>
+            {savedNote.length > 0 && (
+              <Pressable onPress={handleDeleteNote} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <Text style={styles.noteDeleteText}>削除</Text>
+              </Pressable>
+            )}
+          </View>
+          <TextInput
+            style={styles.noteInput}
+            value={noteText}
+            onChangeText={(t) => { setNoteText(t); setNoteSaved(false); }}
+            placeholder="この植物について気づいたこと、見つけた場所、使い方のメモなど..."
+            placeholderTextColor={Colors.textMuted}
+            multiline
+            maxLength={500}
+            textAlignVertical="top"
+          />
+          <View style={styles.noteFooterRow}>
+            <Text style={styles.noteCharCount}>{noteText.length}/500</Text>
+            <Pressable
+              style={[
+                styles.noteSaveBtn,
+                (noteSaved || noteText === savedNote) && styles.noteSaveBtnDisabled,
+              ]}
+              onPress={handleSaveNote}
+              disabled={noteText === savedNote}
+            >
+              <Text style={styles.noteSaveBtnText}>
+                {noteSaved ? '✓ 保存済み' : '保存'}
+              </Text>
+            </Pressable>
+          </View>
+        </View>
 
         {/* Disclaimer */}
         <DisclaimerBanner />
@@ -447,5 +516,70 @@ const styles = StyleSheet.create({
   warningNoteTextRed: {
     color: Colors.dangerRed,
     fontWeight: '800',
+  },
+
+  noteSection: {
+    backgroundColor: Colors.bgCard,
+    borderRadius: 14,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  noteTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  noteSectionTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: Colors.text,
+  },
+  noteDeleteText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.dangerRed,
+  },
+  noteInput: {
+    backgroundColor: Colors.bg,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: Colors.text,
+    minHeight: 100,
+    lineHeight: 22,
+  },
+  noteFooterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 8,
+  },
+  noteCharCount: {
+    fontSize: 11,
+    color: Colors.textMuted,
+    fontWeight: '600',
+  },
+  noteSaveBtn: {
+    backgroundColor: Colors.primary,
+    borderRadius: 10,
+    paddingHorizontal: 18,
+    paddingVertical: 7,
+  },
+  noteSaveBtnDisabled: {
+    backgroundColor: Colors.border,
+  },
+  noteSaveBtnText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#FFFFFF',
   },
 });

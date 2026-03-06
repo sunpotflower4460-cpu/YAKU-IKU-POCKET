@@ -49,6 +49,9 @@ interface GameState {
   // Favorites
   favoritePlantIds: string[];
 
+  // Personal plant notes
+  plantNotes: Record<string, string>;
+
   // Actions
   startSession: () => void;
   discoverPlant: (plantId: string) => void;
@@ -57,6 +60,7 @@ interface GameState {
   claimChallenge: (challengeId: string, xpReward: number) => void;
   setLastCelebrated: (count: number) => void;
   toggleFavorite: (plantId: string) => void;
+  setPlantNote: (plantId: string, note: string) => void;
 
   // Computed helpers
   getLevel: () => number;
@@ -85,6 +89,7 @@ export const useGameStore = create<GameState>()(
       claimedChallengeIds: [],
       lastCelebrated: 0,
       favoritePlantIds: [],
+      plantNotes: {},
 
       // ── Session start: call once on app mount ────────────────────────────
       startSession: () => {
@@ -172,6 +177,16 @@ export const useGameStore = create<GameState>()(
           favoritePlantIds: state.favoritePlantIds.includes(plantId)
             ? state.favoritePlantIds.filter((id) => id !== plantId)
             : [...state.favoritePlantIds, plantId],
+        }));
+      },
+
+      setPlantNote: (plantId: string, note: string) => {
+        set((state) => ({
+          plantNotes: note.trim()
+            ? { ...state.plantNotes, [plantId]: note.trim() }
+            : Object.fromEntries(
+                Object.entries(state.plantNotes).filter(([k]) => k !== plantId)
+              ),
         }));
       },
 
