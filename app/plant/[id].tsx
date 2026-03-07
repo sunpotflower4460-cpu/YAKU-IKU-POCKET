@@ -275,7 +275,7 @@ export default function PlantDetailScreen() {
           <View style={styles.noteTitleRow}>
             <Text style={styles.noteSectionTitle}>✏️ 養生メモ</Text>
             {savedNote.length > 0 && (
-              <Pressable onPress={handleDeleteNote} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Pressable onPress={handleDeleteNote} hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}>
                 <Text style={styles.noteDeleteText}>削除</Text>
               </Pressable>
             )}

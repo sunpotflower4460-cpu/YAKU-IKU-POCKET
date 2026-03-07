@@ -86,7 +86,6 @@ export function ShareCard(props: ShareCardProps) {
   } = rest;
 
   const pct = totalCount > 0 ? discoveredCount / totalCount : 0;
-  const barFilled = Math.round(pct * 10);
 
   async function handleShare() {
     const msg = buildShareText({ ...rest, unlockedAchievements });

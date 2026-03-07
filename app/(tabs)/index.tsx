@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -66,12 +66,12 @@ export default function HomeScreen() {
     dailyChallenges.every((c) => claimedChallengeIds.includes(c.id));
 
   // Seasonal spotlight plants
-  const seasonalPlants = getSeasonalPlants(season, PLANTS);
+  const seasonalPlants = useMemo(() => getSeasonalPlants(season, PLANTS), [season]);
   // Sort: undiscovered first, then discovered; within each group keep rarity order
-  const spotlightPlants = [
+  const spotlightPlants = useMemo(() => [
     ...seasonalPlants.filter((p) => !discoveredPlantIds.includes(p.id)),
     ...seasonalPlants.filter((p) => discoveredPlantIds.includes(p.id)),
-  ].slice(0, 8);
+  ].slice(0, 8), [seasonalPlants, discoveredPlantIds]);
 
   // Seasonal quests progress
   const seasonalChallenges = SEASONAL_CHALLENGES[season];

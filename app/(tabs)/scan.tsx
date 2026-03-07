@@ -53,7 +53,7 @@ export default function ScanScreen() {
   // Scan line
   useEffect(() => {
     if (scanState === 'scanning') {
-      Animated.loop(
+      const scanLoop = Animated.loop(
         Animated.sequence([
           Animated.timing(scanLineY, {
             toValue: VIEWFINDER_SIZE - 4,
@@ -68,9 +68,10 @@ export default function ScanScreen() {
             useNativeDriver: true,
           }),
         ])
-      ).start();
+      );
+      scanLoop.start();
 
-      Animated.loop(
+      const spinLoop = Animated.loop(
         Animated.sequence([
           Animated.timing(spinAnim, {
             toValue: 1,
@@ -79,7 +80,13 @@ export default function ScanScreen() {
           }),
           Animated.timing(spinAnim, { toValue: 0, duration: 0, useNativeDriver: true }),
         ])
-      ).start();
+      );
+      spinLoop.start();
+
+      return () => {
+        scanLoop.stop();
+        spinLoop.stop();
+      };
     } else {
       scanLineY.setValue(0);
       spinAnim.setValue(0);
@@ -89,12 +96,14 @@ export default function ScanScreen() {
   // Idle pulse
   useEffect(() => {
     if (scanState === 'idle') {
-      Animated.loop(
+      const pulseLoop = Animated.loop(
         Animated.sequence([
           Animated.timing(pulseAnim, { toValue: 1.06, duration: 900, useNativeDriver: true }),
           Animated.timing(pulseAnim, { toValue: 1, duration: 900, useNativeDriver: true }),
         ])
-      ).start();
+      );
+      pulseLoop.start();
+      return () => pulseLoop.stop();
     } else {
       pulseAnim.setValue(1);
     }

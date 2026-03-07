@@ -121,18 +121,19 @@ export function ScanResultModal({
   if (!plant) return null;
 
   async function handleShareDiscovery() {
-    const rarityStars = '★'.repeat(plant!.rarity) + '☆'.repeat(5 - plant!.rarity);
+    if (!plant) return;
+    const rarityStars = '★'.repeat(plant.rarity) + '☆'.repeat(5 - plant.rarity);
     const dangerLabel =
-      plant!.danger === 'GREEN' ? '🟢 食用可' :
-      plant!.danger === 'YELLOW' ? '🟡 注意' : '🔴 危険';
+      plant.danger === 'GREEN' ? '🟢 食用可' :
+      plant.danger === 'YELLOW' ? '🟡 注意' : '🔴 危険';
     const msg =
       `🌿 新しい植物を発見！\n\n` +
-      `${plant!.emoji} ${plant!.name} (${plant!.nameEn})\n` +
+      `${plant.emoji} ${plant.name} (${plant.nameEn})\n` +
       `レアリティ: ${rarityStars}\n` +
       `安全性: ${dangerLabel}\n` +
       `AI認識精度: ${confidence}%\n\n` +
       `薬育ポケットで野草・ハーブを収集中！\n` +
-      `#薬育ポケット #野草図鑑 #${plant!.name}`;
+      `#薬育ポケット #野草図鑑 #${plant.name}`;
     try {
       await Share.share({ message: msg });
     } catch { /* ignore */ }

@@ -177,7 +177,7 @@ export default function ProfileScreen() {
         </View>
 
         {/* Name */}
-        <Text style={styles.playerName}>{playerName}</Text>
+        <Text style={styles.playerName} numberOfLines={1} adjustsFontSizeToFit>{playerName}</Text>
         <Text style={styles.titleText}>{title}</Text>
 
         {/* Edit name button */}

@@ -204,8 +204,8 @@ export default function ZukanScreen() {
             <StatMini label="食用可🟢" value={`${statsGreen}`} color={Colors.dangerGreen} />
             <StatMini label="要注意🟡" value={`${statsYellow}`} color={Colors.dangerYellow} />
             <StatMini label="危険🔴"   value={`${statsRed}`}    color={Colors.dangerRed} />
-            <StatMini label="野草"     value={`${statsWild}/25`} color={Colors.primary} />
-            <StatMini label="ハーブ"   value={`${statsHerb}/25`} color="#FF8F00" />
+            <StatMini label="野草"     value={`${statsWild}/${PLANTS.filter(p => p.category === '野草').length}`} color={Colors.primary} />
+            <StatMini label="ハーブ"   value={`${statsHerb}/${PLANTS.filter(p => p.category === 'スパイス・ハーブ').length}`} color="#FF8F00" />
             {([1,2,3,4,5] as const).map(r => {
               const total = PLANTS.filter(p => p.rarity === r).length;
               const found = PLANTS.filter(p => p.rarity === r && discoveredPlantIds.includes(p.id)).length;
