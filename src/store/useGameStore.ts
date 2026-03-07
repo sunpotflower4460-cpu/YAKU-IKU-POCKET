@@ -52,12 +52,17 @@ interface GameState {
   // Personal plant notes
   plantNotes: Record<string, string>;
 
+  // Seasonal quests (reset each new calendar month)
+  claimedSeasonalQuestIds: string[];
+  seasonalQuestMonth: string; // YYYY-MM
+
   // Actions
   startSession: () => void;
   discoverPlant: (plantId: string) => void;
   addScan: (plantId: string, imageUri?: string) => void;
   setPlayerName: (name: string) => void;
   claimChallenge: (challengeId: string, xpReward: number) => void;
+  claimSeasonalChallenge: (challengeId: string, xpReward: number) => void;
   setLastCelebrated: (count: number) => void;
   toggleFavorite: (plantId: string) => void;
   setPlantNote: (plantId: string, note: string) => void;
@@ -90,14 +95,17 @@ export const useGameStore = create<GameState>()(
       lastCelebrated: 0,
       favoritePlantIds: [],
       plantNotes: {},
+      claimedSeasonalQuestIds: [],
+      seasonalQuestMonth: '',
 
       // ── Session start: call once on app mount ────────────────────────────
       startSession: () => {
-        const { lastLoginDate, streak, todayDate } = get();
+        const { lastLoginDate, streak, todayDate, seasonalQuestMonth } = get();
         const today = todayStr();
         const yesterday = new Date(Date.now() - 86_400_000)
           .toISOString()
           .split('T')[0];
+        const thisMonth = today.slice(0, 7); // YYYY-MM
 
         const newStreak =
           lastLoginDate === yesterday ? streak + 1 :
@@ -105,6 +113,7 @@ export const useGameStore = create<GameState>()(
           1;
 
         const isNewDay = todayDate !== today;
+        const isNewMonth = seasonalQuestMonth !== thisMonth;
 
         set({
           lastLoginDate: today,
@@ -117,6 +126,10 @@ export const useGameStore = create<GameState>()(
             todayDangers: [],
             todayCategories: [],
             claimedChallengeIds: [],
+          }),
+          ...(isNewMonth && {
+            claimedSeasonalQuestIds: [],
+            seasonalQuestMonth: thisMonth,
           }),
         });
       },
@@ -194,6 +207,14 @@ export const useGameStore = create<GameState>()(
       claimChallenge: (challengeId: string, xpReward: number) => {
         set((state) => ({
           claimedChallengeIds: [...state.claimedChallengeIds, challengeId],
+          xp: state.xp + xpReward,
+        }));
+      },
+
+      // ── Claim a completed seasonal quest ──────────────────────────────────
+      claimSeasonalChallenge: (challengeId: string, xpReward: number) => {
+        set((state) => ({
+          claimedSeasonalQuestIds: [...state.claimedSeasonalQuestIds, challengeId],
           xp: state.xp + xpReward,
         }));
       },

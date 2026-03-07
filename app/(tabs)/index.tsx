@@ -15,8 +15,14 @@ import { useGameStore, XP_PER_LEVEL } from '../../src/store/useGameStore';
 import { PLANTS, TOTAL_PLANTS } from '../../src/data/plants';
 import { DisclaimerBanner } from '../../src/components/DisclaimerBanner';
 import { Colors } from '../../src/constants/colors';
-import { getCurrentSeason, SEASON_CONFIG } from '../../src/utils/season';
-import { getDailyChallenges, getChallengePct, Challenge } from '../../src/data/challenges';
+import { getCurrentSeason, SEASON_CONFIG, getSeasonalPlants } from '../../src/utils/season';
+import {
+  getDailyChallenges,
+  getChallengePct,
+  SEASONAL_CHALLENGES,
+  Challenge,
+  ChallengeSnap,
+} from '../../src/data/challenges';
 
 // Milestones: [ threshold, emoji, title, desc ]
 const MILESTONES: [number, string, string, string][] = [
@@ -31,7 +37,9 @@ export default function HomeScreen() {
   const {
     discoveredPlantIds, playerName, xp, getLevel, getXpForCurrentLevel,
     todayScanCount, todayNewCount, todayMaxRarity, todayDangers, todayCategories,
-    claimedChallengeIds, claimChallenge, lastCelebrated, setLastCelebrated,
+    claimedChallengeIds, claimChallenge,
+    claimedSeasonalQuestIds, claimSeasonalChallenge,
+    lastCelebrated, setLastCelebrated,
   } = useGameStore();
 
   const level = getLevel();
@@ -50,10 +58,27 @@ export default function HomeScreen() {
   // Daily quest data
   const todayDateStr = new Date().toISOString().split('T')[0];
   const dailyChallenges = getDailyChallenges(todayDateStr);
-  const dailySnap = { todayScanCount, todayNewCount, todayMaxRarity, todayDangers, todayCategories };
+  const dailySnap: ChallengeSnap = {
+    todayScanCount, todayNewCount, todayMaxRarity, todayDangers, todayCategories,
+  };
   const allQuestsClaimed =
     dailyChallenges.length > 0 &&
     dailyChallenges.every((c) => claimedChallengeIds.includes(c.id));
+
+  // Seasonal spotlight plants
+  const seasonalPlants = getSeasonalPlants(season, PLANTS);
+  // Sort: undiscovered first, then discovered; within each group keep rarity order
+  const spotlightPlants = [
+    ...seasonalPlants.filter((p) => !discoveredPlantIds.includes(p.id)),
+    ...seasonalPlants.filter((p) => discoveredPlantIds.includes(p.id)),
+  ].slice(0, 8);
+
+  // Seasonal quests progress
+  const seasonalChallenges = SEASONAL_CHALLENGES[season];
+  const seasonalDiscoveredCount = seasonalPlants.filter((p) =>
+    discoveredPlantIds.includes(p.id)
+  ).length;
+  const seasonalSnap: ChallengeSnap = { ...dailySnap, seasonalDiscoveredCount };
 
   const greenCount = PLANTS.filter(
     (p) => p.danger === 'GREEN' && discoveredPlantIds.includes(p.id)
@@ -150,6 +175,72 @@ export default function HomeScreen() {
         </View>
       </View>
 
+      {/* ── 今月の注目植物スライダー ── */}
+      {spotlightPlants.length > 0 && (
+        <View style={styles.section}>
+          <View style={styles.sectionRow}>
+            <Text style={styles.sectionTitle}>
+              {seasonCfg.emoji} 今の季節の注目植物
+            </Text>
+            <View style={[styles.sectionBadge, { backgroundColor: seasonCfg.color }]}>
+              <Text style={styles.sectionBadgeText}>{seasonalDiscoveredCount}/{seasonalPlants.length}</Text>
+            </View>
+          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            {spotlightPlants.map((plant) => {
+              const found = discoveredPlantIds.includes(plant.id);
+              return (
+                <Pressable
+                  key={plant.id}
+                  style={[
+                    styles.spotlightCard,
+                    found ? styles.spotlightCardFound : styles.spotlightCardUnfound,
+                  ]}
+                  onPress={() =>
+                    found ? router.push(`/plant/${plant.id}`) : null
+                  }
+                >
+                  {/* Rarity stars */}
+                  <Text style={styles.spotlightStars}>
+                    {'★'.repeat(plant.rarity)}{'☆'.repeat(5 - plant.rarity)}
+                  </Text>
+                  <Text style={[styles.spotlightEmoji, !found && styles.spotlightEmojiUnfound]}>
+                    {found ? plant.emoji : '❓'}
+                  </Text>
+                  <Text
+                    style={[styles.spotlightName, !found && styles.spotlightNameUnfound]}
+                    numberOfLines={1}
+                  >
+                    {found ? plant.name : '???'}
+                  </Text>
+                  {found ? (
+                    <View
+                      style={[
+                        styles.spotlightDangerBadge,
+                        {
+                          backgroundColor:
+                            plant.danger === 'RED' ? '#FFCDD2' :
+                            plant.danger === 'YELLOW' ? '#FFF9C4' : '#C8E6C9',
+                        },
+                      ]}
+                    >
+                      <Text style={styles.spotlightDangerText}>
+                        {plant.danger === 'RED' ? '🔴 要注意' :
+                         plant.danger === 'YELLOW' ? '🟡 注意' : '🟢 食用可'}
+                      </Text>
+                    </View>
+                  ) : (
+                    <View style={styles.spotlightUnfoundBadge}>
+                      <Text style={styles.spotlightUnfoundText}>未発見</Text>
+                    </View>
+                  )}
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        </View>
+      )}
+
       {/* Stats Row */}
       <View style={styles.statsRow}>
         <StatCard
@@ -219,6 +310,33 @@ export default function HomeScreen() {
             </View>
           </View>
         )}
+      </View>
+
+      {/* ── 今月の季節クエスト ── */}
+      <View style={styles.section}>
+        <View style={styles.sectionRow}>
+          <Text style={styles.sectionTitle}>{seasonCfg.emoji} 今月の季節クエスト</Text>
+          <View style={[styles.sectionBadge, { backgroundColor: seasonCfg.color }]}>
+            <Text style={styles.sectionBadgeText}>月次</Text>
+          </View>
+        </View>
+        {seasonalChallenges.map((challenge) => {
+          const pct = getChallengePct(challenge, seasonalSnap);
+          const claimed = claimedSeasonalQuestIds.includes(challenge.id);
+          const done = pct >= 1;
+          return (
+            <QuestCard
+              key={challenge.id}
+              challenge={challenge}
+              pct={pct}
+              claimed={claimed}
+              done={done}
+              onClaim={() =>
+                claimSeasonalChallenge(challenge.id, challenge.xpReward)
+              }
+            />
+          );
+        })}
       </View>
 
       {/* Recent Discoveries */}
@@ -519,7 +637,53 @@ const styles = StyleSheet.create({
   actionBtnTextSecondary: { color: Colors.primaryDark, fontWeight: '800', fontSize: 15 },
 
   section: { paddingHorizontal: 16, paddingTop: 20 },
-  sectionTitle: { fontSize: 15, fontWeight: '800', color: Colors.text, marginBottom: 10 },
+  sectionRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
+  sectionTitle: { fontSize: 15, fontWeight: '800', color: Colors.text },
+  sectionBadge: {
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  sectionBadgeText: { fontSize: 10, fontWeight: '800', color: '#FFFFFF' },
+
+  // Spotlight cards
+  spotlightCard: {
+    borderRadius: 16,
+    paddingTop: 10,
+    paddingBottom: 12,
+    paddingHorizontal: 10,
+    marginRight: 10,
+    alignItems: 'center',
+    width: 100,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 5,
+    elevation: 3,
+  },
+  spotlightCardFound: {
+    backgroundColor: Colors.bgCard,
+  },
+  spotlightCardUnfound: {
+    backgroundColor: '#F5F5F5',
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderColor: '#BDBDBD',
+  },
+  spotlightStars: { fontSize: 8, color: '#FFC107', marginBottom: 4, letterSpacing: 1 },
+  spotlightEmoji: { fontSize: 32, marginBottom: 5 },
+  spotlightEmojiUnfound: { opacity: 0.4 },
+  spotlightName: { fontSize: 11, fontWeight: '700', color: Colors.text, textAlign: 'center', marginBottom: 5 },
+  spotlightNameUnfound: { color: '#9E9E9E' },
+  spotlightDangerBadge: { borderRadius: 6, paddingHorizontal: 5, paddingVertical: 2 },
+  spotlightDangerText: { fontSize: 9, fontWeight: '700' },
+  spotlightUnfoundBadge: {
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    backgroundColor: '#EEEEEE',
+  },
+  spotlightUnfoundText: { fontSize: 9, fontWeight: '700', color: '#9E9E9E' },
 
   recentCard: {
     backgroundColor: Colors.bgCard,

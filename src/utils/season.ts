@@ -48,3 +48,13 @@ export function isPlantInSeason(plantSeason: string, season: Season): boolean {
 
   return plantSeason.includes(season);
 }
+
+/** Return plants that belong to the given season, sorted rarity desc. */
+export function getSeasonalPlants<T extends { season: string; rarity: number }>(
+  season: Season,
+  allPlants: T[]
+): T[] {
+  return allPlants
+    .filter((p) => isPlantInSeason(p.season, season))
+    .sort((a, b) => b.rarity - a.rarity);
+}

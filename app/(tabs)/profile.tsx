@@ -6,9 +6,7 @@ import {
   ScrollView,
   Pressable,
   TextInput,
-  Alert,
   Modal,
-  Share,
   Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -17,9 +15,11 @@ import { PLANTS } from '../../src/data/plants';
 import { useGameStore } from '../../src/store/useGameStore';
 import { DisclaimerBanner } from '../../src/components/DisclaimerBanner';
 import { DangerBadge } from '../../src/components/DangerBadge';
+import { ShareCard } from '../../src/components/ShareCard';
 import { Colors } from '../../src/constants/colors';
 import { getPlayerTitle } from '../../src/utils/playerTitle';
 import { XP_PER_LEVEL } from '../../src/store/useGameStore';
+import { getCurrentSeason, SEASON_CONFIG } from '../../src/utils/season';
 
 interface AchievementDef {
   id: string;
@@ -119,6 +119,10 @@ export default function ProfileScreen() {
   const { playerName, xp, discoveredPlantIds, setPlayerName, streak, getLevel, getXpForCurrentLevel, getXpToNextLevel, scanHistory } = useGameStore();
   const [editNameVisible, setEditNameVisible] = useState(false);
   const [tempName, setTempName] = useState(playerName);
+  const [shareCardVisible, setShareCardVisible] = useState(false);
+
+  const season = getCurrentSeason();
+  const seasonCfg = SEASON_CONFIG[season];
 
   const level = getLevel();
   const xpCurrent = getXpForCurrentLevel();
@@ -128,22 +132,9 @@ export default function ProfileScreen() {
   const discoveredCount = discoveredPlantIds.length;
   const totalPlants = PLANTS.length;
 
-  async function handleShare() {
-    const streakLine = streak > 1 ? `🔥 ${streak}日連続ログイン中！\n` : '';
-    const msg =
-      `🌿 薬育ポケット コレクション報告\n\n` +
-      `プレイヤー: ${playerName}\n` +
-      `称号: ${title}\n` +
-      `レベル: ${level}  総XP: ${xp}\n` +
-      `図鑑: ${discoveredCount}/${totalPlants}種類発見\n` +
-      `${streakLine}\n` +
-      `#薬育ポケット #野草図鑑 #養生ライフ`;
-    try {
-      await Share.share({ message: msg });
-    } catch {
-      Alert.alert('シェアできませんでした');
-    }
-  }
+  const unlockedAchievements = ACHIEVEMENTS.filter((a) =>
+    a.check(discoveredPlantIds)
+  ).map((a) => ({ icon: a.icon, label: a.label }));
   const greenCount = PLANTS.filter(
     (p) => p.danger === 'GREEN' && discoveredPlantIds.includes(p.id)
   ).length;
@@ -224,8 +215,8 @@ export default function ProfileScreen() {
               {streak > 0 ? `${streak}日連続` : '今日から開始'}
             </Text>
           </View>
-          <Pressable style={styles.shareBtn} onPress={handleShare}>
-            <Text style={styles.shareBtnText}>📤 シェア</Text>
+          <Pressable style={styles.shareBtn} onPress={() => setShareCardVisible(true)}>
+            <Text style={styles.shareBtnText}>🏅 実績カード</Text>
           </Pressable>
         </View>
       </LinearGradient>
@@ -299,6 +290,22 @@ export default function ProfileScreen() {
       </View>
 
       <View style={{ height: 32 }} />
+
+      {/* Share Card Modal */}
+      <ShareCard
+        visible={shareCardVisible}
+        onClose={() => setShareCardVisible(false)}
+        playerName={playerName}
+        title={title}
+        level={level}
+        xp={xp}
+        discoveredCount={discoveredCount}
+        totalCount={totalPlants}
+        streak={streak}
+        unlockedAchievements={unlockedAchievements}
+        season={season}
+        seasonEmoji={seasonCfg.emoji}
+      />
 
       {/* Edit Name Modal */}
       <Modal

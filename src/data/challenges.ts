@@ -1,11 +1,14 @@
+import { Season } from '../utils/season';
+
 export type ChallengeType =
-  | 'scan_count'    // scan N times today
-  | 'discover_new'  // discover N new plants
-  | 'find_rarity_4' // find rarity >= 4
-  | 'find_rarity_5' // find rarity 5
-  | 'find_green'    // find GREEN plant
-  | 'find_red'      // find RED (dangerous) plant
-  | 'find_herb';    // find spice/herb category
+  | 'scan_count'
+  | 'discover_new'
+  | 'find_rarity_4'
+  | 'find_rarity_5'
+  | 'find_green'
+  | 'find_red'
+  | 'find_herb'
+  | 'collect_seasonal'; // 季節植物コレクション数（通算）
 
 export interface Challenge {
   id: string;
@@ -17,6 +20,7 @@ export interface Challenge {
   target: number;
 }
 
+// ─── Daily challenges ──────────────────────────────────────────────────────
 export const CHALLENGES: Challenge[] = [
   {
     id: 'q1', emoji: '📷', title: '今日の採集家',
@@ -70,9 +74,8 @@ export const CHALLENGES: Challenge[] = [
   },
 ];
 
-/** Returns 3 deterministic, unique challenges for the given YYYY-MM-DD string. */
+/** Returns 3 deterministic, unique daily challenges for the given YYYY-MM-DD string. */
 export function getDailyChallenges(dateStr: string): Challenge[] {
-  // Seed from date
   let seed = 0;
   for (const ch of dateStr) seed = (seed * 31 + ch.charCodeAt(0)) | 0;
   seed = Math.abs(seed);
@@ -87,33 +90,52 @@ export function getDailyChallenges(dateStr: string): Challenge[] {
   return [...pickedSet].map((i) => CHALLENGES[i]);
 }
 
-/** 0..1 progress for a challenge given today's activity snapshot. */
-export function getChallengePct(
-  challenge: Challenge,
-  snap: {
-    todayScanCount: number;
-    todayNewCount: number;
-    todayMaxRarity: number;
-    todayDangers: string[];
-    todayCategories: string[];
-  }
-): number {
+// ─── Seasonal quests (monthly, per season) ────────────────────────────────
+export const SEASONAL_CHALLENGES: Record<Season, Challenge[]> = {
+  春: [
+    { id: 'sc_spring_1', emoji: '🌸', title: '春の恵み',    desc: '春の旬の植物を1種コレクションする', xpReward: 60,  type: 'collect_seasonal', target: 1 },
+    { id: 'sc_spring_3', emoji: '🌺', title: '春の探索者',  desc: '春の旬の植物を3種コレクションする', xpReward: 180, type: 'collect_seasonal', target: 3 },
+    { id: 'sc_spring_5', emoji: '🌷', title: '春の達人',    desc: '春の旬の植物を5種コレクションする', xpReward: 350, type: 'collect_seasonal', target: 5 },
+  ],
+  夏: [
+    { id: 'sc_summer_1', emoji: '☀️', title: '夏の恵み',    desc: '夏の旬の植物を1種コレクションする', xpReward: 60,  type: 'collect_seasonal', target: 1 },
+    { id: 'sc_summer_3', emoji: '🌻', title: '夏の探索者',  desc: '夏の旬の植物を3種コレクションする', xpReward: 180, type: 'collect_seasonal', target: 3 },
+    { id: 'sc_summer_5', emoji: '🏖️', title: '夏の達人',    desc: '夏の旬の植物を5種コレクションする', xpReward: 350, type: 'collect_seasonal', target: 5 },
+  ],
+  秋: [
+    { id: 'sc_autumn_1', emoji: '🍂', title: '秋の恵み',    desc: '秋の旬の植物を1種コレクションする', xpReward: 60,  type: 'collect_seasonal', target: 1 },
+    { id: 'sc_autumn_3', emoji: '🍁', title: '秋の探索者',  desc: '秋の旬の植物を3種コレクションする', xpReward: 180, type: 'collect_seasonal', target: 3 },
+    { id: 'sc_autumn_5', emoji: '🌾', title: '秋の達人',    desc: '秋の旬の植物を5種コレクションする', xpReward: 350, type: 'collect_seasonal', target: 5 },
+  ],
+  冬: [
+    { id: 'sc_winter_1', emoji: '❄️',  title: '冬の恵み',   desc: '冬の旬の植物を1種コレクションする', xpReward: 60,  type: 'collect_seasonal', target: 1 },
+    { id: 'sc_winter_3', emoji: '⛄',  title: '冬の探索者', desc: '冬の旬の植物を3種コレクションする', xpReward: 180, type: 'collect_seasonal', target: 3 },
+    { id: 'sc_winter_5', emoji: '🌨️', title: '冬の達人',   desc: '冬の旬の植物を5種コレクションする', xpReward: 350, type: 'collect_seasonal', target: 5 },
+  ],
+};
+
+// ─── Progress calculators ─────────────────────────────────────────────────
+export interface ChallengeSnap {
+  todayScanCount: number;
+  todayNewCount: number;
+  todayMaxRarity: number;
+  todayDangers: string[];
+  todayCategories: string[];
+  seasonalDiscoveredCount?: number;
+}
+
+/** 0..1 progress for a daily challenge given today's activity snapshot. */
+export function getChallengePct(challenge: Challenge, snap: ChallengeSnap): number {
   switch (challenge.type) {
-    case 'scan_count':
-      return Math.min(snap.todayScanCount / challenge.target, 1);
-    case 'discover_new':
-      return Math.min(snap.todayNewCount / challenge.target, 1);
-    case 'find_rarity_4':
-      return snap.todayMaxRarity >= 4 ? 1 : 0;
-    case 'find_rarity_5':
-      return snap.todayMaxRarity >= 5 ? 1 : 0;
-    case 'find_green':
-      return snap.todayDangers.includes('GREEN') ? 1 : 0;
-    case 'find_red':
-      return snap.todayDangers.includes('RED') ? 1 : 0;
-    case 'find_herb':
-      return snap.todayCategories.includes('スパイス・ハーブ') ? 1 : 0;
-    default:
-      return 0;
+    case 'scan_count':     return Math.min(snap.todayScanCount / challenge.target, 1);
+    case 'discover_new':   return Math.min(snap.todayNewCount / challenge.target, 1);
+    case 'find_rarity_4':  return snap.todayMaxRarity >= 4 ? 1 : 0;
+    case 'find_rarity_5':  return snap.todayMaxRarity >= 5 ? 1 : 0;
+    case 'find_green':     return snap.todayDangers.includes('GREEN') ? 1 : 0;
+    case 'find_red':       return snap.todayDangers.includes('RED') ? 1 : 0;
+    case 'find_herb':      return snap.todayCategories.includes('スパイス・ハーブ') ? 1 : 0;
+    case 'collect_seasonal':
+      return Math.min((snap.seasonalDiscoveredCount ?? 0) / challenge.target, 1);
+    default:               return 0;
   }
 }
