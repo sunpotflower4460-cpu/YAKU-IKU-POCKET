@@ -24,6 +24,7 @@ type FilterDanger = 'all' | DangerLevel;
 type FilterCategory = 'all' | PlantCategory;
 type FilterSeason = 'all' | 'current';
 type SortRarity = 'none' | 'desc' | 'asc';
+type FilterRarity = 'all' | '3up' | '4up' | '5only';
 
 export default function ZukanScreen() {
   const router = useRouter();
@@ -42,6 +43,7 @@ export default function ZukanScreen() {
 
   const [hintPlant, setHintPlant] = useState<Plant | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [statsOpen, setStatsOpen] = useState(false);
 
   const [search, setSearch] = useState('');
   const [filterDiscovered, setFilterDiscovered] =
@@ -50,6 +52,7 @@ export default function ZukanScreen() {
   const [filterCategory, setFilterCategory] = useState<FilterCategory>('all');
   const [filterSeason, setFilterSeason] = useState<FilterSeason>('all');
   const [sortRarity, setSortRarity] = useState<SortRarity>('none');
+  const [filterRarity, setFilterRarity] = useState<FilterRarity>('all');
 
   const activeFilterCount = [
     filterDiscovered !== 'all',
@@ -57,6 +60,7 @@ export default function ZukanScreen() {
     filterCategory !== 'all',
     filterSeason !== 'all',
     sortRarity !== 'none',
+    filterRarity !== 'all',
   ].filter(Boolean).length;
 
   function resetFilters() {
@@ -65,6 +69,7 @@ export default function ZukanScreen() {
     setFilterCategory('all');
     setFilterSeason('all');
     setSortRarity('none');
+    setFilterRarity('all');
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
   }
 
@@ -86,6 +91,9 @@ export default function ZukanScreen() {
         return false;
       if (filterSeason === 'current' && !isPlantInSeason(plant.season, currentSeason))
         return false;
+      if (filterRarity === '3up' && plant.rarity < 3) return false;
+      if (filterRarity === '4up' && plant.rarity < 4) return false;
+      if (filterRarity === '5only' && plant.rarity !== 5) return false;
 
       // Search applies only to discovered plants (undiscovered names are hidden)
       if (search && isDiscovered) {
@@ -108,9 +116,16 @@ export default function ZukanScreen() {
     }
 
     return result;
-  }, [discoveredPlantIds, favoritePlantIds, plantNotes, filterDiscovered, filterDanger, filterCategory, filterSeason, sortRarity, search, currentSeason]);
+  }, [discoveredPlantIds, favoritePlantIds, plantNotes, filterDiscovered, filterDanger, filterCategory, filterSeason, sortRarity, filterRarity, search, currentSeason]);
 
   const discoveredCount = discoveredPlantIds.length;
+
+  // Stats for dashboard
+  const statsGreen  = PLANTS.filter(p => p.danger === 'GREEN'  && discoveredPlantIds.includes(p.id)).length;
+  const statsYellow = PLANTS.filter(p => p.danger === 'YELLOW' && discoveredPlantIds.includes(p.id)).length;
+  const statsRed    = PLANTS.filter(p => p.danger === 'RED'    && discoveredPlantIds.includes(p.id)).length;
+  const statsWild   = PLANTS.filter(p => p.category === '野草' && discoveredPlantIds.includes(p.id)).length;
+  const statsHerb   = PLANTS.filter(p => p.category === 'スパイス・ハーブ' && discoveredPlantIds.includes(p.id)).length;
 
   return (
     <View style={styles.container}>
@@ -169,6 +184,36 @@ export default function ZukanScreen() {
             </Pressable>
           )}
         </View>
+      </View>
+
+      {/* Statistics Dashboard */}
+      <View style={styles.statsContainer}>
+        <Pressable
+          style={styles.statsToggleRow}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            setStatsOpen(v => !v);
+          }}
+        >
+          <Text style={styles.statsToggleText}>
+            {statsOpen ? '▲' : '▼'} 📊 コレクション統計
+          </Text>
+        </Pressable>
+        {statsOpen && (
+          <View style={styles.statsGrid}>
+            <StatMini label="食用可🟢" value={`${statsGreen}`} color={Colors.dangerGreen} />
+            <StatMini label="要注意🟡" value={`${statsYellow}`} color={Colors.dangerYellow} />
+            <StatMini label="危険🔴"   value={`${statsRed}`}    color={Colors.dangerRed} />
+            <StatMini label="野草"     value={`${statsWild}/25`} color={Colors.primary} />
+            <StatMini label="ハーブ"   value={`${statsHerb}/25`} color="#FF8F00" />
+            {([1,2,3,4,5] as const).map(r => {
+              const total = PLANTS.filter(p => p.rarity === r).length;
+              const found = PLANTS.filter(p => p.rarity === r && discoveredPlantIds.includes(p.id)).length;
+              const col = [Colors.rarity1,Colors.rarity2,Colors.rarity3,Colors.rarity4,Colors.rarity5][r-1];
+              return <StatMini key={r} label={`${'★'.repeat(r)}`} value={`${found}/${total}`} color={col} />;
+            })}
+          </View>
+        )}
       </View>
 
       {/* Filters */}
@@ -300,6 +345,25 @@ export default function ZukanScreen() {
             activeColor={Colors.rarity1}
           />
         </FilterRow>
+
+        <FilterRow label="レア度">
+          {(
+            [
+              ['all',    'すべて'],
+              ['3up',   '★3以上'],
+              ['4up',   '★4以上'],
+              ['5only', '★5のみ'],
+            ] as [FilterRarity, string][]
+          ).map(([val, label]) => (
+            <FilterChip
+              key={val}
+              label={label}
+              active={filterRarity === val}
+              onPress={() => setFilterRarity(val)}
+              activeColor={Colors.rarity5}
+            />
+          ))}
+        </FilterRow>
           </>
         )}
       </View>
@@ -409,6 +473,15 @@ export default function ZukanScreen() {
           </View>
         }
       />
+    </View>
+  );
+}
+
+function StatMini({ label, value, color }: { label: string; value: string; color: string }) {
+  return (
+    <View style={[styles.statMiniCard, { borderTopColor: color }]}>
+      <Text style={[styles.statMiniValue, { color }]}>{value}</Text>
+      <Text style={styles.statMiniLabel}>{label}</Text>
     </View>
   );
 }
@@ -604,6 +677,49 @@ const styles = StyleSheet.create({
   emptyEmoji: { fontSize: 48, marginBottom: 12 },
   emptyText: { fontSize: 14, color: Colors.textMuted, textAlign: 'center' },
   footerPad: { paddingTop: 16 },
+
+  // Stats dashboard
+  statsContainer: {
+    backgroundColor: Colors.bgCard,
+    paddingHorizontal: 16,
+    paddingTop: 6,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  statsToggleRow: {
+    paddingVertical: 6,
+  },
+  statsToggleText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.primaryDark,
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    paddingTop: 6,
+  },
+  statMiniCard: {
+    backgroundColor: Colors.bg,
+    borderRadius: 8,
+    borderTopWidth: 2,
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    alignItems: 'center',
+    minWidth: 52,
+  },
+  statMiniValue: {
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  statMiniLabel: {
+    fontSize: 9,
+    color: Colors.textMuted,
+    fontWeight: '600',
+    marginTop: 2,
+  },
 
   // ── Hint Modal ───────────────────────────────────────────────────────────
   hintOverlay: {

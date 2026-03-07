@@ -10,6 +10,7 @@ import {
   ScrollView,
   Image,
   Platform,
+  Share,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Plant } from '../types';
@@ -118,6 +119,24 @@ export function ScanResultModal({
   }, [visible, plant, isNewDiscovery]);
 
   if (!plant) return null;
+
+  async function handleShareDiscovery() {
+    const rarityStars = '★'.repeat(plant!.rarity) + '☆'.repeat(5 - plant!.rarity);
+    const dangerLabel =
+      plant!.danger === 'GREEN' ? '🟢 食用可' :
+      plant!.danger === 'YELLOW' ? '🟡 注意' : '🔴 危険';
+    const msg =
+      `🌿 新しい植物を発見！\n\n` +
+      `${plant!.emoji} ${plant!.name} (${plant!.nameEn})\n` +
+      `レアリティ: ${rarityStars}\n` +
+      `安全性: ${dangerLabel}\n` +
+      `AI認識精度: ${confidence}%\n\n` +
+      `薬育ポケットで野草・ハーブを収集中！\n` +
+      `#薬育ポケット #野草図鑑 #${plant!.name}`;
+    try {
+      await Share.share({ message: msg });
+    } catch { /* ignore */ }
+  }
 
   const isDangerous = plant.danger === 'RED';
   const isWarning = plant.danger === 'YELLOW';
@@ -312,16 +331,28 @@ export function ScanResultModal({
 
           {/* ── Actions ── */}
           <View style={styles.actions}>
-            <Pressable style={[styles.btn, styles.btnSecondary]} onPress={onScanAgain}>
-              <Text style={styles.btnSecondaryText}>もう一度スキャン</Text>
-            </Pressable>
-            <Pressable style={[styles.btn, styles.btnPrimary]} onPress={onAddToZukan}>
-              <Text style={styles.btnPrimaryText}>
-                📖 図鑑に登録{isNewDiscovery
-                  ? ` +${RARITY_XP[plant.rarity] ?? 100}XP`
-                  : ` +${XP_PER_RESCAN}XP`}
-              </Text>
-            </Pressable>
+            {/* 新発見時: シェアボタン（上段・全幅） */}
+            {isNewDiscovery && (
+              <Pressable
+                style={[styles.btn, styles.btnShare]}
+                onPress={handleShareDiscovery}
+              >
+                <Text style={styles.btnShareText}>🌿 発見をシェア</Text>
+              </Pressable>
+            )}
+            {/* 下段: もう一度 / 図鑑登録 */}
+            <View style={styles.actionRow}>
+              <Pressable style={[styles.btn, styles.btnSecondary]} onPress={onScanAgain}>
+                <Text style={styles.btnSecondaryText}>もう一度スキャン</Text>
+              </Pressable>
+              <Pressable style={[styles.btn, styles.btnPrimary]} onPress={onAddToZukan}>
+                <Text style={styles.btnPrimaryText}>
+                  📖 図鑑に登録{isNewDiscovery
+                    ? ` +${RARITY_XP[plant.rarity] ?? 100}XP`
+                    : ` +${XP_PER_RESCAN}XP`}
+                </Text>
+              </Pressable>
+            </View>
           </View>
         </Animated.View>
       </View>
@@ -629,11 +660,14 @@ const styles = StyleSheet.create({
 
   // ── Actions ──
   actions: {
-    flexDirection: 'row',
-    gap: 10,
+    gap: 8,
     padding: 14,
     borderTopWidth: 1,
     borderTopColor: Colors.border,
+  },
+  actionRow: {
+    flexDirection: 'row',
+    gap: 10,
   },
   btn: {
     flex: 1,
@@ -643,6 +677,12 @@ const styles = StyleSheet.create({
   },
   btnPrimary: { backgroundColor: Colors.primary },
   btnSecondary: { backgroundColor: Colors.primaryPale },
+  btnShare: {
+    backgroundColor: 'transparent',
+    borderWidth: 2,
+    borderColor: Colors.primaryLight,
+  },
   btnPrimaryText: { color: '#FFFFFF', fontWeight: '800', fontSize: 13 },
   btnSecondaryText: { color: Colors.primaryDark, fontWeight: '700', fontSize: 13 },
+  btnShareText: { color: Colors.primaryDark, fontWeight: '800', fontSize: 13 },
 });

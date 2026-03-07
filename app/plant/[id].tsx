@@ -14,18 +14,19 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { useLayoutEffect } from 'react';
-import { getPlantById } from '../../src/data/plants';
+import { getPlantById, PLANTS } from '../../src/data/plants';
 import { RarityStars } from '../../src/components/RarityStars';
 import { DangerBadge } from '../../src/components/DangerBadge';
 import { DisclaimerBanner } from '../../src/components/DisclaimerBanner';
 import { Colors } from '../../src/constants/colors';
 import { RARITY_XP, useGameStore } from '../../src/store/useGameStore';
+import { getCurrentSeason, isPlantInSeason } from '../../src/utils/season';
 
 export default function PlantDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const navigation = useNavigation();
   const router = useRouter();
-  const { scanHistory, favoritePlantIds, toggleFavorite, plantNotes, setPlantNote } = useGameStore();
+  const { scanHistory, favoritePlantIds, toggleFavorite, plantNotes, setPlantNote, discoveredPlantIds } = useGameStore();
 
   const plant = getPlantById(id ?? '');
   const isFavorite = favoritePlantIds.includes(id ?? '');
@@ -64,6 +65,28 @@ export default function PlantDetailScreen() {
   const plantImageUri = scanHistory.find(
     (r) => r.plantId === (id ?? '') && r.imageUri
   )?.imageUri;
+
+  // 初回発見日時・スキャン回数
+  const plantScans = scanHistory.filter((r) => r.plantId === (id ?? ''));
+  const scanCount = plantScans.length;
+  const firstScan = plantScans.length > 0
+    ? plantScans.reduce((a, b) => a.scannedAt < b.scannedAt ? a : b)
+    : null;
+  const firstScanLabel = firstScan
+    ? new Date(firstScan.scannedAt).toLocaleDateString('ja-JP', {
+        year: 'numeric', month: 'short', day: 'numeric',
+      })
+    : null;
+
+  // 関連植物（同カテゴリ & 現季節 & 発見済み & 自分以外）
+  const currentSeason = getCurrentSeason();
+  const relatedPlants = PLANTS.filter(
+    (p) =>
+      p.id !== (id ?? '') &&
+      p.category === plant?.category &&
+      isPlantInSeason(p.season, currentSeason) &&
+      discoveredPlantIds.includes(p.id)
+  ).slice(0, 6);
 
   useLayoutEffect(() => {
     if (plant) {
@@ -169,6 +192,20 @@ export default function PlantDetailScreen() {
         </LinearGradient>
       </View>
 
+      {/* Discovery info bar */}
+      {scanCount > 0 && (
+        <View style={styles.discoveryBar}>
+          {firstScanLabel && (
+            <View style={styles.discoveryChip}>
+              <Text style={styles.discoveryChipText}>🗓 初発見: {firstScanLabel}</Text>
+            </View>
+          )}
+          <View style={styles.discoveryChip}>
+            <Text style={styles.discoveryChipText}>📷 {scanCount}回スキャン済み</Text>
+          </View>
+        </View>
+      )}
+
       {/* Body */}
       <View style={styles.body}>
         {/* Description */}
@@ -269,6 +306,37 @@ export default function PlantDetailScreen() {
             </Pressable>
           </View>
         </View>
+
+        {/* 関連植物 */}
+        {relatedPlants.length > 0 && (
+          <View style={styles.relatedSection}>
+            <Text style={styles.sectionTitle}>
+              🌿 同じカテゴリの今季の発見
+            </Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              {relatedPlants.map((rp) => (
+                <Pressable
+                  key={rp.id}
+                  style={[
+                    styles.relatedCard,
+                    {
+                      borderTopColor:
+                        rp.danger === 'RED' ? '#EF9A9A' :
+                        rp.danger === 'YELLOW' ? '#FFD54F' : '#81C784',
+                    },
+                  ]}
+                  onPress={() => router.push(`/plant/${rp.id}`)}
+                >
+                  <Text style={styles.relatedEmoji}>{rp.emoji}</Text>
+                  <Text style={styles.relatedName} numberOfLines={1}>{rp.name}</Text>
+                  <Text style={styles.relatedDanger}>
+                    {rp.danger === 'GREEN' ? '🟢' : rp.danger === 'YELLOW' ? '🟡' : '🔴'}
+                  </Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          </View>
+        )}
 
         {/* Disclaimer */}
         <DisclaimerBanner />
@@ -582,4 +650,54 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#FFFFFF',
   },
+
+  // Discovery bar
+  discoveryBar: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: Colors.bgCard,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  discoveryChip: {
+    backgroundColor: Colors.primaryPale,
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  discoveryChipText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.primaryDark,
+  },
+
+  // Related plants
+  relatedSection: {
+    backgroundColor: Colors.bgCard,
+    borderRadius: 14,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  relatedCard: {
+    backgroundColor: Colors.bg,
+    borderRadius: 12,
+    paddingTop: 10,
+    paddingBottom: 8,
+    paddingHorizontal: 10,
+    marginRight: 10,
+    alignItems: 'center',
+    width: 80,
+    borderTopWidth: 3,
+  },
+  relatedEmoji: { fontSize: 26, marginBottom: 4 },
+  relatedName: { fontSize: 10, fontWeight: '700', color: Colors.text, textAlign: 'center' },
+  relatedDanger: { fontSize: 12, marginTop: 4 },
 });
