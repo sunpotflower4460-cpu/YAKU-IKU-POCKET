@@ -8,6 +8,7 @@ import {
   TextInput,
   Modal,
   Image,
+  Dimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -157,6 +158,36 @@ export default function ProfileScreen() {
     [scanHistory]
   );
 
+  // Calendar: max rarity scanned per day
+  const dayMaxRarity = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const record of scanHistory) {
+      const day = record.scannedAt.slice(0, 10);
+      const plant = PLANTS.find((p) => p.id === record.plantId);
+      const rarity = plant?.rarity ?? 1;
+      if (!map[day] || rarity > map[day]) {
+        map[day] = rarity;
+      }
+    }
+    return map;
+  }, [scanHistory]);
+
+  // Calendar: current month grid cells
+  const calendarData = useMemo(() => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth();
+    const todayStr = now.toISOString().slice(0, 10);
+    const firstDow = new Date(year, month, 1).getDay();
+    const startOffset = (firstDow + 6) % 7; // Mon-start
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const cells: (number | null)[] = [
+      ...Array(startOffset).fill(null),
+      ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
+    ];
+    return { cells, year, month, todayStr };
+  }, []);
+
   function handleSaveName() {
     if (tempName.trim().length > 0) {
       setPlayerName(tempName.trim());
@@ -231,6 +262,64 @@ export default function ProfileScreen() {
           <StatBox label="要注意" value={String(yellowCount)} unit="種" color={Colors.dangerYellow} />
           <StatBox label="危険植物" value={String(redCount)} unit="種" color={Colors.dangerRed} />
           <StatBox label="★5レア" value={String(rarity5Count)} unit="種" color={Colors.rarity5} />
+        </View>
+      </View>
+
+      {/* Scan Calendar */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>📅 スキャンカレンダー</Text>
+        <View style={styles.calendarCard}>
+          <Text style={styles.calendarMonth}>
+            {calendarData.year}年{calendarData.month + 1}月
+          </Text>
+          {/* Day of week header */}
+          <View style={styles.calendarDowRow}>
+            {['月', '火', '水', '木', '金', '土', '日'].map((d) => (
+              <Text key={d} style={styles.calendarDow}>{d}</Text>
+            ))}
+          </View>
+          {/* Calendar cells */}
+          <View style={styles.calendarGrid}>
+            {calendarData.cells.map((day, idx) => {
+              if (day === null) {
+                return <View key={`pad-${idx}`} style={styles.calendarCell} />;
+              }
+              const mm = String(calendarData.month + 1).padStart(2, '0');
+              const dd = String(day).padStart(2, '0');
+              const dateStr = `${calendarData.year}-${mm}-${dd}`;
+              const isToday = dateStr === calendarData.todayStr;
+              const maxRarity = dayMaxRarity[dateStr];
+              const rarityColors = [Colors.rarity1, Colors.rarity2, Colors.rarity3, Colors.rarity4, Colors.rarity5];
+              const fillColor = maxRarity ? rarityColors[maxRarity - 1] : undefined;
+              return (
+                <View
+                  key={dateStr}
+                  style={[
+                    styles.calendarCell,
+                    styles.calendarDayCell,
+                    fillColor ? { backgroundColor: fillColor } : styles.calendarDayCellEmpty,
+                    isToday && !fillColor && styles.calendarDayCellToday,
+                    isToday && fillColor ? { borderWidth: 2, borderColor: '#FFFFFF' } : undefined,
+                  ]}
+                >
+                  <Text style={[
+                    styles.calendarDayNum,
+                    fillColor ? styles.calendarDayNumFilled : styles.calendarDayNumEmpty,
+                    isToday && !fillColor && styles.calendarDayNumToday,
+                  ]}>
+                    {day}
+                  </Text>
+                </View>
+              );
+            })}
+          </View>
+          {/* Legend */}
+          <View style={styles.calendarLegend}>
+            <Text style={styles.calendarLegendLabel}>レアリティ: </Text>
+            {[Colors.rarity1, Colors.rarity2, Colors.rarity3, Colors.rarity4, Colors.rarity5].map((c, i) => (
+              <View key={i} style={[styles.calendarLegendDot, { backgroundColor: c }]} />
+            ))}
+          </View>
         </View>
       </View>
 
@@ -498,6 +587,89 @@ const styles = StyleSheet.create({
   statValue: { fontSize: 24, fontWeight: '900', lineHeight: 28 },
   statUnit: { fontSize: 11, color: Colors.textMuted, fontWeight: '600' },
   statLabel: { fontSize: 10, color: Colors.textSecondary, marginTop: 3, textAlign: 'center', fontWeight: '600' },
+
+  calendarCard: {
+    backgroundColor: Colors.bgCard,
+    borderRadius: 16,
+    padding: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.07,
+    shadowRadius: 5,
+    elevation: 3,
+  },
+  calendarMonth: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: Colors.text,
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  calendarDowRow: {
+    flexDirection: 'row',
+    marginBottom: 4,
+  },
+  calendarDow: {
+    flex: 1,
+    textAlign: 'center',
+    fontSize: 10,
+    fontWeight: '700',
+    color: Colors.textMuted,
+  },
+  calendarGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  calendarCell: {
+    width: `${100 / 7}%`,
+    aspectRatio: 1,
+    padding: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  calendarDayCell: {
+    borderRadius: 100,
+  },
+  calendarDayCellEmpty: {
+    backgroundColor: 'transparent',
+  },
+  calendarDayCellToday: {
+    borderWidth: 2,
+    borderColor: Colors.primaryDark,
+  },
+  calendarDayNum: {
+    fontSize: 11,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  calendarDayNumFilled: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+  },
+  calendarDayNumEmpty: {
+    color: Colors.textMuted,
+  },
+  calendarDayNumToday: {
+    color: Colors.primaryDark,
+    fontWeight: '900',
+  },
+  calendarLegend: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 10,
+    gap: 4,
+  },
+  calendarLegendLabel: {
+    fontSize: 10,
+    color: Colors.textMuted,
+    fontWeight: '600',
+  },
+  calendarLegendDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+  },
 
   achievementsGrid: {
     flexDirection: 'row',

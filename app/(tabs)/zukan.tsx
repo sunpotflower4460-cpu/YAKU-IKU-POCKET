@@ -9,7 +9,7 @@ import {
   Modal,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { PLANTS } from '../../src/data/plants';
 import { useGameStore } from '../../src/store/useGameStore';
 import { PlantCard } from '../../src/components/PlantCard';
@@ -28,6 +28,7 @@ type FilterRarity = 'all' | '3up' | '4up' | '5only';
 
 export default function ZukanScreen() {
   const router = useRouter();
+  const { filterEffect: initialFilterEffect } = useLocalSearchParams<{ filterEffect?: string }>();
   const { discoveredPlantIds, scanHistory, favoritePlantIds, toggleFavorite, plantNotes } = useGameStore();
 
   // plantId → 最新スキャンの imageUri マップ（scanHistory は新しい順）
@@ -53,6 +54,16 @@ export default function ZukanScreen() {
   const [filterSeason, setFilterSeason] = useState<FilterSeason>('all');
   const [sortRarity, setSortRarity] = useState<SortRarity>('none');
   const [filterRarity, setFilterRarity] = useState<FilterRarity>('all');
+  const [filterEffect, setFilterEffect] = useState<string | null>(
+    initialFilterEffect ? decodeURIComponent(initialFilterEffect) : null
+  );
+
+  // Sync filterEffect when URL param changes (e.g., navigating from plant detail)
+  React.useEffect(() => {
+    if (initialFilterEffect) {
+      setFilterEffect(decodeURIComponent(initialFilterEffect));
+    }
+  }, [initialFilterEffect]);
 
   const activeFilterCount = [
     filterDiscovered !== 'all',
@@ -61,6 +72,7 @@ export default function ZukanScreen() {
     filterSeason !== 'all',
     sortRarity !== 'none',
     filterRarity !== 'all',
+    filterEffect !== null,
   ].filter(Boolean).length;
 
   function resetFilters() {
@@ -70,6 +82,7 @@ export default function ZukanScreen() {
     setFilterSeason('all');
     setSortRarity('none');
     setFilterRarity('all');
+    setFilterEffect(null);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
   }
 
@@ -94,6 +107,7 @@ export default function ZukanScreen() {
       if (filterRarity === '3up' && plant.rarity < 3) return false;
       if (filterRarity === '4up' && plant.rarity < 4) return false;
       if (filterRarity === '5only' && plant.rarity !== 5) return false;
+      if (filterEffect && !plant.effects.includes(filterEffect)) return false;
 
       // Search applies only to discovered plants (undiscovered names are hidden)
       if (search && isDiscovered) {
@@ -116,7 +130,7 @@ export default function ZukanScreen() {
     }
 
     return result;
-  }, [discoveredPlantIds, favoritePlantIds, plantNotes, filterDiscovered, filterDanger, filterCategory, filterSeason, sortRarity, filterRarity, search, currentSeason]);
+  }, [discoveredPlantIds, favoritePlantIds, plantNotes, filterDiscovered, filterDanger, filterCategory, filterSeason, sortRarity, filterRarity, filterEffect, search, currentSeason]);
 
   const discoveredCount = discoveredPlantIds.length;
 
@@ -372,6 +386,25 @@ export default function ZukanScreen() {
       <Text style={styles.countText}>
         {filtered.length}種類を表示
       </Text>
+
+      {/* Active effect filter chip */}
+      {filterEffect && (
+        <View style={styles.activeEffectRow}>
+          <Text style={styles.activeEffectLabel}>💊 効果: </Text>
+          <View style={styles.activeEffectChip}>
+            <Text style={styles.activeEffectText}>{filterEffect}</Text>
+            <Pressable
+              onPress={() => {
+                setFilterEffect(null);
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              }}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Text style={styles.activeEffectClear}> ✕</Text>
+            </Pressable>
+          </View>
+        </View>
+      )}
 
       {/* Hint Modal — undiscovered plant clue */}
       <Modal
@@ -671,6 +704,37 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 10,
     paddingBottom: 4,
+  },
+  activeEffectRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingBottom: 6,
+  },
+  activeEffectLabel: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    fontWeight: '700',
+  },
+  activeEffectChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.primaryPale,
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderWidth: 1,
+    borderColor: Colors.primaryLight,
+  },
+  activeEffectText: {
+    fontSize: 12,
+    color: Colors.primaryDark,
+    fontWeight: '700',
+  },
+  activeEffectClear: {
+    fontSize: 12,
+    color: Colors.primaryDark,
+    fontWeight: '900',
   },
   grid: { paddingHorizontal: 12, paddingBottom: 16 },
   emptyContainer: { padding: 40, alignItems: 'center' },

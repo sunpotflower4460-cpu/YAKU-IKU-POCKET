@@ -43,6 +43,10 @@ interface GameState {
   todayCategories: string[];
   claimedChallengeIds: string[];
 
+  // Onboarding
+  hasOnboarded: boolean;
+  setHasOnboarded: () => void;
+
   // Milestone celebration (persisted so dismissed banners don't reappear)
   lastCelebrated: number;
 
@@ -97,6 +101,7 @@ export const useGameStore = create<GameState>()(
       plantNotes: {},
       claimedSeasonalQuestIds: [],
       seasonalQuestMonth: '',
+      hasOnboarded: false,
 
       // ── Session start: call once on app mount ────────────────────────────
       startSession: () => {
@@ -182,6 +187,7 @@ export const useGameStore = create<GameState>()(
         }));
       },
 
+      setHasOnboarded: () => set({ hasOnboarded: true }),
       setPlayerName: (name: string) => set({ playerName: name }),
       setLastCelebrated: (count: number) => set({ lastCelebrated: count }),
 

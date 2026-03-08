@@ -218,9 +218,20 @@ export default function PlantDetailScreen() {
           <Section title="💊 養生効果・期待される作用">
             <View style={styles.effectTags}>
               {plant.effects.map((effect) => (
-                <View key={effect} style={styles.effectTag}>
+                <Pressable
+                  key={effect}
+                  style={({ pressed }) => [
+                    styles.effectTag,
+                    pressed && styles.effectTagPressed,
+                  ]}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    router.push(`/(tabs)/zukan?filterEffect=${encodeURIComponent(effect)}`);
+                  }}
+                >
                   <Text style={styles.effectText}>{effect}</Text>
-                </View>
+                  <Text style={styles.effectTagArrow}>›</Text>
+                </Pressable>
               ))}
             </View>
           </Section>
@@ -521,7 +532,13 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: Colors.primaryLight,
   },
+  effectTagPressed: { opacity: 0.7 },
+  effectTagArrow: { fontSize: 13, color: Colors.primaryDark, marginLeft: 2, fontWeight: '700' },
   effectText: { fontSize: 13, color: Colors.primaryDark, fontWeight: '700' },
 
   infoRow: {

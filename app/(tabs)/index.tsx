@@ -14,6 +14,7 @@ import * as Haptics from 'expo-haptics';
 import { useGameStore, XP_PER_LEVEL } from '../../src/store/useGameStore';
 import { PLANTS, TOTAL_PLANTS } from '../../src/data/plants';
 import { DisclaimerBanner } from '../../src/components/DisclaimerBanner';
+import { OnboardingModal } from '../../src/components/OnboardingModal';
 import { Colors } from '../../src/constants/colors';
 import { getCurrentSeason, SEASON_CONFIG, getSeasonalPlants } from '../../src/utils/season';
 import {
@@ -40,6 +41,7 @@ export default function HomeScreen() {
     claimedChallengeIds, claimChallenge,
     claimedSeasonalQuestIds, claimSeasonalChallenge,
     lastCelebrated, setLastCelebrated,
+    hasOnboarded, setHasOnboarded,
   } = useGameStore();
 
   const level = getLevel();
@@ -411,6 +413,8 @@ export default function HomeScreen() {
       <DisclaimerBanner />
       <View style={styles.bottomPad} />
     </ScrollView>
+
+    <OnboardingModal visible={!hasOnboarded} onComplete={setHasOnboarded} />
   );
 }
 
