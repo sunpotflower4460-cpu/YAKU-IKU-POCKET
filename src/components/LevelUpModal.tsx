@@ -77,8 +77,8 @@ export function LevelUpModal({ visible, level, title, onClose }: Props) {
         }),
       ]).start();
 
-      // Auto-dismiss after 3.5 s
-      const timer = setTimeout(onClose, 3500);
+      // Auto-dismiss after 4.5 s
+      const timer = setTimeout(onClose, 4500);
       return () => clearTimeout(timer);
     }
   }, [visible]);

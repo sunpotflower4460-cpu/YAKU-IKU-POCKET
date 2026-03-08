@@ -91,7 +91,8 @@ export function ShareCard(props: ShareCardProps) {
     const msg = buildShareText({ ...rest, unlockedAchievements });
     try {
       await Share.share({ message: msg });
-    } catch {
+    } catch (e) {
+      console.error('Share failed:', e);
       Alert.alert('シェアできませんでした');
     }
   }
@@ -284,7 +285,7 @@ const styles = StyleSheet.create({
   },
   cardStat: { alignItems: 'center' },
   cardStatValue: { fontSize: 20, fontWeight: '900', color: '#FFFFFF' },
-  cardStatLabel: { fontSize: 10, color: '#A5D6A7', marginTop: 2, fontWeight: '600' },
+  cardStatLabel: { fontSize: 12, color: '#A5D6A7', marginTop: 2, fontWeight: '600' },
   cardStatDivider: {
     width: 1,
     height: 32,
@@ -355,14 +356,14 @@ const styles = StyleSheet.create({
   },
   cardAchieveIcon: { fontSize: 14 },
   cardAchieveLabel: {
-    fontSize: 10,
+    fontSize: 12,
     color: '#E8F5E9',
     fontWeight: '700',
     maxWidth: 80,
   },
 
   cardHashtags: {
-    fontSize: 10,
+    fontSize: 12,
     color: 'rgba(255,255,255,0.6)',
     textAlign: 'center',
     fontWeight: '600',

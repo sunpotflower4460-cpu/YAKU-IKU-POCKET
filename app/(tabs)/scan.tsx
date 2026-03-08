@@ -7,6 +7,7 @@ import {
   Pressable,
   Easing,
   Alert,
+  Dimensions,
 } from 'react-native';
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import { Ionicons } from '@expo/vector-icons';
@@ -298,7 +299,12 @@ export default function ScanScreen() {
         {scanState === 'idle' && (
           <>
             <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-              <Pressable style={styles.scanBtn} onPress={handleScan}>
+              <Pressable
+                style={styles.scanBtn}
+                onPress={handleScan}
+                accessibilityLabel="植物をスキャン"
+                accessibilityRole="button"
+              >
                 <View style={styles.scanBtnInner}>
                   <Text style={styles.scanBtnIcon}>🔍</Text>
                 </View>
@@ -362,7 +368,7 @@ export default function ScanScreen() {
   );
 }
 
-const VIEWFINDER_SIZE = 240;
+const VIEWFINDER_SIZE = Math.min(Dimensions.get('window').width * 0.65, 280);
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0D1117' },

@@ -8,8 +8,6 @@ import { useGameStore, XP_PER_LEVEL } from '../../src/store/useGameStore';
 import { LevelUpModal } from '../../src/components/LevelUpModal';
 import { getPlayerTitle } from '../../src/utils/playerTitle';
 
-type IoniconsName = React.ComponentProps<typeof Ionicons>['name'];
-
 export default function TabLayout() {
   const startSession = useGameStore((s) => s.startSession);
   const xp = useGameStore((s) => s.xp);
@@ -48,9 +46,9 @@ export default function TabLayout() {
           tabBarActiveTintColor: Colors.tabActive,
           tabBarInactiveTintColor: Colors.tabInactive,
           tabBarStyle: {
-            backgroundColor: '#FFFFFF',
+            backgroundColor: Colors.tabBar,
             borderTopWidth: 0,
-            shadowColor: '#000',
+            shadowColor: Colors.shadow,
             shadowOffset: { width: 0, height: -3 },
             shadowOpacity: 0.08,
             shadowRadius: 10,
@@ -60,7 +58,7 @@ export default function TabLayout() {
             paddingTop: 6,
           },
           tabBarLabelStyle: {
-            fontSize: 10,
+            fontSize: 12,
             fontWeight: '700',
           },
           headerStyle: { backgroundColor: Colors.primaryDark },

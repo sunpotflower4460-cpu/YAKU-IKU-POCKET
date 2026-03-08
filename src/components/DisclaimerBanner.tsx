@@ -67,14 +67,14 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#FDE68A',
     paddingHorizontal: 16,
-    paddingVertical: 9,
+    paddingVertical: 12,
   },
   compactIcon: {
     fontSize: 13,
   },
   compactText: {
     flex: 1,
-    fontSize: 10,
+    fontSize: 12,
     color: '#92400E',
     lineHeight: 15,
   },
