@@ -34,9 +34,10 @@ export default function PlantDetailScreen() {
   const [noteText, setNoteText] = useState(savedNote);
   const [noteSaved, setNoteSaved] = useState(false);
 
-  // savedNote が外から変わった場合（例: 別画面でリセット）に同期
+  // savedNote が外から変わった場合（例: 別画面でリセット）に同期し、noteSaved もリセット
   useEffect(() => {
     setNoteText(savedNote);
+    setNoteSaved(false);
   }, [savedNote]);
 
   function handleSaveNote() {
@@ -78,15 +79,17 @@ export default function PlantDetailScreen() {
       })
     : null;
 
-  // 関連植物（同カテゴリ & 現季節 & 発見済み & 自分以外）
+  // 関連植物（同カテゴリ & 現季節 & 発見済み & 自分以外）— plant が undefined の場合は空配列
   const currentSeason = getCurrentSeason();
-  const relatedPlants = PLANTS.filter(
-    (p) =>
-      p.id !== (id ?? '') &&
-      p.category === plant?.category &&
-      isPlantInSeason(p.season, currentSeason) &&
-      discoveredPlantIds.includes(p.id)
-  ).slice(0, 6);
+  const relatedPlants = plant
+    ? PLANTS.filter(
+        (p) =>
+          p.id !== plant.id &&
+          p.category === plant.category &&
+          isPlantInSeason(p.season, currentSeason) &&
+          discoveredPlantIds.includes(p.id)
+      ).slice(0, 6)
+    : [];
 
   useLayoutEffect(() => {
     if (plant) {

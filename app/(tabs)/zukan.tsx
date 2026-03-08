@@ -593,7 +593,7 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   rarityStar: {
-    fontSize: 7,
+    fontSize: 11,
     fontWeight: '900',
     letterSpacing: -1,
   },
@@ -609,8 +609,8 @@ const styles = StyleSheet.create({
     borderRadius: 2,
   },
   rarityCount: {
-    fontSize: 9,
-    color: 'rgba(255,255,255,0.75)',
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.85)',
     fontWeight: '700',
   },
   searchBox: {
@@ -688,14 +688,14 @@ const styles = StyleSheet.create({
   },
   filterChips: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
   chip: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: Colors.border,
     backgroundColor: Colors.bg,
   },
-  chipText: { fontSize: 11, color: Colors.textSecondary, fontWeight: '600' },
+  chipText: { fontSize: 12, color: Colors.textSecondary, fontWeight: '600' },
   chipTextActive: { color: '#FFFFFF' },
 
   countText: {
@@ -766,8 +766,8 @@ const styles = StyleSheet.create({
     paddingTop: 6,
   },
   statMiniCard: {
-    backgroundColor: Colors.bg,
-    borderRadius: 8,
+    backgroundColor: Colors.bgCard,
+    borderRadius: 10,
     borderTopWidth: 2,
     paddingVertical: 6,
     paddingHorizontal: 8,
@@ -775,11 +775,11 @@ const styles = StyleSheet.create({
     minWidth: 52,
   },
   statMiniValue: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '900',
   },
   statMiniLabel: {
-    fontSize: 9,
+    fontSize: 11,
     color: Colors.textMuted,
     fontWeight: '600',
     marginTop: 2,

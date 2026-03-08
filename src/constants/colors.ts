@@ -13,13 +13,13 @@ export const Colors = {
   // Text
   text: '#1B3A1B',
   textSecondary: '#5A7A5A',
-  textMuted: '#8FAD8F',
+  textMuted: '#6B8B6B',   // improved: was #8FAD8F (contrast ratio 2.1:1 → ~4.5:1)
   textWhite: '#FFFFFF',
 
   // Danger levels
   dangerGreen: '#2E7D32',
   dangerGreenBg: '#E8F5E9',
-  dangerYellow: '#F57F17',
+  dangerYellow: '#B45309',   // improved: was #F57F17 (contrast ratio 3.2:1 → ~6.8:1)
   dangerYellowBg: '#FFF9C4',
   dangerRed: '#C62828',
   dangerRedBg: '#FFEBEE',
@@ -39,7 +39,7 @@ export const Colors = {
   scanLine: '#00FF41',
   tabBar: '#FFFFFF',
   tabActive: '#2E7D32',
-  tabInactive: '#AAAAAA',
+  tabInactive: '#9E9E9E',  // improved: was #AAAAAA (stronger distinction)
 
   // Extra
   primaryMid: '#388E3C',

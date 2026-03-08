@@ -16,12 +16,14 @@ const RARITY_COLORS: Record<Rarity, string> = {
   5: Colors.rarity5,
 };
 
-const FONT_SIZES = { sm: 10, md: 14, lg: 20 };
+// sm: minimum 12px for legibility on card grids, md: 16px, lg: 22px
+const FONT_SIZES = { sm: 12, md: 16, lg: 22 };
 
 export function RarityStars({ rarity, size = 'md' }: Props) {
-  const color = RARITY_COLORS[rarity];
+  const safeRarity = Math.max(1, Math.min(5, rarity)) as Rarity;
+  const color = RARITY_COLORS[safeRarity];
   const fontSize = FONT_SIZES[size];
-  const stars = '★'.repeat(rarity) + '☆'.repeat(5 - rarity);
+  const stars = '★'.repeat(safeRarity) + '☆'.repeat(5 - safeRarity);
 
   return (
     <View style={styles.container}>

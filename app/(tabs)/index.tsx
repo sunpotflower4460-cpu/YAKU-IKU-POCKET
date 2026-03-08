@@ -46,7 +46,7 @@ export default function HomeScreen() {
 
   const level = getLevel();
   const xpCurrent = getXpForCurrentLevel();
-  const xpProgress = xpCurrent / XP_PER_LEVEL;
+  const xpProgress = Math.min(xpCurrent / XP_PER_LEVEL, 1); // cap at 1.0 to prevent overflow
 
   // Milestone detection
   const discoveredCount = discoveredPlantIds.length;
@@ -585,9 +585,9 @@ const styles = StyleSheet.create({
   xpSection: { flex: 1 },
   xpText: { fontSize: 11, color: '#C8E6C9', marginBottom: 4 },
   xpBar: {
-    height: 10,
+    height: 13,
     backgroundColor: 'rgba(255,255,255,0.2)',
-    borderRadius: 5,
+    borderRadius: 7,
     overflow: 'hidden',
   },
   xpFill: { height: '100%', backgroundColor: '#FFEB3B', borderRadius: 5 },
@@ -614,7 +614,7 @@ const styles = StyleSheet.create({
   },
   statIcon: { fontSize: 22, marginBottom: 6 },
   statValue: { fontSize: 22, fontWeight: '900', lineHeight: 26 },
-  statLabel: { fontSize: 10, color: Colors.textMuted, marginTop: 3, fontWeight: '600' },
+  statLabel: { fontSize: 11, color: Colors.textMuted, marginTop: 3, fontWeight: '600' },
 
   actionRow: {
     flexDirection: 'row',
@@ -653,12 +653,12 @@ const styles = StyleSheet.create({
   // Spotlight cards
   spotlightCard: {
     borderRadius: 16,
-    paddingTop: 10,
-    paddingBottom: 12,
-    paddingHorizontal: 10,
+    paddingTop: 12,
+    paddingBottom: 14,
+    paddingHorizontal: 12,
     marginRight: 10,
     alignItems: 'center',
-    width: 100,
+    width: 116,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
@@ -674,20 +674,20 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
     borderColor: '#BDBDBD',
   },
-  spotlightStars: { fontSize: 8, color: '#FFC107', marginBottom: 4, letterSpacing: 1 },
-  spotlightEmoji: { fontSize: 32, marginBottom: 5 },
+  spotlightStars: { fontSize: 12, color: '#FFC107', marginBottom: 4, letterSpacing: 1 },
+  spotlightEmoji: { fontSize: 34, marginBottom: 6 },
   spotlightEmojiUnfound: { opacity: 0.4 },
-  spotlightName: { fontSize: 11, fontWeight: '700', color: Colors.text, textAlign: 'center', marginBottom: 5 },
+  spotlightName: { fontSize: 12, fontWeight: '700', color: Colors.text, textAlign: 'center', marginBottom: 6 },
   spotlightNameUnfound: { color: '#9E9E9E' },
-  spotlightDangerBadge: { borderRadius: 6, paddingHorizontal: 5, paddingVertical: 2 },
-  spotlightDangerText: { fontSize: 9, fontWeight: '700' },
+  spotlightDangerBadge: { borderRadius: 8, paddingHorizontal: 6, paddingVertical: 3 },
+  spotlightDangerText: { fontSize: 11, fontWeight: '700' },
   spotlightUnfoundBadge: {
-    borderRadius: 6,
-    paddingHorizontal: 6,
+    borderRadius: 8,
+    paddingHorizontal: 7,
     paddingVertical: 2,
     backgroundColor: '#EEEEEE',
   },
-  spotlightUnfoundText: { fontSize: 9, fontWeight: '700', color: '#9E9E9E' },
+  spotlightUnfoundText: { fontSize: 11, fontWeight: '700', color: '#9E9E9E' },
 
   recentCard: {
     backgroundColor: Colors.bgCard,
