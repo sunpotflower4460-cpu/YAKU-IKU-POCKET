@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -54,16 +54,16 @@ export default function ZukanScreen() {
   const [filterSeason, setFilterSeason] = useState<FilterSeason>('all');
   const [sortRarity, setSortRarity] = useState<SortRarity>('none');
   const [filterRarity, setFilterRarity] = useState<FilterRarity>('all');
-  const [filterEffect, setFilterEffect] = useState<string | null>(
-    initialFilterEffect ? decodeURIComponent(initialFilterEffect) : null
-  );
+  const decodedInitialEffect = initialFilterEffect ? decodeURIComponent(initialFilterEffect) : null;
+  const [filterEffect, setFilterEffect] = useState<string | null>(decodedInitialEffect);
+  // Track which URL param value the user has already seen, so we only apply new ones
+  const appliedEffectParam = useRef<string | undefined>(initialFilterEffect);
 
-  // Sync filterEffect when URL param changes (e.g., navigating from plant detail)
-  React.useEffect(() => {
-    if (initialFilterEffect) {
-      setFilterEffect(decodeURIComponent(initialFilterEffect));
-    }
-  }, [initialFilterEffect]);
+  // Apply effect filter when URL param changes to a new value (e.g., deep-link from plant detail)
+  if (initialFilterEffect && initialFilterEffect !== appliedEffectParam.current) {
+    appliedEffectParam.current = initialFilterEffect;
+    setFilterEffect(decodeURIComponent(initialFilterEffect));
+  }
 
   const activeFilterCount = [
     filterDiscovered !== 'all',

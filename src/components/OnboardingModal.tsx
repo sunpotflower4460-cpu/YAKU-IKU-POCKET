@@ -42,7 +42,6 @@ const SLIDES = [
     subEmoji: null,
     title: '必ず専門家に確認を',
     body: 'このアプリの情報は参考目的のみです。野草の採取・摂取は必ず専門家にご確認ください。',
-    gradient: ['#E65100', '#F57F17', '#FFB300'] as [string, string, string],
     label: '安全について',
     isSafety: true,
   },
@@ -128,7 +127,7 @@ export function OnboardingModal({ visible, onComplete }: Props) {
                       <Text style={styles.safetyEmoji}>{slide.emoji}</Text>
                     </View>
                   ) : (
-                    <LinearGradient colors={slide.gradient} style={styles.slideHeader}>
+                    <LinearGradient colors={slide.gradient!} style={styles.slideHeader}>
                       <View style={styles.emojiCircle}>
                         <Text style={styles.slideEmoji}>{slide.emoji}</Text>
                         {slide.subEmoji && (

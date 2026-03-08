@@ -8,7 +8,6 @@ import {
   TextInput,
   Modal,
   Image,
-  Dimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -21,6 +20,20 @@ import { Colors } from '../../src/constants/colors';
 import { getPlayerTitle } from '../../src/utils/playerTitle';
 import { XP_PER_LEVEL } from '../../src/store/useGameStore';
 import { getCurrentSeason, SEASON_CONFIG } from '../../src/utils/season';
+
+// Prebuilt plantId → rarity lookup (O(1) access, static data)
+const PLANT_RARITY: Record<string, number> = Object.fromEntries(
+  PLANTS.map((p) => [p.id, p.rarity])
+);
+
+// Rarity index → color mapping (module-level to avoid per-render allocation)
+const RARITY_COLORS = [
+  Colors.rarity1,
+  Colors.rarity2,
+  Colors.rarity3,
+  Colors.rarity4,
+  Colors.rarity5,
+];
 
 interface AchievementDef {
   id: string;
@@ -158,13 +171,12 @@ export default function ProfileScreen() {
     [scanHistory]
   );
 
-  // Calendar: max rarity scanned per day
+  // Calendar: max rarity scanned per day (O(1) plant lookup via PLANT_RARITY map)
   const dayMaxRarity = useMemo(() => {
     const map: Record<string, number> = {};
     for (const record of scanHistory) {
       const day = record.scannedAt.slice(0, 10);
-      const plant = PLANTS.find((p) => p.id === record.plantId);
-      const rarity = plant?.rarity ?? 1;
+      const rarity = PLANT_RARITY[record.plantId] ?? 1;
       if (!map[day] || rarity > map[day]) {
         map[day] = rarity;
       }
@@ -172,7 +184,7 @@ export default function ProfileScreen() {
     return map;
   }, [scanHistory]);
 
-  // Calendar: current month grid cells
+  // Calendar: current month grid cells (mm precomputed once)
   const calendarData = useMemo(() => {
     const now = new Date();
     const year = now.getFullYear();
@@ -181,11 +193,12 @@ export default function ProfileScreen() {
     const firstDow = new Date(year, month, 1).getDay();
     const startOffset = (firstDow + 6) % 7; // Mon-start
     const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const mm = String(month + 1).padStart(2, '0');
     const cells: (number | null)[] = [
       ...Array(startOffset).fill(null),
       ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
     ];
-    return { cells, year, month, todayStr };
+    return { cells, year, month, mm, todayStr };
   }, []);
 
   function handleSaveName() {
@@ -284,13 +297,11 @@ export default function ProfileScreen() {
               if (day === null) {
                 return <View key={`pad-${idx}`} style={styles.calendarCell} />;
               }
-              const mm = String(calendarData.month + 1).padStart(2, '0');
               const dd = String(day).padStart(2, '0');
-              const dateStr = `${calendarData.year}-${mm}-${dd}`;
+              const dateStr = `${calendarData.year}-${calendarData.mm}-${dd}`;
               const isToday = dateStr === calendarData.todayStr;
               const maxRarity = dayMaxRarity[dateStr];
-              const rarityColors = [Colors.rarity1, Colors.rarity2, Colors.rarity3, Colors.rarity4, Colors.rarity5];
-              const fillColor = maxRarity ? rarityColors[maxRarity - 1] : undefined;
+              const fillColor = maxRarity ? RARITY_COLORS[maxRarity - 1] : undefined;
               return (
                 <View
                   key={dateStr}
@@ -316,7 +327,7 @@ export default function ProfileScreen() {
           {/* Legend */}
           <View style={styles.calendarLegend}>
             <Text style={styles.calendarLegendLabel}>レアリティ: </Text>
-            {[Colors.rarity1, Colors.rarity2, Colors.rarity3, Colors.rarity4, Colors.rarity5].map((c, i) => (
+            {RARITY_COLORS.map((c, i) => (
               <View key={i} style={[styles.calendarLegendDot, { backgroundColor: c }]} />
             ))}
           </View>
