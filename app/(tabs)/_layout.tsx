@@ -111,6 +111,15 @@ export default function TabLayout() {
           }}
         />
         <Tabs.Screen
+          name="health"
+          options={{
+            title: '養生',
+            tabBarIcon: ({ color, focused, size }) => (
+              <Ionicons name={focused ? 'leaf' : 'leaf-outline'} size={size} color={color} />
+            ),
+          }}
+        />
+        <Tabs.Screen
           name="profile"
           options={{
             title: 'マイページ',

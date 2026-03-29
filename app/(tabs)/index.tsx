@@ -177,6 +177,43 @@ export default function HomeScreen() {
         </View>
       </View>
 
+      {/* ── クイックアクセス（瞑想・AI相談） ── */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>🌿 今日の養生</Text>
+        <View style={styles.quickRow}>
+          <Pressable
+            style={styles.quickCard}
+            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push('/meditation' as never); }}
+          >
+            <LinearGradient colors={['#6A1B9A', '#4A148C']} style={styles.quickGrad}>
+              <Text style={styles.quickEmoji}>🧘</Text>
+              <Text style={styles.quickLabel}>瞑想</Text>
+              <Text style={styles.quickSub}>心を整える</Text>
+            </LinearGradient>
+          </Pressable>
+          <Pressable
+            style={styles.quickCard}
+            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push('/ai-chat' as never); }}
+          >
+            <LinearGradient colors={[Colors.primaryDark, '#1B5E20']} style={styles.quickGrad}>
+              <Text style={styles.quickEmoji}>🤖</Text>
+              <Text style={styles.quickLabel}>AI相談</Text>
+              <Text style={styles.quickSub}>養生アドバイス</Text>
+            </LinearGradient>
+          </Pressable>
+          <Pressable
+            style={styles.quickCard}
+            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push('/quiz' as never); }}
+          >
+            <LinearGradient colors={['#F57F17', '#E65100']} style={styles.quickGrad}>
+              <Text style={styles.quickEmoji}>🎯</Text>
+              <Text style={styles.quickLabel}>クイズ</Text>
+              <Text style={styles.quickSub}>知識を試す</Text>
+            </LinearGradient>
+          </Pressable>
+        </View>
+      </View>
+
       {/* ── 今月の注目植物スライダー ── */}
       {spotlightPlants.length > 0 && (
         <View style={styles.section}>
@@ -812,5 +849,36 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: Colors.textSecondary,
     marginTop: 2,
+  },
+  quickRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  quickCard: {
+    flex: 1,
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: Colors.shadow,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.18,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  quickGrad: {
+    paddingVertical: 16,
+    alignItems: 'center',
+    gap: 4,
+  },
+  quickEmoji: {
+    fontSize: 26,
+  },
+  quickLabel: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: Colors.textWhite,
+  },
+  quickSub: {
+    fontSize: 10,
+    color: 'rgba(255,255,255,0.8)',
   },
 });

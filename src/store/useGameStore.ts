@@ -60,6 +60,10 @@ interface GameState {
   claimedSeasonalQuestIds: string[];
   seasonalQuestMonth: string; // YYYY-MM
 
+  // Phase 2: Health & wellness stats
+  meditationSessions: number;
+  quizHighScore: number;
+
   // Actions
   startSession: () => void;
   discoverPlant: (plantId: string) => void;
@@ -70,6 +74,8 @@ interface GameState {
   setLastCelebrated: (count: number) => void;
   toggleFavorite: (plantId: string) => void;
   setPlantNote: (plantId: string, note: string) => void;
+  addMeditationSession: () => void;
+  updateQuizHighScore: (score: number) => void;
 
   // Computed helpers
   getLevel: () => number;
@@ -102,6 +108,8 @@ export const useGameStore = create<GameState>()(
       claimedSeasonalQuestIds: [],
       seasonalQuestMonth: '',
       hasOnboarded: false,
+      meditationSessions: 0,
+      quizHighScore: 0,
 
       // ── Session start: call once on app mount ────────────────────────────
       startSession: () => {
@@ -222,6 +230,16 @@ export const useGameStore = create<GameState>()(
         set((state) => ({
           claimedSeasonalQuestIds: [...state.claimedSeasonalQuestIds, challengeId],
           xp: state.xp + xpReward,
+        }));
+      },
+
+      addMeditationSession: () => {
+        set((state) => ({ meditationSessions: state.meditationSessions + 1 }));
+      },
+
+      updateQuizHighScore: (score: number) => {
+        set((state) => ({
+          quizHighScore: Math.max(state.quizHighScore, score),
         }));
       },
 
