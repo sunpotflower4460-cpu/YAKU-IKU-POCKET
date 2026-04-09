@@ -37,7 +37,7 @@ interface ShareCardProps {
   streak: number;
   unlockedAchievements: Achievement[];
   season: string;
-  seasonEmoji: string;
+  seasonIcon: string;
 }
 
 /** Build the ASCII-art style text card that gets shared. */
@@ -82,7 +82,7 @@ export function ShareCard(props: ShareCardProps) {
   const {
     playerName, title, level, xp,
     discoveredCount, totalCount, streak,
-    season, seasonEmoji,
+    season,
   } = rest;
 
   const pct = totalCount > 0 ? discoveredCount / totalCount : 0;

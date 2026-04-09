@@ -421,7 +421,7 @@ export default function ProfileScreen() {
         streak={streak}
         unlockedAchievements={unlockedAchievements}
         season={season}
-        seasonEmoji={seasonCfg.icon}
+        seasonIcon={seasonCfg.icon}
       />
 
       {/* Edit Name Modal */}
