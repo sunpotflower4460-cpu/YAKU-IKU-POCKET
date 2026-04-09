@@ -111,6 +111,7 @@ export default function HomeScreen() {
   });
 
   return (
+    <>
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       {/* Hero Header */}
       <LinearGradient
@@ -415,6 +416,7 @@ export default function HomeScreen() {
     </ScrollView>
 
     <OnboardingModal visible={!hasOnboarded} onComplete={setHasOnboarded} />
+    </>
   );
 }
 
