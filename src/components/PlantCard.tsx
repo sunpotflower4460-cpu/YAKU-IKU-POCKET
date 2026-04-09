@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { View, Text, StyleSheet, Pressable, Animated, Image } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { Plant } from '../types';
 import { Colors } from '../constants/colors';
@@ -142,7 +143,7 @@ export function PlantCard({ plant, discovered, imageUri, isFavorite, hasNote, on
         {/* Note indicator */}
         {discovered && hasNote && (
           <View style={styles.noteBadge}>
-            <Text style={styles.noteBadgeText}>✏️</Text>
+            <Ionicons name="create-outline" size={11} color={Colors.primaryDark} />
           </View>
         )}
 
@@ -157,7 +158,11 @@ export function PlantCard({ plant, discovered, imageUri, isFavorite, hasNote, on
             }}
             hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
           >
-            <Text style={styles.heartIcon}>{isFavorite ? '❤️' : '🤍'}</Text>
+            <Ionicons
+              name={isFavorite ? 'heart' : 'heart-outline'}
+              size={14}
+              color={isFavorite ? '#E53935' : '#BDBDBD'}
+            />
           </Pressable>
         )}
       </Pressable>
@@ -260,16 +265,10 @@ const styles = StyleSheet.create({
     bottom: 6,
     right: 5,
   },
-  heartIcon: {
-    fontSize: 13,
-  },
   noteBadge: {
     position: 'absolute',
     top: 8,
     left: 6,
-  },
-  noteBadgeText: {
-    fontSize: 11,
   },
   hintChip: {
     backgroundColor: Colors.primaryPale,

@@ -11,6 +11,7 @@ import {
   Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { useLayoutEffect } from 'react';
@@ -133,15 +134,17 @@ export default function PlantDetailScreen() {
           {/* Danger alert banner */}
           {plant.danger === 'RED' && (
             <View style={styles.alertBanner}>
+              <Ionicons name="skull-outline" size={14} color="#FF8A80" />
               <Text style={styles.alertBannerText}>
-                ☠️ 危険 — この植物は絶対に採取・摂取しないでください
+                危険 — この植物は絶対に採取・摂取しないでください
               </Text>
             </View>
           )}
           {plant.danger === 'YELLOW' && (
             <View style={styles.warningBanner}>
+              <Ionicons name="warning-outline" size={13} color="#FFE082" />
               <Text style={styles.warningBannerText}>
-                ⚠️ 注意が必要な植物です
+                注意が必要な植物です
               </Text>
             </View>
           )}
@@ -175,7 +178,8 @@ export default function PlantDetailScreen() {
           {/* 撮影写真バッジ */}
           {plantImageUri && (
             <View style={styles.photoIndicator}>
-              <Text style={styles.photoIndicatorText}>📷 あなたの撮影写真</Text>
+              <Ionicons name="camera-outline" size={12} color="rgba(255,255,255,0.85)" />
+              <Text style={styles.photoIndicatorText}>あなたの撮影写真</Text>
             </View>
           )}
 
@@ -187,7 +191,11 @@ export default function PlantDetailScreen() {
               toggleFavorite(id ?? '');
             }}
           >
-            <Text style={styles.favoriteBtnIcon}>{isFavorite ? '❤️' : '🤍'}</Text>
+            <Ionicons
+              name={isFavorite ? 'heart' : 'heart-outline'}
+              size={18}
+              color={isFavorite ? '#FF6B6B' : '#FFFFFF'}
+            />
             <Text style={styles.favoriteBtnText}>
               {isFavorite ? 'お気に入り済み' : 'お気に入りに追加'}
             </Text>
@@ -200,11 +208,13 @@ export default function PlantDetailScreen() {
         <View style={styles.discoveryBar}>
           {firstScanLabel && (
             <View style={styles.discoveryChip}>
-              <Text style={styles.discoveryChipText}>🗓 初発見: {firstScanLabel}</Text>
+              <Ionicons name="calendar-outline" size={12} color={Colors.textSecondary} />
+              <Text style={styles.discoveryChipText}>初発見: {firstScanLabel}</Text>
             </View>
           )}
           <View style={styles.discoveryChip}>
-            <Text style={styles.discoveryChipText}>📷 {scanCount}回スキャン済み</Text>
+            <Ionicons name="camera-outline" size={12} color={Colors.textSecondary} />
+            <Text style={styles.discoveryChipText}>{scanCount}回スキャン済み</Text>
           </View>
         </View>
       )}
@@ -212,13 +222,13 @@ export default function PlantDetailScreen() {
       {/* Body */}
       <View style={styles.body}>
         {/* Description */}
-        <Section title="📖 説明">
+        <Section icon="book-outline" title="説明">
           <Text style={styles.bodyText}>{plant.description}</Text>
         </Section>
 
         {/* Effects */}
         {plant.effects.length > 0 && (
-          <Section title="💊 養生効果・期待される作用">
+          <Section icon="medical-outline" title="養生効果・期待される作用">
             <View style={styles.effectTags}>
               {plant.effects.map((effect) => (
                 <Pressable
@@ -241,13 +251,13 @@ export default function PlantDetailScreen() {
         )}
 
         {/* Habitat & Season */}
-        <Section title="🗺️ 自生環境・季節">
-          <InfoRow icon="📍" label="生息地" value={plant.habitat} />
-          <InfoRow icon="📅" label="旬の時期" value={plant.season} />
+        <Section icon="map-outline" title="自生環境・季節">
+          <InfoRow icon="location-outline" label="生息地" value={plant.habitat} />
+          <InfoRow icon="calendar-outline" label="旬の時期" value={plant.season} />
         </Section>
 
         {/* Rarity info */}
-        <Section title="⭐ レアリティ">
+        <Section icon="star-outline" title="レアリティ">
           <View style={styles.rarityDetail}>
             <RarityStars rarity={plant.rarity} size="lg" />
             <Text style={styles.rarityLabel}>
@@ -265,7 +275,7 @@ export default function PlantDetailScreen() {
 
         {/* Warning note */}
         {plant.warningNote && (
-          <Section title={plant.danger === 'RED' ? '☠️ 危険情報' : '⚠️ 注意事項'}>
+          <Section icon={plant.danger === 'RED' ? 'skull-outline' : 'warning-outline'} title={plant.danger === 'RED' ? '危険情報' : '注意事項'}>
             <View
               style={[
                 styles.warningNote,
@@ -287,7 +297,8 @@ export default function PlantDetailScreen() {
         {/* 養生メモ */}
         <View style={styles.noteSection}>
           <View style={styles.noteTitleRow}>
-            <Text style={styles.noteSectionTitle}>✏️ 養生メモ</Text>
+            <Ionicons name="create-outline" size={15} color={Colors.primary} />
+            <Text style={styles.noteSectionTitle}>養生メモ</Text>
             {savedNote.length > 0 && (
               <Pressable onPress={handleDeleteNote} hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}>
                 <Text style={styles.noteDeleteText}>削除</Text>
@@ -324,9 +335,12 @@ export default function PlantDetailScreen() {
         {/* 関連植物 */}
         {relatedPlants.length > 0 && (
           <View style={styles.relatedSection}>
-            <Text style={styles.sectionTitle}>
-              🌿 同じカテゴリの今季の発見
-            </Text>
+            <View style={styles.sectionTitleRow}>
+              <Ionicons name="leaf-outline" size={15} color={Colors.primary} />
+              <Text style={styles.sectionTitle}>
+                同じカテゴリの今季の発見
+              </Text>
+            </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               {relatedPlants.map((rp) => (
                 <Pressable
@@ -343,9 +357,16 @@ export default function PlantDetailScreen() {
                 >
                   <Text style={styles.relatedEmoji}>{rp.emoji}</Text>
                   <Text style={styles.relatedName} numberOfLines={1}>{rp.name}</Text>
-                  <Text style={styles.relatedDanger}>
-                    {rp.danger === 'GREEN' ? '🟢' : rp.danger === 'YELLOW' ? '🟡' : '🔴'}
-                  </Text>
+                  <View
+                    style={[
+                      styles.relatedDangerDot,
+                      {
+                        backgroundColor:
+                          rp.danger === 'GREEN' ? '#43A047' :
+                          rp.danger === 'YELLOW' ? '#F9A825' : '#E53935',
+                      },
+                    ]}
+                  />
                 </Pressable>
               ))}
             </ScrollView>
@@ -360,7 +381,8 @@ export default function PlantDetailScreen() {
           style={styles.scanCta}
           onPress={() => router.push('/(tabs)/scan')}
         >
-          <Text style={styles.scanCtaText}>📷 スキャンを続ける</Text>
+          <Ionicons name="camera-outline" size={18} color="#FFFFFF" />
+          <Text style={styles.scanCtaText}>スキャンを続ける</Text>
         </Pressable>
 
         <View style={{ height: 32 }} />
@@ -370,15 +392,20 @@ export default function PlantDetailScreen() {
 }
 
 function Section({
+  icon,
   title,
   children,
 }: {
+  icon: React.ComponentProps<typeof Ionicons>['name'];
   title: string;
   children: React.ReactNode;
 }) {
   return (
     <View style={styles.section}>
-      <Text style={styles.sectionTitle}>{title}</Text>
+      <View style={styles.sectionTitleRow}>
+        <Ionicons name={icon} size={15} color={Colors.primary} />
+        <Text style={styles.sectionTitle}>{title}</Text>
+      </View>
       {children}
     </View>
   );
@@ -389,13 +416,13 @@ function InfoRow({
   label,
   value,
 }: {
-  icon: string;
+  icon: React.ComponentProps<typeof Ionicons>['name'];
   label: string;
   value: string;
 }) {
   return (
     <View style={styles.infoRow}>
-      <Text style={styles.infoIcon}>{icon}</Text>
+      <Ionicons name={icon} size={14} color={Colors.textSecondary} style={styles.infoIcon} />
       <Text style={styles.infoLabel}>{label}</Text>
       <Text style={styles.infoValue}>{value}</Text>
     </View>
@@ -424,12 +451,16 @@ const styles = StyleSheet.create({
     padding: 10,
     marginBottom: 16,
     width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   alertBannerText: {
     color: '#FF8A80',
     fontWeight: '800',
     fontSize: 13,
     textAlign: 'center',
+    flex: 1,
   },
   warningBanner: {
     backgroundColor: 'rgba(0,0,0,0.3)',
@@ -437,12 +468,16 @@ const styles = StyleSheet.create({
     padding: 8,
     marginBottom: 16,
     width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   warningBannerText: {
     color: '#FFE082',
     fontWeight: '700',
     fontSize: 12,
     textAlign: 'center',
+    flex: 1,
   },
   emojiCircle: {
     width: 110,
@@ -479,6 +514,9 @@ const styles = StyleSheet.create({
   },
   categoryText: { color: '#FFFFFF', fontSize: 12, fontWeight: '700' },
   photoIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
     marginTop: 10,
     backgroundColor: 'rgba(0,0,0,0.35)',
     borderRadius: 8,
@@ -502,7 +540,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.3)',
   },
-  favoriteBtnIcon: { fontSize: 18 },
   favoriteBtnText: {
     fontSize: 14,
     fontWeight: '700',
@@ -521,11 +558,16 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 2,
   },
+  sectionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 10,
+  },
   sectionTitle: {
     fontSize: 14,
     fontWeight: '800',
     color: Colors.text,
-    marginBottom: 10,
   },
   bodyText: { fontSize: 14, color: Colors.textSecondary, lineHeight: 22 },
 
@@ -550,7 +592,7 @@ const styles = StyleSheet.create({
     gap: 8,
     marginBottom: 8,
   },
-  infoIcon: { fontSize: 14, width: 20 },
+  infoIcon: { width: 20 },
   infoLabel: {
     fontSize: 13,
     fontWeight: '700',
@@ -577,6 +619,9 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     marginTop: 8,
     alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
   },
   scanCtaText: {
     fontSize: 16,
@@ -683,6 +728,9 @@ const styles = StyleSheet.create({
     borderBottomColor: Colors.border,
   },
   discoveryChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
     backgroundColor: Colors.primaryPale,
     borderRadius: 10,
     paddingHorizontal: 10,
@@ -719,5 +767,5 @@ const styles = StyleSheet.create({
   },
   relatedEmoji: { fontSize: 26, marginBottom: 4 },
   relatedName: { fontSize: 10, fontWeight: '700', color: Colors.text, textAlign: 'center' },
-  relatedDanger: { fontSize: 12, marginTop: 4 },
+  relatedDangerDot: { width: 8, height: 8, borderRadius: 4, marginTop: 4 },
 });

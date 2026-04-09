@@ -10,24 +10,24 @@ interface Props {
 
 const DANGER_CONFIG: Record<
   DangerLevel,
-  { icon: string; label: string; bg: string; text: string; border: string }
+  { dotColor: string; label: string; bg: string; text: string; border: string }
 > = {
   GREEN: {
-    icon: '🟢',
+    dotColor: '#43A047',
     label: '食用可能',
     bg: Colors.dangerGreenBg,
     text: Colors.dangerGreen,
     border: '#A5D6A7',
   },
   YELLOW: {
-    icon: '🟡',
+    dotColor: '#F9A825',
     label: '注意が必要',
     bg: Colors.dangerYellowBg,
     text: Colors.dangerYellow,
     border: '#FFE082',
   },
   RED: {
-    icon: '🔴',
+    dotColor: '#E53935',
     label: '危険・有毒',
     bg: Colors.dangerRedBg,
     text: Colors.dangerRed,
@@ -38,6 +38,7 @@ const DANGER_CONFIG: Record<
 export function DangerBadge({ danger, size = 'md' }: Props) {
   const config = DANGER_CONFIG[danger];
   const isSmall = size === 'sm';
+  const dotSize = isSmall ? 8 : 10;
 
   return (
     <View
@@ -51,9 +52,17 @@ export function DangerBadge({ danger, size = 'md' }: Props) {
         },
       ]}
     >
-      <Text style={[styles.icon, { fontSize: isSmall ? 10 : 14 }]}>
-        {config.icon}
-      </Text>
+      <View
+        style={[
+          styles.dot,
+          {
+            width: dotSize,
+            height: dotSize,
+            borderRadius: dotSize / 2,
+            backgroundColor: config.dotColor,
+          },
+        ]}
+      />
       <Text
         style={[
           styles.label,
@@ -75,7 +84,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     alignSelf: 'flex-start',
   },
-  icon: {},
+  dot: {},
   label: {
     fontWeight: '700',
   },

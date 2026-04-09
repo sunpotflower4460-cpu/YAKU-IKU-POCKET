@@ -11,17 +11,17 @@ export function getCurrentSeason(): Season {
 }
 
 export interface SeasonConfig {
-  emoji: string;
+  icon: string;
   color: string;
   bg: string;
   desc: string;
 }
 
 export const SEASON_CONFIG: Record<Season, SeasonConfig> = {
-  春: { emoji: '🌸', color: '#C2185B', bg: '#FFF0F5', desc: '春の野草・ハーブが見つかりやすくなっています' },
-  夏: { emoji: '☀️', color: '#E65100', bg: '#FFF3E0', desc: '夏の植物が見つかりやすくなっています' },
-  秋: { emoji: '🍂', color: '#6D4C41', bg: '#FBE9E7', desc: '秋の植物が見つかりやすくなっています' },
-  冬: { emoji: '❄️', color: '#1565C0', bg: '#E3F2FD', desc: '冬でも見られる植物が出現します' },
+  春: { icon: 'flower-outline', color: '#C2185B', bg: '#FFF0F5', desc: '春の野草・ハーブが見つかりやすくなっています' },
+  夏: { icon: 'sunny-outline',  color: '#E65100', bg: '#FFF3E0', desc: '夏の植物が見つかりやすくなっています' },
+  秋: { icon: 'leaf-outline',   color: '#6D4C41', bg: '#FBE9E7', desc: '秋の植物が見つかりやすくなっています' },
+  冬: { icon: 'snow-outline',   color: '#1565C0', bg: '#E3F2FD', desc: '冬でも見られる植物が出現します' },
 };
 
 /**

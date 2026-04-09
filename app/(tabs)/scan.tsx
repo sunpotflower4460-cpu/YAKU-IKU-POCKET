@@ -184,7 +184,7 @@ export default function ScanScreen() {
   if (!permission.granted) {
     return (
       <View style={[styles.container, styles.permissionContainer]}>
-        <Text style={styles.permissionEmoji}>📷</Text>
+        <Ionicons name="camera-outline" size={64} color={Colors.textMuted} />
         <Text style={styles.permissionTitle}>カメラへのアクセスが必要です</Text>
         <Text style={styles.permissionDesc}>
           植物をスキャンして図鑑に収録するためにカメラを使用します。
@@ -192,9 +192,12 @@ export default function ScanScreen() {
         <Pressable style={styles.permissionBtn} onPress={requestPermission}>
           <Text style={styles.permissionBtnText}>カメラを許可する</Text>
         </Pressable>
-        <Text style={styles.permissionDisclaimer}>
-          ⚠️ AI判定は参考情報です。採取・摂取前に必ず専門家へご確認ください。
-        </Text>
+        <View style={styles.permissionDisclaimerRow}>
+          <Ionicons name="warning-outline" size={12} color={Colors.textMuted} />
+          <Text style={styles.permissionDisclaimer}>
+            AI判定は参考情報です。採取・摂取前に必ず専門家へご確認ください。
+          </Text>
+        </View>
       </View>
     );
   }
@@ -232,11 +235,13 @@ export default function ScanScreen() {
 
           {CLAUDE_API_KEY ? (
             <View style={styles.aiModeBadge}>
-              <Text style={styles.aiModeText}>🤖 Claude AI</Text>
+              <Ionicons name="hardware-chip-outline" size={12} color="#FFFFFF" />
+              <Text style={styles.aiModeText}>Claude AI</Text>
             </View>
           ) : (
             <View style={[styles.aiModeBadge, styles.aiModeMock]}>
-              <Text style={styles.aiModeText}>🎲 モックAI</Text>
+              <Ionicons name="dice-outline" size={12} color="#FFFFFF" />
+              <Text style={styles.aiModeText}>モックAI</Text>
             </View>
           )}
 
@@ -272,24 +277,38 @@ export default function ScanScreen() {
 
           {/* Status label */}
           <View style={styles.statusLabel}>
-            <Text style={styles.statusText}>
-              {scanState === 'idle'
-                ? '🌿 植物にカメラをかざしてください'
-                : scanState === 'scanning'
-                ? (CLAUDE_API_KEY
-                    ? '🤖 Claude Vision AI が解析しています...'
-                    : '🎲 モックAIで植物を識別中...')
-                : '✅ スキャン完了'}
-            </Text>
+            <View style={styles.statusTextRow}>
+              <Ionicons
+                name={
+                  scanState === 'idle' ? 'leaf-outline' :
+                  scanState === 'scanning' ? (CLAUDE_API_KEY ? 'hardware-chip-outline' : 'dice-outline') :
+                  'checkmark-circle-outline'
+                }
+                size={14}
+                color="#FFFFFF"
+              />
+              <Text style={styles.statusText}>
+                {scanState === 'idle'
+                  ? '植物にカメラをかざしてください'
+                  : scanState === 'scanning'
+                  ? (CLAUDE_API_KEY
+                      ? 'Claude Vision AI が解析しています...'
+                      : 'モックAIで植物を識別中...')
+                  : 'スキャン完了'}
+              </Text>
+            </View>
           </View>
         </View>
 
         {/* Hint bar */}
         <View style={styles.hintBar}>
+          {scanState !== 'scanning' && (
+            <Ionicons name="warning-outline" size={12} color="rgba(255,255,255,0.7)" />
+          )}
           <Text style={styles.hintText}>
             {scanState === 'scanning'
               ? `${CLAUDE_API_KEY ? 'Claude Vision AI' : 'モックAI'}で植物を解析中...`
-              : '⚠️ AI判定は参考情報です。自己判断での採取・摂取は危険です'}
+              : 'AI判定は参考情報です。自己判断での採取・摂取は危険です'}
           </Text>
         </View>
       </View>
@@ -306,7 +325,7 @@ export default function ScanScreen() {
                 accessibilityRole="button"
               >
                 <View style={styles.scanBtnInner}>
-                  <Text style={styles.scanBtnIcon}>🔍</Text>
+                  <Ionicons name="search-outline" size={32} color="#FFFFFF" />
                 </View>
               </Pressable>
             </Animated.View>
@@ -318,11 +337,9 @@ export default function ScanScreen() {
           <>
             <View style={[styles.scanBtn, styles.scanBtnDisabled]}>
               <View style={styles.scanBtnInner}>
-                <Animated.Text
-                  style={[styles.scanBtnIcon, { transform: [{ rotate: spin }] }]}
-                >
-                  ⚙️
-                </Animated.Text>
+                <Animated.View style={[{ transform: [{ rotate: spin }] }]}>
+                  <Ionicons name="cog-outline" size={32} color="#FFFFFF" />
+                </Animated.View>
               </View>
             </View>
             <Text style={styles.scanLabel}>解析中...</Text>
@@ -336,7 +353,7 @@ export default function ScanScreen() {
               onPress={() => setModalVisible(true)}
             >
               <View style={styles.scanBtnInner}>
-                <Text style={styles.scanBtnIcon}>📖</Text>
+                <Ionicons name="book-outline" size={32} color="#FFFFFF" />
               </View>
             </Pressable>
             <Text style={styles.scanLabel}>結果を表示</Text>
@@ -380,7 +397,6 @@ const styles = StyleSheet.create({
     padding: 32,
     backgroundColor: Colors.bg,
   },
-  permissionEmoji: { fontSize: 64, marginBottom: 20 },
   permissionTitle: {
     fontSize: 20,
     fontWeight: '800',
@@ -407,10 +423,15 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     fontSize: 16,
   },
+  permissionDisclaimerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
   permissionDisclaimer: {
+    flex: 1,
     fontSize: 11,
     color: Colors.textMuted,
-    textAlign: 'center',
     lineHeight: 17,
   },
 
@@ -443,6 +464,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   aiModeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
     backgroundColor: 'rgba(46,125,50,0.8)',
     borderRadius: 12,
     paddingHorizontal: 12,
@@ -509,11 +533,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
   },
+  statusTextRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
   statusText: {
     color: '#FFFFFF',
     fontSize: 13,
     fontWeight: '700',
-    textAlign: 'center',
   },
 
   // Hint bar
@@ -522,6 +551,10 @@ const styles = StyleSheet.create({
     bottom: 16,
     left: 16,
     right: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    justifyContent: 'center',
     backgroundColor: 'rgba(0,0,0,0.65)',
     borderRadius: 12,
     paddingHorizontal: 14,
@@ -530,8 +563,9 @@ const styles = StyleSheet.create({
   hintText: {
     color: '#FFFFFF',
     fontSize: 11,
-    textAlign: 'center',
     lineHeight: 17,
+    flex: 1,
+    textAlign: 'center',
   },
 
   // ── Control area ──
@@ -571,7 +605,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  scanBtnIcon: { fontSize: 32 },
+  scanBtnIcon: { width: 32, height: 32 },
   scanLabel: {
     fontSize: 13,
     fontWeight: '700',

@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { PLANTS } from '../../src/data/plants';
 import { useGameStore } from '../../src/store/useGameStore';
 import { DisclaimerBanner } from '../../src/components/DisclaimerBanner';
@@ -46,35 +47,35 @@ interface AchievementDef {
 const ACHIEVEMENTS: AchievementDef[] = [
   {
     id: 'first_discovery',
-    icon: '🌱',
+    icon: 'leaf-outline',
     label: '初めての発見',
     desc: '初めて植物を発見した',
     check: (ids) => ids.length >= 1,
   },
   {
     id: 'ten_plants',
-    icon: '📚',
+    icon: 'book-outline',
     label: '図鑑の始まり',
     desc: '10種類の植物を発見した',
     check: (ids) => ids.length >= 10,
   },
   {
     id: 'twenty_five',
-    icon: '🏅',
+    icon: 'ribbon-outline',
     label: '半分制覇',
     desc: '25種類の植物を発見した',
     check: (ids) => ids.length >= 25,
   },
   {
     id: 'all_fifty',
-    icon: '🏆',
+    icon: 'trophy-outline',
     label: '図鑑完成',
     desc: '全50種類の植物を発見した',
     check: (ids) => ids.length >= 50,
   },
   {
     id: 'danger_master',
-    icon: '💀',
+    icon: 'skull-outline',
     label: '毒草の知識',
     desc: '危険（RED）植物を発見した',
     check: (ids) =>
@@ -82,7 +83,7 @@ const ACHIEVEMENTS: AchievementDef[] = [
   },
   {
     id: 'herb_collector',
-    icon: '🌿',
+    icon: 'leaf',
     label: 'ハーブ愛好家',
     desc: 'ハーブを10種類発見した',
     check: (ids) =>
@@ -91,7 +92,7 @@ const ACHIEVEMENTS: AchievementDef[] = [
   },
   {
     id: 'wild_hunter',
-    icon: '🏔️',
+    icon: 'compass-outline',
     label: '野草ハンター',
     desc: '野草を10種類発見した',
     check: (ids) =>
@@ -99,7 +100,7 @@ const ACHIEVEMENTS: AchievementDef[] = [
   },
   {
     id: 'rare_finder',
-    icon: '⭐',
+    icon: 'star-outline',
     label: 'レアハンター',
     desc: '★5レアを発見した',
     check: (ids) =>
@@ -107,7 +108,7 @@ const ACHIEVEMENTS: AchievementDef[] = [
   },
   {
     id: 'all_categories',
-    icon: '🌈',
+    icon: 'grid-outline',
     label: 'バランス型',
     desc: '野草とハーブ両方を発見した',
     check: (ids) =>
@@ -217,7 +218,7 @@ export default function ProfileScreen() {
       >
         {/* Avatar */}
         <View style={styles.avatar}>
-          <Text style={styles.avatarEmoji}>🧑‍🌾</Text>
+          <Ionicons name="person-circle-outline" size={64} color="rgba(255,255,255,0.9)" />
         </View>
 
         {/* Name */}
@@ -232,7 +233,8 @@ export default function ProfileScreen() {
             setEditNameVisible(true);
           }}
         >
-          <Text style={styles.editNameText}>✏️ 名前を変更</Text>
+          <Ionicons name="create-outline" size={14} color="#A5D6A7" />
+          <Text style={styles.editNameText}>名前を変更</Text>
         </Pressable>
 
         {/* Level */}
@@ -254,20 +256,24 @@ export default function ProfileScreen() {
         {/* Streak + Share */}
         <View style={styles.heroBottomRow}>
           <View style={styles.streakBadge}>
-            <Text style={styles.streakEmoji}>🔥</Text>
+            <Ionicons name="flame-outline" size={16} color="#FF6F00" />
             <Text style={styles.streakText}>
               {streak > 0 ? `${streak}日連続` : '今日から開始'}
             </Text>
           </View>
           <Pressable style={styles.shareBtn} onPress={() => setShareCardVisible(true)}>
-            <Text style={styles.shareBtnText}>🏅 実績カード</Text>
+            <Ionicons name="ribbon-outline" size={14} color="#FFFFFF" />
+            <Text style={styles.shareBtnText}>実績カード</Text>
           </Pressable>
         </View>
       </LinearGradient>
 
       {/* Stats */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>📊 コレクション統計</Text>
+        <View style={styles.sectionTitleRow}>
+          <Ionicons name="stats-chart-outline" size={16} color={Colors.text} />
+          <Text style={styles.sectionTitle}>コレクション統計</Text>
+        </View>
         <View style={styles.statsGrid}>
           <StatBox label="発見数" value={`${discoveredCount}`} unit={`/ ${PLANTS.length}`} color={Colors.primary} />
           <StatBox label="合計XP" value={String(xp)} unit="XP" color={Colors.rarity5} />
@@ -280,7 +286,10 @@ export default function ProfileScreen() {
 
       {/* Scan Calendar */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>📅 スキャンカレンダー</Text>
+        <View style={styles.sectionTitleRow}>
+          <Ionicons name="calendar-outline" size={16} color={Colors.text} />
+          <Text style={styles.sectionTitle}>スキャンカレンダー</Text>
+        </View>
         <View style={styles.calendarCard}>
           <Text style={styles.calendarMonth}>
             {calendarData.year}年{calendarData.month + 1}月
@@ -336,7 +345,10 @@ export default function ProfileScreen() {
 
       {/* Achievements */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>🏅 実績バッジ</Text>
+        <View style={styles.sectionTitleRow}>
+          <Ionicons name="ribbon-outline" size={16} color={Colors.text} />
+          <Text style={styles.sectionTitle}>実績バッジ</Text>
+        </View>
         <View style={styles.achievementsGrid}>
           {ACHIEVEMENTS.map((ach) => {
             const unlocked = ach.check(discoveredPlantIds);
@@ -345,9 +357,11 @@ export default function ProfileScreen() {
                 key={ach.id}
                 style={[styles.achCard, !unlocked && styles.achCardLocked]}
               >
-                <Text style={[styles.achIcon, !unlocked && styles.achIconLocked]}>
-                  {unlocked ? ach.icon : '🔒'}
-                </Text>
+                {unlocked ? (
+                  <Ionicons name={ach.icon as React.ComponentProps<typeof Ionicons>['name']} size={28} color={Colors.primary} style={styles.achIconItem} />
+                ) : (
+                  <Ionicons name="lock-closed-outline" size={28} color="#BDBDBD" style={styles.achIconItem} />
+                )}
                 <Text
                   style={[styles.achLabel, !unlocked && styles.achTextLocked]}
                   numberOfLines={2}
@@ -365,7 +379,10 @@ export default function ProfileScreen() {
 
       {/* Scan History */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>📋 スキャン履歴</Text>
+        <View style={styles.sectionTitleRow}>
+          <Ionicons name="time-outline" size={16} color={Colors.text} />
+          <Text style={styles.sectionTitle}>スキャン履歴</Text>
+        </View>
         {recentScans.length === 0 ? (
           <View style={styles.emptyHistory}>
             <Text style={styles.emptyHistoryText}>まだスキャン履歴がありません</Text>
@@ -404,7 +421,7 @@ export default function ProfileScreen() {
         streak={streak}
         unlockedAchievements={unlockedAchievements}
         season={season}
-        seasonEmoji={seasonCfg.emoji}
+        seasonEmoji={seasonCfg.icon}
       />
 
       {/* Edit Name Modal */}
@@ -522,10 +539,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 12,
   },
-  avatarEmoji: { fontSize: 48 },
   playerName: { fontSize: 22, fontWeight: '900', color: '#FFFFFF' },
   titleText: { fontSize: 13, color: '#C8E6C9', marginTop: 4, marginBottom: 10 },
   editNameBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     backgroundColor: 'rgba(255,255,255,0.15)',
     borderRadius: 10,
     paddingHorizontal: 14,
@@ -545,7 +564,8 @@ const styles = StyleSheet.create({
   xpLabel: { fontSize: 11, color: '#C8E6C9', textAlign: 'center' },
 
   section: { paddingHorizontal: 16, paddingTop: 20 },
-  sectionTitle: { fontSize: 16, fontWeight: '800', color: Colors.text, marginBottom: 12 },
+  sectionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 },
+  sectionTitle: { fontSize: 16, fontWeight: '800', color: Colors.text },
 
   heroBottomRow: {
     flexDirection: 'row',
@@ -563,11 +583,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 8,
   },
-  streakEmoji: { fontSize: 18 },
   streakText: { fontSize: 13, fontWeight: '800', color: '#FFFFFF' },
   shareBtn: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 6,
     backgroundColor: 'rgba(255,255,255,0.2)',
     borderRadius: 20,
     paddingHorizontal: 16,
@@ -705,8 +725,7 @@ const styles = StyleSheet.create({
     shadowColor: '#000',
     shadowOpacity: 0.05,
   },
-  achIcon: { fontSize: 30, marginBottom: 6 },
-  achIconLocked: { opacity: 0.35 },
+  achIconItem: { marginBottom: 6 },
   achLabel: {
     fontSize: 10,
     fontWeight: '800',

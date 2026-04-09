@@ -8,6 +8,7 @@ import {
   Pressable,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 
 interface Props {
   visible: boolean;
@@ -16,13 +17,13 @@ interface Props {
   onClose: () => void;
 }
 
-const STARS = ['⭐', '⭐', '⭐', '⭐', '⭐'];
+const STAR_COUNT = 5;
 
 export function LevelUpModal({ visible, level, title, onClose }: Props) {
   const cardScale = useRef(new Animated.Value(0)).current;
   const levelScale = useRef(new Animated.Value(0.3)).current;
   const starAnims = useRef(
-    STARS.map(() => ({
+    Array.from({ length: STAR_COUNT }, () => ({
       opacity: new Animated.Value(0),
       translateY: new Animated.Value(24),
     }))
@@ -102,18 +103,17 @@ export function LevelUpModal({ visible, level, title, onClose }: Props) {
             {/* Stars row */}
             <View style={styles.starsRow}>
               {starAnims.map((a, i) => (
-                <Animated.Text
+                <Animated.View
                   key={i}
                   style={[
-                    styles.starEmoji,
                     {
                       opacity: a.opacity,
                       transform: [{ translateY: a.translateY }],
                     },
                   ]}
                 >
-                  {STARS[i]}
-                </Animated.Text>
+                  <Ionicons name="star" size={24} color="#FFD700" />
+                </Animated.View>
               ))}
             </View>
 
@@ -166,7 +166,6 @@ const styles = StyleSheet.create({
     gap: 8,
     marginBottom: 18,
   },
-  starEmoji: { fontSize: 28 },
   levelUpText: {
     fontSize: 20,
     fontWeight: '900',

@@ -25,12 +25,12 @@ import {
   ChallengeSnap,
 } from '../../src/data/challenges';
 
-// Milestones: [ threshold, emoji, title, desc ]
+// Milestones: [ threshold, iconName, title, desc ]
 const MILESTONES: [number, string, string, string][] = [
-  [1,  '🌱', '初めての発見！',   '図鑑の旅が始まりました！'],
-  [10, '📚', '10種類発見！',    '図鑑収録が進んできました！'],
-  [25, '🏅', '25種類発見！',    '半分制覇しました！'],
-  [50, '🏆', '図鑑完成！',      '全50種類を発見しました！'],
+  [1,  'leaf-outline',   '初めての発見！',   '図鑑の旅が始まりました！'],
+  [10, 'book-outline',   '10種類発見！',    '図鑑収録が進んできました！'],
+  [25, 'ribbon-outline', '25種類発見！',    '半分制覇しました！'],
+  [50, 'trophy-outline', '図鑑完成！',      '全50種類を発見しました！'],
 ];
 
 export default function HomeScreen() {
@@ -119,7 +119,7 @@ export default function HomeScreen() {
         style={styles.hero}
       >
         <View style={styles.heroContent}>
-          <Text style={styles.appTitle}>🌿 薬育ポケット</Text>
+          <Text style={styles.appTitle}>薬育ポケット</Text>
           <Text style={styles.playerName}>{playerName}</Text>
 
           {/* Level & XP */}
@@ -150,7 +150,7 @@ export default function HomeScreen() {
           end={{ x: 1, y: 0 }}
           style={styles.milestoneBanner}
         >
-          <Text style={styles.milestoneEmoji}>{pendingMilestone[1]}</Text>
+          <Ionicons name={pendingMilestone[1] as React.ComponentProps<typeof Ionicons>['name']} size={28} color="#FFFFFF" />
           <View style={styles.milestoneText}>
             <Text style={styles.milestoneTitle}>{pendingMilestone[2]}</Text>
             <Text style={styles.milestoneDesc}>{pendingMilestone[3]}</Text>
@@ -166,7 +166,7 @@ export default function HomeScreen() {
 
       {/* Seasonal Banner */}
       <View style={[styles.seasonBanner, { backgroundColor: seasonCfg.bg }]}>
-        <Text style={styles.seasonEmoji}>{seasonCfg.emoji}</Text>
+        <Ionicons name={seasonCfg.icon as React.ComponentProps<typeof Ionicons>['name']} size={24} color={seasonCfg.color} />
         <View style={{ flex: 1 }}>
           <Text style={[styles.seasonTitle, { color: seasonCfg.color }]}>
             {season}の養生シーズン
@@ -182,9 +182,12 @@ export default function HomeScreen() {
       {spotlightPlants.length > 0 && (
         <View style={styles.section}>
           <View style={styles.sectionRow}>
-            <Text style={styles.sectionTitle}>
-              {seasonCfg.emoji} 今の季節の注目植物
-            </Text>
+            <View style={styles.sectionTitleRow}>
+              <Ionicons name={seasonCfg.icon as React.ComponentProps<typeof Ionicons>['name']} size={16} color={seasonCfg.color} />
+              <Text style={styles.sectionTitle}>
+                今の季節の注目植物
+              </Text>
+            </View>
             <View style={[styles.sectionBadge, { backgroundColor: seasonCfg.color }]}>
               <Text style={styles.sectionBadgeText}>{seasonalDiscoveredCount}/{seasonalPlants.length}</Text>
             </View>
@@ -204,11 +207,18 @@ export default function HomeScreen() {
                   }
                 >
                   {/* Rarity stars */}
-                  <Text style={styles.spotlightStars}>
-                    {'★'.repeat(plant.rarity)}{'☆'.repeat(5 - plant.rarity)}
-                  </Text>
+                  <View style={styles.spotlightStarsRow}>
+                    {Array.from({ length: 5 }, (_, i) => (
+                      <Ionicons
+                        key={i}
+                        name={i < plant.rarity ? 'star' : 'star-outline'}
+                        size={10}
+                        color={i < plant.rarity ? '#FFC107' : '#BDBDBD'}
+                      />
+                    ))}
+                  </View>
                   <Text style={[styles.spotlightEmoji, !found && styles.spotlightEmojiUnfound]}>
-                    {found ? plant.emoji : '❓'}
+                    {found ? plant.emoji : '?'}
                   </Text>
                   <Text
                     style={[styles.spotlightName, !found && styles.spotlightNameUnfound]}
@@ -227,9 +237,19 @@ export default function HomeScreen() {
                         },
                       ]}
                     >
+                      <View
+                        style={[
+                          styles.spotlightDangerDot,
+                          {
+                            backgroundColor:
+                              plant.danger === 'RED' ? '#E53935' :
+                              plant.danger === 'YELLOW' ? '#F9A825' : '#43A047',
+                          },
+                        ]}
+                      />
                       <Text style={styles.spotlightDangerText}>
-                        {plant.danger === 'RED' ? '🔴 要注意' :
-                         plant.danger === 'YELLOW' ? '🟡 注意' : '🟢 食用可'}
+                        {plant.danger === 'RED' ? '要注意' :
+                         plant.danger === 'YELLOW' ? '注意' : '食用可'}
                       </Text>
                     </View>
                   ) : (
@@ -247,19 +267,19 @@ export default function HomeScreen() {
       {/* Stats Row */}
       <View style={styles.statsRow}>
         <StatCard
-          icon="📚"
+          icon="book-outline"
           value={`${discoveredCount}/${TOTAL_PLANTS}`}
           label="図鑑収録"
           color="#4CAF50"
         />
         <StatCard
-          icon="🟢"
+          icon="leaf-outline"
           value={String(greenCount)}
           label="食用植物"
           color="#2E7D32"
         />
         <StatCard
-          icon="⭐"
+          icon="star-outline"
           value={String(rarePlants.length)}
           label="レア発見"
           color={Colors.rarity5}
@@ -286,7 +306,10 @@ export default function HomeScreen() {
 
       {/* Daily Quests */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>📋 今日のクエスト</Text>
+        <View style={styles.sectionTitleRow}>
+          <Ionicons name="list-outline" size={16} color={Colors.text} />
+          <Text style={styles.sectionTitle}>今日のクエスト</Text>
+        </View>
         {dailyChallenges.map((challenge) => {
           const pct = getChallengePct(challenge, dailySnap);
           const claimed = claimedChallengeIds.includes(challenge.id);
@@ -304,7 +327,7 @@ export default function HomeScreen() {
         })}
         {allQuestsClaimed && (
           <View style={styles.questAllDone}>
-            <Text style={styles.questAllDoneEmoji}>🎉</Text>
+            <Ionicons name="checkmark-done-circle" size={28} color="#4CAF50" />
             <View style={{ flex: 1 }}>
               <Text style={styles.questAllDoneTitle}>今日のクエスト達成！</Text>
               <Text style={styles.questAllDoneDesc}>
@@ -318,7 +341,10 @@ export default function HomeScreen() {
       {/* ── 今月の季節クエスト ── */}
       <View style={styles.section}>
         <View style={styles.sectionRow}>
-          <Text style={styles.sectionTitle}>{seasonCfg.emoji} 今月の季節クエスト</Text>
+          <View style={styles.sectionTitleRow}>
+            <Ionicons name={seasonCfg.icon as React.ComponentProps<typeof Ionicons>['name']} size={16} color={seasonCfg.color} />
+            <Text style={styles.sectionTitle}>今月の季節クエスト</Text>
+          </View>
           <View style={[styles.sectionBadge, { backgroundColor: seasonCfg.color }]}>
             <Text style={styles.sectionBadgeText}>月次</Text>
           </View>
@@ -345,7 +371,10 @@ export default function HomeScreen() {
       {/* Recent Discoveries */}
       {recentPlants.length > 0 && (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>🕐 最近の発見</Text>
+          <View style={styles.sectionTitleRow}>
+            <Ionicons name="time-outline" size={16} color={Colors.text} />
+            <Text style={styles.sectionTitle}>最近の発見</Text>
+          </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             {recentPlants.map((plant) => (
               <Pressable
@@ -368,13 +397,16 @@ export default function HomeScreen() {
                 <Text style={styles.recentName} numberOfLines={1}>
                   {plant.name}
                 </Text>
-                <Text style={styles.recentDanger}>
-                  {plant.danger === 'GREEN'
-                    ? '🟢'
-                    : plant.danger === 'YELLOW'
-                    ? '🟡'
-                    : '🔴'}
-                </Text>
+                <View
+                  style={[
+                    styles.recentDangerDot,
+                    {
+                      backgroundColor:
+                        plant.danger === 'GREEN' ? '#43A047' :
+                        plant.danger === 'YELLOW' ? '#F9A825' : '#E53935',
+                    },
+                  ]}
+                />
               </Pressable>
             ))}
           </ScrollView>
@@ -383,7 +415,10 @@ export default function HomeScreen() {
 
       {/* Progress */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>📊 コレクション進捗</Text>
+        <View style={styles.sectionTitleRow}>
+          <Ionicons name="stats-chart-outline" size={16} color={Colors.text} />
+          <Text style={styles.sectionTitle}>コレクション進捗</Text>
+        </View>
         <View style={styles.progressCard}>
           <ProgressRow
             label="野草"
@@ -436,7 +471,11 @@ function QuestCard({
   return (
     <View style={[styles.questCard, claimed && styles.questCardClaimed]}>
       <View style={styles.questHeader}>
-        <Text style={styles.questEmoji}>{claimed ? '✅' : challenge.emoji}</Text>
+        {claimed ? (
+          <Ionicons name="checkmark-circle" size={22} color="#9E9E9E" style={styles.questIcon} />
+        ) : (
+          <Ionicons name={challenge.icon as React.ComponentProps<typeof Ionicons>['name']} size={22} color={Colors.primary} style={styles.questIcon} />
+        )}
         <View style={{ flex: 1 }}>
           <Text style={[styles.questTitle, claimed && styles.questTextMuted]}>
             {challenge.title}
@@ -484,14 +523,14 @@ function StatCard({
   label,
   color,
 }: {
-  icon: string;
+  icon: React.ComponentProps<typeof Ionicons>['name'];
   value: string;
   label: string;
   color: string;
 }) {
   return (
     <View style={[styles.statCard, { borderTopColor: color, borderTopWidth: 3 }]}>
-      <Text style={styles.statIcon}>{icon}</Text>
+      <Ionicons name={icon} size={22} color={color} style={styles.statIconItem} />
       <Text style={[styles.statValue, { color }]}>{value}</Text>
       <Text style={styles.statLabel}>{label}</Text>
     </View>
@@ -536,7 +575,6 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     gap: 12,
   },
-  milestoneEmoji: { fontSize: 28 },
   milestoneText: { flex: 1 },
   milestoneTitle: { fontSize: 14, fontWeight: '900', color: '#FFFFFF' },
   milestoneDesc: { fontSize: 11, color: 'rgba(255,255,255,0.85)', marginTop: 1 },
@@ -557,7 +595,6 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     gap: 10,
   },
-  seasonEmoji: { fontSize: 24 },
   seasonTitle: { fontSize: 13, fontWeight: '800' },
   seasonDesc: { fontSize: 11, color: Colors.textSecondary, marginTop: 1 },
   seasonBadge: {
@@ -614,7 +651,7 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 4,
   },
-  statIcon: { fontSize: 22, marginBottom: 6 },
+  statIconItem: { marginBottom: 6 },
   statValue: { fontSize: 22, fontWeight: '900', lineHeight: 26 },
   statLabel: { fontSize: 11, color: Colors.textMuted, marginTop: 3, fontWeight: '600' },
 
@@ -644,6 +681,7 @@ const styles = StyleSheet.create({
 
   section: { paddingHorizontal: 16, paddingTop: 20 },
   sectionRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
+  sectionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 },
   sectionTitle: { fontSize: 15, fontWeight: '800', color: Colors.text },
   sectionBadge: {
     borderRadius: 8,
@@ -676,12 +714,13 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
     borderColor: '#BDBDBD',
   },
-  spotlightStars: { fontSize: 12, color: '#FFC107', marginBottom: 4, letterSpacing: 1 },
+  spotlightStarsRow: { flexDirection: 'row', gap: 1, marginBottom: 4 },
   spotlightEmoji: { fontSize: 34, marginBottom: 6 },
   spotlightEmojiUnfound: { opacity: 0.4 },
   spotlightName: { fontSize: 12, fontWeight: '700', color: Colors.text, textAlign: 'center', marginBottom: 6 },
   spotlightNameUnfound: { color: '#9E9E9E' },
-  spotlightDangerBadge: { borderRadius: 8, paddingHorizontal: 6, paddingVertical: 3 },
+  spotlightDangerBadge: { borderRadius: 8, paddingHorizontal: 6, paddingVertical: 3, flexDirection: 'row', alignItems: 'center', gap: 3 },
+  spotlightDangerDot: { width: 6, height: 6, borderRadius: 3 },
   spotlightDangerText: { fontSize: 11, fontWeight: '700' },
   spotlightUnfoundBadge: {
     borderRadius: 8,
@@ -709,7 +748,7 @@ const styles = StyleSheet.create({
   },
   recentEmoji: { fontSize: 30, marginBottom: 5 },
   recentName: { fontSize: 11, fontWeight: '700', color: Colors.text, textAlign: 'center' },
-  recentDanger: { fontSize: 13, marginTop: 5 },
+  recentDangerDot: { width: 8, height: 8, borderRadius: 4, marginTop: 5 },
 
   progressCard: {
     backgroundColor: Colors.bgCard,
@@ -757,7 +796,7 @@ const styles = StyleSheet.create({
     gap: 10,
     marginBottom: 10,
   },
-  questEmoji: { fontSize: 24, lineHeight: 28 },
+  questIcon: {},
   questTitle: { fontSize: 13, fontWeight: '800', color: Colors.text },
   questDesc: { fontSize: 11, color: Colors.textSecondary, marginTop: 2 },
   questTextMuted: { color: Colors.textMuted },
@@ -804,7 +843,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.primaryLight,
   },
-  questAllDoneEmoji: { fontSize: 28 },
   questAllDoneTitle: {
     fontSize: 13,
     fontWeight: '800',
