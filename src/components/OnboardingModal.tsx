@@ -9,6 +9,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { Colors } from '../constants/colors';
 
@@ -20,26 +21,35 @@ interface Props {
   onComplete: () => void;
 }
 
-const SLIDES = [
+type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
+
+const SLIDES: {
+  icon: IoniconName;
+  subIcon?: IoniconName;
+  title: string;
+  body: string;
+  gradient?: [string, string, string];
+  label: string;
+  isSafety?: boolean;
+}[] = [
   {
-    emoji: '📷',
-    subEmoji: '🌿',
+    icon: 'camera-outline',
+    subIcon: 'leaf-outline',
     title: '野草・ハーブをスキャン',
     body: 'カメラで植物を撮影するとAIが自動識別。50種類の野草・ハーブを集めよう！',
-    gradient: ['#1B5E20', '#2E7D32', '#43A047'] as [string, string, string],
+    gradient: ['#1B5E20', '#2E7D32', '#43A047'],
     label: 'スキャン',
   },
   {
-    emoji: '🏆',
-    subEmoji: '⭐',
+    icon: 'trophy-outline',
+    subIcon: 'star',
     title: '収集してレベルアップ',
     body: '新しい植物を発見するとXPを獲得。クエストをクリアして上位称号を目指そう！',
-    gradient: ['#0D47A1', '#1565C0', '#1976D2'] as [string, string, string],
+    gradient: ['#0D47A1', '#1565C0', '#1976D2'],
     label: 'コレクション',
   },
   {
-    emoji: '⚠️',
-    subEmoji: null,
+    icon: 'warning-outline',
     title: '必ず専門家に確認を',
     body: 'このアプリの情報は参考目的のみです。野草の採取・摂取は必ず専門家にご確認ください。',
     label: '安全について',
@@ -124,14 +134,16 @@ export function OnboardingModal({ visible, onComplete }: Props) {
                 <View key={i} style={[styles.slide, slide.isSafety && styles.slideSafety]}>
                   {slide.isSafety ? (
                     <View style={styles.safetyHeader}>
-                      <Text style={styles.safetyEmoji}>{slide.emoji}</Text>
+                      <Ionicons name={slide.icon} size={72} color="#F59E0B" />
                     </View>
                   ) : (
                     <LinearGradient colors={slide.gradient!} style={styles.slideHeader}>
                       <View style={styles.emojiCircle}>
-                        <Text style={styles.slideEmoji}>{slide.emoji}</Text>
-                        {slide.subEmoji && (
-                          <Text style={styles.subEmoji}>{slide.subEmoji}</Text>
+                        <Ionicons name={slide.icon} size={52} color="#FFFFFF" />
+                        {slide.subIcon && (
+                          <View style={styles.subIconWrap}>
+                            <Ionicons name={slide.subIcon} size={22} color="#FFFFFF" />
+                          </View>
                         )}
                       </View>
                     </LinearGradient>
@@ -147,9 +159,12 @@ export function OnboardingModal({ visible, onComplete }: Props) {
 
                     {slide.isSafety && (
                       <View style={styles.safetyBox}>
-                        <Text style={styles.safetyBoxText}>
-                          🔬 専門家への確認なしに野草を採取・摂取しないでください
-                        </Text>
+                        <View style={styles.safetyBoxInner}>
+                          <Ionicons name="flask-outline" size={14} color="#92400E" />
+                          <Text style={styles.safetyBoxText}>
+                            専門家への確認なしに野草を採取・摂取しないでください
+                          </Text>
+                        </View>
                       </View>
                     )}
                   </View>
@@ -246,9 +261,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  slideEmoji: { fontSize: 52 },
-  subEmoji: {
-    fontSize: 22,
+  subIconWrap: {
     position: 'absolute',
     bottom: 8,
     right: 8,
@@ -263,7 +276,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: 2,
     borderBottomColor: '#FFB300',
   },
-  safetyEmoji: { fontSize: 72 },
 
   // Slide content
   slideContent: {
@@ -298,12 +310,19 @@ const styles = StyleSheet.create({
     borderColor: '#FCD34D',
     width: '100%',
   },
+  safetyBoxInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    justifyContent: 'center',
+  },
   safetyBoxText: {
     fontSize: 12,
     color: '#92400E',
     fontWeight: '700',
     textAlign: 'center',
     lineHeight: 18,
+    flex: 1,
   },
 
   // Dots

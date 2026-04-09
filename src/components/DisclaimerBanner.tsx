@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 interface Props {
   compact?: boolean;
@@ -9,7 +10,7 @@ export function DisclaimerBanner({ compact = false }: Props) {
   if (compact) {
     return (
       <View style={styles.compact}>
-        <Text style={styles.compactIcon}>⚠️</Text>
+        <Ionicons name="warning-outline" size={16} color="#B45309" />
         <Text style={styles.compactText}>
           このアプリの情報は参考目的のみです。採取・摂取前に必ず専門家へご確認ください。
         </Text>
@@ -20,6 +21,7 @@ export function DisclaimerBanner({ compact = false }: Props) {
   return (
     <View style={styles.banner}>
       <View style={styles.titleRow}>
+        <Ionicons name="warning-outline" size={14} color="#B45309" />
         <Text style={styles.title}>免責事項・安全上の注意</Text>
       </View>
       <Text style={styles.body}>
@@ -46,7 +48,7 @@ const styles = StyleSheet.create({
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
     marginBottom: 8,
   },
   title: {
@@ -68,9 +70,6 @@ const styles = StyleSheet.create({
     borderTopColor: '#FDE68A',
     paddingHorizontal: 16,
     paddingVertical: 12,
-  },
-  compactIcon: {
-    fontSize: 13,
   },
   compactText: {
     flex: 1,

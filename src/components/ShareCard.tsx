@@ -37,7 +37,7 @@ interface ShareCardProps {
   streak: number;
   unlockedAchievements: Achievement[];
   season: string;
-  seasonEmoji: string;
+  seasonIcon: string;
 }
 
 /** Build the ASCII-art style text card that gets shared. */
@@ -45,7 +45,7 @@ function buildShareText(props: Omit<ShareCardProps, 'visible' | 'onClose'>): str
   const {
     playerName, title, level, xp,
     discoveredCount, totalCount, streak,
-    unlockedAchievements, season, seasonEmoji,
+    unlockedAchievements, season,
   } = props;
 
   const pct = Math.round((discoveredCount / totalCount) * 100);
@@ -53,22 +53,22 @@ function buildShareText(props: Omit<ShareCardProps, 'visible' | 'onClose'>): str
 
   const achieveLines = unlockedAchievements
     .slice(0, 5)
-    .map((a) => `  ${a.icon} ${a.label}`)
+    .map((a) => `  [${a.label}]`)
     .join('\n');
 
-  const streakLine = streak >= 2 ? `🔥 ${streak}日連続ログイン！\n` : '';
+  const streakLine = streak >= 2 ? `${streak}日連続ログイン！\n` : '';
 
   return (
     `╔══════════════════════════╗\n` +
-    `║  🌿 薬育ポケット 実績カード  ║\n` +
+    `║  薬育ポケット 実績カード  ║\n` +
     `╠══════════════════════════╣\n` +
     `║ プレイヤー: ${playerName}\n` +
     `║ 称号: ${title}\n` +
     `║ Lv.${level}  総XP: ${xp}\n` +
     `╠══════════════════════════╣\n` +
-    `║ 📚 図鑑: ${discoveredCount}/${totalCount}種 (${pct}%)\n` +
+    `║ 図鑑: ${discoveredCount}/${totalCount}種 (${pct}%)\n` +
     `║ [${bar}]\n` +
-    `║ ${seasonEmoji} 現在のシーズン: ${season}\n` +
+    `║ 現在のシーズン: ${season}\n` +
     (streakLine ? `║ ${streakLine}` : '') +
     `╠══════════════════════════╣\n` +
     (achieveLines ? `║ 解放済み実績:\n${achieveLines}\n` : '') +
@@ -82,7 +82,7 @@ export function ShareCard(props: ShareCardProps) {
   const {
     playerName, title, level, xp,
     discoveredCount, totalCount, streak,
-    season, seasonEmoji,
+    season,
   } = rest;
 
   const pct = totalCount > 0 ? discoveredCount / totalCount : 0;
@@ -116,7 +116,10 @@ export function ShareCard(props: ShareCardProps) {
               style={styles.card}
             >
               {/* Header */}
-              <Text style={styles.cardAppName}>🌿 薬育ポケット</Text>
+              <View style={styles.cardHeaderRow}>
+                <Ionicons name="leaf-outline" size={18} color="#A5D6A7" />
+                <Text style={styles.cardAppName}>薬育ポケット</Text>
+              </View>
               <Text style={styles.cardSubtitle}>実績カード</Text>
 
               {/* Divider */}
@@ -148,8 +151,9 @@ export function ShareCard(props: ShareCardProps) {
 
               {/* Collection progress */}
               <View style={styles.cardProgSection}>
+                <Ionicons name="book-outline" size={13} color="rgba(255,255,255,0.8)" />
                 <Text style={styles.cardProgLabel}>
-                  📚 図鑑コレクション
+                  図鑑コレクション
                 </Text>
                 <Text style={styles.cardProgCount}>
                   {discoveredCount} / {totalCount} 種
@@ -163,7 +167,7 @@ export function ShareCard(props: ShareCardProps) {
               {/* Season */}
               <View style={styles.cardSeasonRow}>
                 <Text style={styles.cardSeasonText}>
-                  {seasonEmoji} {season}の養生シーズン
+                  {season}の養生シーズン
                 </Text>
               </View>
 
@@ -175,7 +179,7 @@ export function ShareCard(props: ShareCardProps) {
                   <View style={styles.cardAchieveRow}>
                     {unlockedAchievements.slice(0, 6).map((a) => (
                       <View key={a.label} style={styles.cardAchieveBadge}>
-                        <Text style={styles.cardAchieveIcon}>{a.icon}</Text>
+                        <Ionicons name={a.icon as React.ComponentProps<typeof Ionicons>['name']} size={18} color="#A5D6A7" />
                         <Text style={styles.cardAchieveLabel} numberOfLines={1}>
                           {a.label}
                         </Text>
@@ -243,11 +247,17 @@ const styles = StyleSheet.create({
     padding: 20,
     marginBottom: 14,
   },
+  cardHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginBottom: 2,
+  },
   cardAppName: {
     fontSize: 18,
     fontWeight: '900',
     color: '#FFFFFF',
-    textAlign: 'center',
     letterSpacing: 1,
   },
   cardSubtitle: {
@@ -354,7 +364,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 5,
   },
-  cardAchieveIcon: { fontSize: 14 },
   cardAchieveLabel: {
     fontSize: 12,
     color: '#E8F5E9',

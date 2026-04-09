@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { PLANTS } from '../../src/data/plants';
 import { useGameStore } from '../../src/store/useGameStore';
 import { PlantCard } from '../../src/components/PlantCard';
@@ -145,7 +146,10 @@ export default function ZukanScreen() {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>🌿 薬草図鑑</Text>
+        <View style={styles.headerTitleRow}>
+          <Ionicons name="leaf-outline" size={20} color="#FFFFFF" />
+          <Text style={styles.headerTitle}>薬草図鑑</Text>
+        </View>
         <Text style={styles.headerSub}>
           {discoveredCount}/{PLANTS.length} 種類発見
         </Text>
@@ -161,9 +165,11 @@ export default function ZukanScreen() {
             const pct = total > 0 ? found / total : 0;
             return (
               <View key={rarity} style={styles.rarityItem}>
-                <Text style={[styles.rarityStar, { color: rarityColor }]}>
-                  {'★'.repeat(rarity)}
-                </Text>
+                <View style={styles.rarityStarsRow}>
+                  {Array.from({ length: rarity }, (_, i) => (
+                    <Ionicons key={i} name="star" size={9} color={rarityColor} />
+                  ))}
+                </View>
                 <View style={styles.rarityMiniBar}>
                   <View
                     style={[
@@ -180,7 +186,7 @@ export default function ZukanScreen() {
 
         {/* Search */}
         <View style={styles.searchBox}>
-          <Text style={styles.searchIcon}>🔍</Text>
+          <Ionicons name="search-outline" size={16} color={Colors.textMuted} />
           <TextInput
             style={styles.searchInput}
             placeholder="発見済みの植物を検索..."
@@ -194,7 +200,7 @@ export default function ZukanScreen() {
               onPress={() => setSearch('')}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <Text style={styles.searchClear}>✕</Text>
+              <Ionicons name="close-circle" size={16} color={Colors.textMuted} />
             </Pressable>
           )}
         </View>
@@ -209,22 +215,22 @@ export default function ZukanScreen() {
             setStatsOpen(v => !v);
           }}
         >
-          <Text style={styles.statsToggleText}>
-            {statsOpen ? '▲' : '▼'} 📊 コレクション統計
-          </Text>
+          <Ionicons name={statsOpen ? 'chevron-up' : 'chevron-down'} size={12} color={Colors.primaryDark} />
+          <Ionicons name="stats-chart-outline" size={14} color={Colors.primaryDark} />
+          <Text style={styles.statsToggleText}>コレクション統計</Text>
         </Pressable>
         {statsOpen && (
           <View style={styles.statsGrid}>
-            <StatMini label="食用可🟢" value={`${statsGreen}`} color={Colors.dangerGreen} />
-            <StatMini label="要注意🟡" value={`${statsYellow}`} color={Colors.dangerYellow} />
-            <StatMini label="危険🔴"   value={`${statsRed}`}    color={Colors.dangerRed} />
+            <StatMini label="食用可" value={`${statsGreen}`} color={Colors.dangerGreen} dotColor="#43A047" />
+            <StatMini label="要注意" value={`${statsYellow}`} color={Colors.dangerYellow} dotColor="#F9A825" />
+            <StatMini label="危険"   value={`${statsRed}`}    color={Colors.dangerRed} dotColor="#E53935" />
             <StatMini label="野草"     value={`${statsWild}/${PLANTS.filter(p => p.category === '野草').length}`} color={Colors.primary} />
             <StatMini label="ハーブ"   value={`${statsHerb}/${PLANTS.filter(p => p.category === 'スパイス・ハーブ').length}`} color="#FF8F00" />
             {([1,2,3,4,5] as const).map(r => {
               const total = PLANTS.filter(p => p.rarity === r).length;
               const found = PLANTS.filter(p => p.rarity === r && discoveredPlantIds.includes(p.id)).length;
               const col = [Colors.rarity1,Colors.rarity2,Colors.rarity3,Colors.rarity4,Colors.rarity5][r-1];
-              return <StatMini key={r} label={`${'★'.repeat(r)}`} value={`${found}/${total}`} color={col} />;
+              return <StatMini key={r} label={`★${r}`} value={`${found}/${total}`} color={col} />;
             })}
           </View>
         )}
@@ -241,9 +247,11 @@ export default function ZukanScreen() {
               setFiltersOpen((v) => !v);
             }}
           >
-            <Text style={styles.filterToggleText}>
-              {filtersOpen ? '▲' : '▼'} フィルター
-            </Text>
+            <View style={styles.filterToggleBtnInner}>
+              <Ionicons name={filtersOpen ? 'chevron-up' : 'chevron-down'} size={14} color={Colors.primaryDark} />
+              <Ionicons name="options-outline" size={14} color={Colors.primaryDark} />
+              <Text style={styles.filterToggleText}>フィルター</Text>
+            </View>
             {activeFilterCount > 0 && (
               <View style={styles.filterBadge}>
                 <Text style={styles.filterBadgeText}>{activeFilterCount}</Text>
@@ -285,9 +293,9 @@ export default function ZukanScreen() {
           {(
             [
               ['all', 'すべて'],
-              ['GREEN', '🟢安全'],
-              ['YELLOW', '🟡注意'],
-              ['RED', '🔴危険'],
+              ['GREEN', '安全'],
+              ['YELLOW', '注意'],
+              ['RED', '危険'],
             ] as [FilterDanger, string][]
           ).map(([val, label]) => (
             <FilterChip
@@ -332,7 +340,7 @@ export default function ZukanScreen() {
             activeColor={Colors.primary}
           />
           <FilterChip
-            label={`${seasonCfg.emoji} 今の季節`}
+            label={`${currentSeason}の季節`}
             active={filterSeason === 'current'}
             onPress={() => setFilterSeason('current')}
             activeColor={seasonCfg.color}
@@ -390,7 +398,8 @@ export default function ZukanScreen() {
       {/* Active effect filter chip */}
       {filterEffect && (
         <View style={styles.activeEffectRow}>
-          <Text style={styles.activeEffectLabel}>💊 効果: </Text>
+          <Ionicons name="medical-outline" size={14} color={Colors.primaryDark} />
+          <Text style={styles.activeEffectLabel}>効果: </Text>
           <View style={styles.activeEffectChip}>
             <Text style={styles.activeEffectText}>{filterEffect}</Text>
             <Pressable
@@ -400,7 +409,7 @@ export default function ZukanScreen() {
               }}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <Text style={styles.activeEffectClear}> ✕</Text>
+              <Ionicons name="close-circle" size={14} color={Colors.primaryDark} />
             </Pressable>
           </View>
         </View>
@@ -418,7 +427,10 @@ export default function ZukanScreen() {
           <Pressable style={styles.hintCard} onPress={() => {}}>
             {hintPlant && (
               <>
-                <Text style={styles.hintTitle}>🔍 ミステリー植物のヒント</Text>
+                <View style={styles.hintTitleRow}>
+                  <Ionicons name="search-outline" size={16} color={Colors.text} />
+                  <Text style={styles.hintTitle}>ミステリー植物のヒント</Text>
+                </View>
 
                 {/* Mystery silhouette */}
                 <View style={styles.hintMystery}>
@@ -427,30 +439,38 @@ export default function ZukanScreen() {
 
                 {/* Hint rows */}
                 <View style={styles.hintRows}>
-                  <HintRow label="📅 旬の時期" value={hintPlant.season} />
+                  <HintRow icon="calendar-outline" label="旬の時期" value={hintPlant.season} />
                   <HintRow
-                    label="📂 カテゴリ"
-                    value={hintPlant.category === '野草' ? '🌿 野草' : '🫚 スパイス・ハーブ'}
+                    icon="folder-outline"
+                    label="カテゴリ"
+                    value={hintPlant.category === '野草' ? '野草' : 'スパイス・ハーブ'}
                   />
                   <HintRow
-                    label="⚠️ 危険度"
+                    icon="warning-outline"
+                    label="危険度"
                     value={
                       hintPlant.danger === 'GREEN'
-                        ? '🟢 安全（食用可）'
+                        ? '安全（食用可）'
                         : hintPlant.danger === 'YELLOW'
-                        ? '🟡 要注意'
-                        : '🔴 危険（有毒）'
+                        ? '要注意'
+                        : '危険（有毒）'
                     }
                   />
                   <View style={styles.hintRowItem}>
-                    <Text style={styles.hintLabel}>✨ レアリティ</Text>
+                    <View style={styles.hintLabelRow}>
+                      <Ionicons name="star-outline" size={12} color={Colors.textSecondary} />
+                      <Text style={styles.hintLabel}>レアリティ</Text>
+                    </View>
                     <RarityStars rarity={hintPlant.rarity} size="sm" />
                   </View>
                 </View>
 
-                <Text style={styles.hintFooter}>
-                  📷 スキャンして発見しよう！
-                </Text>
+                <View style={styles.hintFooterRow}>
+                  <Ionicons name="camera-outline" size={13} color={Colors.primaryDark} />
+                  <Text style={styles.hintFooter}>
+                    スキャンして発見しよう！
+                  </Text>
+                </View>
 
                 <Pressable
                   style={styles.hintCloseBtn}
@@ -494,7 +514,7 @@ export default function ZukanScreen() {
         )}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyEmoji}>🌱</Text>
+            <Ionicons name="leaf-outline" size={48} color={Colors.textMuted} />
             <Text style={styles.emptyText}>
               条件に一致する植物がありません
             </Text>
@@ -510,19 +530,23 @@ export default function ZukanScreen() {
   );
 }
 
-function StatMini({ label, value, color }: { label: string; value: string; color: string }) {
+function StatMini({ label, value, color, dotColor }: { label: string; value: string; color: string; dotColor?: string }) {
   return (
     <View style={[styles.statMiniCard, { borderTopColor: color }]}>
+      {dotColor && <View style={[styles.statMiniDot, { backgroundColor: dotColor }]} />}
       <Text style={[styles.statMiniValue, { color }]}>{value}</Text>
       <Text style={styles.statMiniLabel}>{label}</Text>
     </View>
   );
 }
 
-function HintRow({ label, value }: { label: string; value: string }) {
+function HintRow({ icon, label, value }: { icon: React.ComponentProps<typeof Ionicons>['name']; label: string; value: string }) {
   return (
     <View style={styles.hintRowItem}>
-      <Text style={styles.hintLabel}>{label}</Text>
+      <View style={styles.hintLabelRow}>
+        <Ionicons name={icon} size={12} color={Colors.textSecondary} />
+        <Text style={styles.hintLabel}>{label}</Text>
+      </View>
       <Text style={styles.hintValue}>{value}</Text>
     </View>
   );
@@ -580,6 +604,11 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     paddingHorizontal: 16,
   },
+  headerTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   headerTitle: { fontSize: 22, fontWeight: '900', color: '#FFFFFF' },
   headerSub: { fontSize: 13, color: '#A5D6A7', marginTop: 2, marginBottom: 12 },
   rarityRow: {
@@ -592,10 +621,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 3,
   },
-  rarityStar: {
-    fontSize: 11,
-    fontWeight: '900',
-    letterSpacing: -1,
+  rarityStarsRow: {
+    flexDirection: 'row',
+    gap: 1,
   },
   rarityMiniBar: {
     width: '100%',
@@ -622,9 +650,7 @@ const styles = StyleSheet.create({
     height: 40,
     gap: 8,
   },
-  searchIcon: { fontSize: 14 },
   searchInput: { flex: 1, color: '#FFFFFF', fontSize: 14 },
-  searchClear: { fontSize: 14, color: 'rgba(255,255,255,0.7)', paddingHorizontal: 4 },
 
   filtersContainer: {
     backgroundColor: Colors.bgCard,
@@ -646,6 +672,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     paddingVertical: 4,
+  },
+  filterToggleBtnInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    flex: 1,
   },
   filterToggleText: {
     fontSize: 12,
@@ -731,14 +763,8 @@ const styles = StyleSheet.create({
     color: Colors.primaryDark,
     fontWeight: '700',
   },
-  activeEffectClear: {
-    fontSize: 12,
-    color: Colors.primaryDark,
-    fontWeight: '900',
-  },
   grid: { paddingHorizontal: 12, paddingBottom: 16 },
-  emptyContainer: { padding: 40, alignItems: 'center' },
-  emptyEmoji: { fontSize: 48, marginBottom: 12 },
+  emptyContainer: { padding: 40, alignItems: 'center', gap: 12 },
   emptyText: { fontSize: 14, color: Colors.textMuted, textAlign: 'center' },
   footerPad: { paddingTop: 16 },
 
@@ -752,6 +778,9 @@ const styles = StyleSheet.create({
     borderBottomColor: Colors.border,
   },
   statsToggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     paddingVertical: 6,
   },
   statsToggleText: {
@@ -773,6 +802,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     alignItems: 'center',
     minWidth: 52,
+  },
+  statMiniDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginBottom: 2,
   },
   statMiniValue: {
     fontSize: 14,
@@ -803,12 +838,18 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 16,
   },
+  hintTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginBottom: 18,
+  },
   hintTitle: {
     fontSize: 18,
     fontWeight: '900',
     color: Colors.text,
     textAlign: 'center',
-    marginBottom: 18,
   },
   hintMystery: {
     width: 80,
@@ -843,6 +884,11 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
   },
+  hintLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
   hintLabel: {
     fontSize: 13,
     color: Colors.textSecondary,
@@ -856,12 +902,17 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: 12,
   },
+  hintFooterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginBottom: 16,
+  },
   hintFooter: {
     fontSize: 14,
     fontWeight: '800',
-    color: Colors.primary,
-    textAlign: 'center',
-    marginBottom: 16,
+    color: Colors.primaryDark,
   },
   hintCloseBtn: {
     backgroundColor: Colors.primaryPale,

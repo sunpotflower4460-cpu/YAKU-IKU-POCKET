@@ -13,6 +13,7 @@ import {
   Share,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { Plant } from '../types';
 import { Colors } from '../constants/colors';
 import { RarityStars } from './RarityStars';
@@ -124,10 +125,10 @@ export function ScanResultModal({
     if (!plant) return;
     const rarityStars = '★'.repeat(plant.rarity) + '☆'.repeat(5 - plant.rarity);
     const dangerLabel =
-      plant.danger === 'GREEN' ? '🟢 食用可' :
-      plant.danger === 'YELLOW' ? '🟡 注意' : '🔴 危険';
+      plant.danger === 'GREEN' ? '食用可' :
+      plant.danger === 'YELLOW' ? '注意' : '危険';
     const msg =
-      `🌿 新しい植物を発見！\n\n` +
+      `新しい植物を発見！\n\n` +
       `${plant.emoji} ${plant.name} (${plant.nameEn})\n` +
       `レアリティ: ${rarityStars}\n` +
       `安全性: ${dangerLabel}\n` +
@@ -199,10 +200,10 @@ export function ScanResultModal({
               ]}>
                 <Text style={styles.newLabelText}>
                   {isLegendary
-                    ? '🏆 LEGENDARY FIND!'
+                    ? 'LEGENDARY FIND!'
                     : isRare
-                    ? '⭐ SUPER RARE!'
-                    : '✨ NEW DISCOVERY'}
+                    ? 'SUPER RARE!'
+                    : 'NEW DISCOVERY'}
                 </Text>
               </View>
             )}
@@ -234,7 +235,8 @@ export function ScanResultModal({
             {/* Photo label */}
             {imageUri && (
               <View style={styles.photoLabel}>
-                <Text style={styles.photoLabelText}>📷 あなたの撮影写真</Text>
+                <Ionicons name="camera-outline" size={12} color="rgba(255,255,255,0.85)" />
+                <Text style={styles.photoLabelText}>あなたの撮影写真</Text>
               </View>
             )}
           </View>
@@ -247,8 +249,9 @@ export function ScanResultModal({
             {/* Claude fallback notice */}
             {claudeFailed && (
               <View style={styles.fallbackNotice}>
+                <Ionicons name="warning-outline" size={13} color="#B45309" />
                 <Text style={styles.fallbackText}>
-                  ⚠️ Claude AI に接続できませんでした。モックAIで代替しています。
+                  Claude AI に接続できませんでした。モックAIで代替しています。
                 </Text>
               </View>
             )}
@@ -256,15 +259,17 @@ export function ScanResultModal({
             {/* Danger alerts */}
             {isDangerous && (
               <View style={styles.alertRed}>
+                <Ionicons name="skull-outline" size={14} color="#C62828" />
                 <Text style={styles.alertRedText}>
-                  🚨 WARNING: 危険植物が検出されました！ 絶対に触れないでください！
+                  WARNING: 危険植物が検出されました！ 絶対に触れないでください！
                 </Text>
               </View>
             )}
             {isWarning && (
               <View style={styles.alertYellow}>
+                <Ionicons name="warning-outline" size={14} color="#E65100" />
                 <Text style={styles.alertYellowText}>
-                  ⚠️ 注意：この植物は扱い方に注意が必要です
+                  注意：この植物は扱い方に注意が必要です
                 </Text>
               </View>
             )}
@@ -285,15 +290,19 @@ export function ScanResultModal({
 
             {/* AI Mode Badge */}
             <View style={[styles.aiBadge, usedRealAI ? styles.aiBadgeReal : styles.aiBadgeMock]}>
+              <Ionicons name={usedRealAI ? 'hardware-chip-outline' : 'dice-outline'} size={13} color={usedRealAI ? '#1565C0' : '#6D4C41'} />
               <Text style={[styles.aiBadgeText, usedRealAI ? styles.aiBadgeTextReal : styles.aiBadgeTextMock]}>
-                {usedRealAI ? '🤖 Claude AI' : '🎲 モックAI'}
+                {usedRealAI ? 'Claude AI' : 'モックAI'}
               </Text>
             </View>
 
             {/* Claude AI reason */}
             {usedRealAI && reason && (
               <View style={styles.reasonBox}>
-                <Text style={styles.reasonLabel}>🔬 AIの判断根拠</Text>
+                <View style={styles.reasonTitleRow}>
+                  <Ionicons name="flask-outline" size={13} color={Colors.primaryDark} />
+                  <Text style={styles.reasonLabel}>AIの判断根拠</Text>
+                </View>
                 <Text style={styles.reasonText}>{reason}</Text>
               </View>
             )}
@@ -304,7 +313,10 @@ export function ScanResultModal({
             {/* Effects */}
             {plant.effects.length > 0 && (
               <View style={styles.effectsContainer}>
-                <Text style={styles.sectionTitle}>💊 養生効果</Text>
+                <View style={styles.effectsTitleRow}>
+                  <Ionicons name="medical-outline" size={14} color={Colors.text} />
+                  <Text style={styles.sectionTitle}>養生効果</Text>
+                </View>
                 <View style={styles.effectTags}>
                   {plant.effects.map((effect) => (
                     <View key={effect} style={styles.effectTag}>
@@ -325,9 +337,12 @@ export function ScanResultModal({
             )}
 
             {/* Disclaimer */}
-            <Text style={styles.disclaimer}>
-              ⚠️ このアプリの判定は参考情報です。採取・摂取前には必ず専門家に確認してください。
-            </Text>
+            <View style={styles.disclaimer}>
+              <Ionicons name="warning-outline" size={13} color="#B45309" />
+              <Text style={styles.disclaimerText}>
+                このアプリの判定は参考情報です。採取・摂取前には必ず専門家に確認してください。
+              </Text>
+            </View>
           </ScrollView>
 
           {/* ── Actions ── */}
@@ -338,7 +353,8 @@ export function ScanResultModal({
                 style={[styles.btn, styles.btnShare]}
                 onPress={handleShareDiscovery}
               >
-                <Text style={styles.btnShareText}>🌿 発見をシェア</Text>
+                <Ionicons name="leaf-outline" size={16} color="#FFFFFF" />
+                <Text style={styles.btnShareText}>発見をシェア</Text>
               </Pressable>
             )}
             {/* 下段: もう一度 / 図鑑登録 */}
@@ -476,6 +492,9 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   photoLabel: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
     marginTop: 8,
     backgroundColor: 'rgba(0,0,0,0.35)',
     borderRadius: 8,
@@ -494,6 +513,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   alertRed: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     backgroundColor: '#FFEBEE',
     borderColor: '#F44336',
     borderWidth: 2,
@@ -503,12 +525,15 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   alertRedText: {
+    flex: 1,
     color: Colors.dangerRed,
     fontWeight: '700',
     fontSize: 12,
-    textAlign: 'center',
   },
   alertYellow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     backgroundColor: Colors.dangerYellowBg,
     borderColor: '#FFC107',
     borderWidth: 1,
@@ -518,10 +543,10 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   alertYellowText: {
+    flex: 1,
     color: Colors.dangerYellow,
     fontWeight: '700',
     fontSize: 12,
-    textAlign: 'center',
   },
   badgeRow: {
     flexDirection: 'row',
@@ -557,6 +582,9 @@ const styles = StyleSheet.create({
     width: 36,
   },
   aiBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
     borderRadius: 10,
     paddingHorizontal: 10,
     paddingVertical: 4,
@@ -583,11 +611,16 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     width: '100%',
   },
+  reasonTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginBottom: 4,
+  },
   reasonLabel: {
     fontSize: 11,
     fontWeight: '700',
     color: Colors.primaryDark,
-    marginBottom: 4,
   },
   reasonText: {
     fontSize: 12,
@@ -595,6 +628,9 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   fallbackNotice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     backgroundColor: '#FFF8E1',
     borderRadius: 10,
     padding: 10,
@@ -602,9 +638,9 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   fallbackText: {
+    flex: 1,
     fontSize: 11,
     color: '#E65100',
-    textAlign: 'center',
     lineHeight: 16,
   },
   description: {
@@ -615,11 +651,11 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   effectsContainer: { width: '100%', marginBottom: 12 },
+  effectsTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 8 },
   sectionTitle: {
     fontSize: 13,
     fontWeight: '700',
     color: Colors.text,
-    marginBottom: 8,
   },
   effectTags: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   effectTag: {
@@ -652,11 +688,17 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   disclaimer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 4,
+    width: '100%',
+  },
+  disclaimerText: {
+    flex: 1,
     fontSize: 10,
     color: Colors.textMuted,
-    textAlign: 'center',
     lineHeight: 15,
-    marginTop: 4,
   },
 
   // ── Actions ──
@@ -672,9 +714,12 @@ const styles = StyleSheet.create({
   },
   btn: {
     flex: 1,
+    flexDirection: 'row',
     paddingVertical: 14,
     borderRadius: 14,
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
   },
   btnPrimary: { backgroundColor: Colors.primary },
   btnSecondary: { backgroundColor: Colors.primaryPale },
