@@ -217,18 +217,26 @@ export const useGameStore = create<GameState>()(
 
       // ── Claim a completed daily quest ─────────────────────────────────────
       claimChallenge: (challengeId: string, xpReward: number) => {
-        set((state) => ({
-          claimedChallengeIds: [...state.claimedChallengeIds, challengeId],
-          xp: state.xp + xpReward,
-        }));
+        set((state) => {
+          // Guard against double-claiming the same reward (the UI hides the
+          // button, but the store must be the source of truth).
+          if (state.claimedChallengeIds.includes(challengeId)) return state;
+          return {
+            claimedChallengeIds: [...state.claimedChallengeIds, challengeId],
+            xp: state.xp + xpReward,
+          };
+        });
       },
 
       // ── Claim a completed seasonal quest ──────────────────────────────────
       claimSeasonalChallenge: (challengeId: string, xpReward: number) => {
-        set((state) => ({
-          claimedSeasonalQuestIds: [...state.claimedSeasonalQuestIds, challengeId],
-          xp: state.xp + xpReward,
-        }));
+        set((state) => {
+          if (state.claimedSeasonalQuestIds.includes(challengeId)) return state;
+          return {
+            claimedSeasonalQuestIds: [...state.claimedSeasonalQuestIds, challengeId],
+            xp: state.xp + xpReward,
+          };
+        });
       },
 
       // ── Computed ─────────────────────────────────────────────────────────
@@ -239,6 +247,10 @@ export const useGameStore = create<GameState>()(
     {
       name: 'yaku-iku-storage',
       storage: createJSONStorage(() => AsyncStorage),
+      // Bump `version` and extend `migrate` whenever the persisted shape changes
+      // so existing users' saves are upgraded instead of breaking.
+      version: 1,
+      migrate: (persisted, _version) => persisted as GameState,
       // Do not persist the transient hydration flag.
       partialize: ({ _hasHydrated, setHasHydrated, ...rest }) => rest,
       onRehydrateStorage: () => (state) => {

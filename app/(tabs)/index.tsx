@@ -251,7 +251,7 @@ export default function HomeScreen() {
                       />
                       <Text style={styles.spotlightDangerText}>
                         {plant.danger === 'RED' ? '要注意' :
-                         plant.danger === 'YELLOW' ? '注意' : '食用可'}
+                         plant.danger === 'YELLOW' ? '注意' : '一般食用'}
                       </Text>
                     </View>
                   ) : (
@@ -277,7 +277,7 @@ export default function HomeScreen() {
         <StatCard
           icon="leaf-outline"
           value={String(greenCount)}
-          label="食用植物"
+          label="一般食用"
           color="#2E7D32"
         />
         <StatCard

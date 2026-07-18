@@ -52,7 +52,6 @@ interface Props {
   isNewDiscovery: boolean;
   usedRealAI: boolean;
   reason?: string;
-  claudeFailed?: boolean;
   imageUri?: string;
   onAddToZukan: () => void;
   onScanAgain: () => void;
@@ -65,7 +64,6 @@ export function ScanResultModal({
   isNewDiscovery,
   usedRealAI,
   reason,
-  claudeFailed,
   imageUri,
   onAddToZukan,
   onScanAgain,
@@ -247,16 +245,6 @@ export function ScanResultModal({
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.content}
           >
-            {/* Claude fallback notice */}
-            {claudeFailed && (
-              <View style={styles.fallbackNotice}>
-                <Ionicons name="warning-outline" size={13} color="#B45309" />
-                <Text style={styles.fallbackText}>
-                  Claude AI に接続できませんでした。モックAIで代替しています。
-                </Text>
-              </View>
-            )}
-
             {/* Danger alerts */}
             {isDangerous && (
               <View style={styles.alertRed}>

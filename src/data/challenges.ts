@@ -48,8 +48,8 @@ export const CHALLENGES: Challenge[] = [
     type: 'find_rarity_5', target: 1,
   },
   {
-    id: 'q6', icon: 'leaf-outline', title: '安全な収穫',
-    desc: '食用可能な植物（GREEN）を発見する', xpReward: 40,
+    id: 'q6', icon: 'leaf-outline', title: 'みどりの観察',
+    desc: '「一般に食用とされる」植物を発見する', xpReward: 40,
     type: 'find_green', target: 1,
   },
   {

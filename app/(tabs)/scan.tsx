@@ -43,7 +43,6 @@ export default function ScanScreen() {
     confidence: number;
     isNewDiscovery: boolean;
     reason?: string;
-    claudeFailed?: boolean;
   } | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
 
@@ -136,12 +135,43 @@ export default function ScanScreen() {
         setPhotoUri(photo?.uri ?? null);
       }
 
-      const scanResult = await scanPlant(discoveredPlantIds, base64Image);
-      setResult(scanResult);
-      setUsedRealAI(scanResult.usedRealAI);
+      const outcome = await scanPlant(discoveredPlantIds, base64Image);
+
+      // Real AI could not confidently match a database plant. Never invent a
+      // random result — tell the user it could not be identified.
+      if (outcome.status === 'unidentified') {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+        setScanState('idle');
+        setPhotoUri(null);
+        Alert.alert(
+          '特定できませんでした',
+          'この写真からは植物を特定できませんでした。別の角度・明るさで、対象がはっきり写るように撮り直してください。',
+        );
+        return;
+      }
+
+      // Real AI call failed (network/timeout/malformed). No random fallback.
+      if (outcome.status === 'error') {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        setScanState('idle');
+        setPhotoUri(null);
+        Alert.alert(
+          'AIに接続できませんでした',
+          '通信環境をご確認のうえ、しばらくしてからもう一度お試しください。',
+        );
+        return;
+      }
+
+      setResult({
+        plant: outcome.plant,
+        confidence: outcome.confidence,
+        isNewDiscovery: outcome.isNewDiscovery,
+        reason: outcome.reason,
+      });
+      setUsedRealAI(outcome.usedRealAI);
 
       // Haptic feedback: success notification on scan complete
-      if (scanResult.isNewDiscovery) {
+      if (outcome.isNewDiscovery) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       } else {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -154,6 +184,7 @@ export default function ScanScreen() {
       // Error haptic
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       setScanState('idle');
+      setPhotoUri(null);
       Alert.alert('スキャン失敗', 'もう一度お試しください。');
     }
   }
@@ -387,7 +418,6 @@ export default function ScanScreen() {
         isNewDiscovery={result?.isNewDiscovery ?? false}
         usedRealAI={usedRealAI}
         reason={result?.reason}
-        claudeFailed={result?.claudeFailed}
         imageUri={photoUri ?? undefined}
         onAddToZukan={handleAddToZukan}
         onScanAgain={handleScanAgain}
