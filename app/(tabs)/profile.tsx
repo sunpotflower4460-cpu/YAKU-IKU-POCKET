@@ -192,12 +192,14 @@ export default function ProfileScreen() {
     playerName, xp, discoveredPlantIds, setPlayerName, streak, getLevel, getXpForCurrentLevel,
     getXpToNextLevel, scanHistory, plantNotes, viewedSafetyCardPlantIds, hasComparedCandidates,
     themeOverride, setThemeOverride, aiConsentGiven, setAiConsentGiven, resetAllData,
-    favoritePlantIds,
+    favoritePlantIds, unidentifiedObservations, deleteUnidentifiedObservation,
+    setScanRevisit, setUnidentifiedRevisit,
   } = useGameStore();
   const [editNameVisible, setEditNameVisible] = useState(false);
   const [tempName, setTempName] = useState(playerName);
   const [shareCardVisible, setShareCardVisible] = useState(false);
   const [sourcesVisible, setSourcesVisible] = useState(false);
+  const [historySearch, setHistorySearch] = useState('');
 
   const season = getCurrentSeason();
   const seasonCfg = SEASON_CONFIG[season];
@@ -230,14 +232,65 @@ export default function ProfileScreen() {
     (p) => p.rarity === 5 && discoveredPlantIds.includes(p.id)
   ).length;
 
-  const recentScans = useMemo(
+  // タイムライン検索（v3 §9.3）: 「去年の春に見た黄色い花」のような自然言語
+  // 解析は本環境のAIインフラでは誠実に実装できないため行わない。植物名・
+  // メモ本文に対する正直な部分一致検索として提供する（PR20）。
+  const trimmedSearch = historySearch.trim();
+  const allScansWithPlant = useMemo(
     () =>
-      scanHistory.slice(0, 10).flatMap((record) => {
+      scanHistory.flatMap((record) => {
         const plant = PLANTS.find((p) => p.id === record.plantId);
         return plant ? [{ record, plant }] : [];
       }),
     [scanHistory]
   );
+  const recentScans = useMemo(() => {
+    if (!trimmedSearch) return allScansWithPlant.slice(0, 10);
+    const q = trimmedSearch.toLowerCase();
+    return allScansWithPlant.filter(
+      ({ plant }) =>
+        plant.name.toLowerCase().includes(q) ||
+        plant.nameEn.toLowerCase().includes(q) ||
+        (plantNotes[plant.id] ?? '').toLowerCase().includes(q)
+    );
+  }, [allScansWithPlant, trimmedSearch, plantNotes]);
+  const matchingUnidentified = useMemo(() => {
+    if (!trimmedSearch) return [];
+    const q = trimmedSearch.toLowerCase();
+    return unidentifiedObservations.filter((o) => (o.note ?? '').toLowerCase().includes(q));
+  }, [unidentifiedObservations, trimmedSearch]);
+
+  // 季節別内訳（v3 §9.2「季節別」）
+  const seasonCounts = useMemo(() => {
+    const counts: Record<string, number> = { 春: 0, 夏: 0, 秋: 0, 冬: 0 };
+    for (const record of scanHistory) {
+      counts[seasonForDate(new Date(record.scannedAt))]++;
+    }
+    return counts;
+  }, [scanHistory]);
+
+  // 再訪予定（v3 §9.2「再訪」）: 特定済み・未特定の両方から集約し、日付昇順。
+  const upcomingRevisits = useMemo(() => {
+    const fromScans = scanHistory
+      .filter((r) => r.revisitAt)
+      .map((r) => ({
+        kind: 'scan' as const,
+        id: r.id,
+        revisitAt: r.revisitAt!,
+        label: PLANTS.find((p) => p.id === r.plantId)?.name ?? '不明な植物',
+        plantId: r.plantId,
+      }));
+    const fromUnidentified = unidentifiedObservations
+      .filter((o) => o.revisitAt)
+      .map((o) => ({
+        kind: 'unidentified' as const,
+        id: o.id,
+        revisitAt: o.revisitAt!,
+        label: o.note ? o.note.slice(0, 20) : '未同定の観察',
+        plantId: undefined as string | undefined,
+      }));
+    return [...fromScans, ...fromUnidentified].sort((a, b) => a.revisitAt.localeCompare(b.revisitAt));
+  }, [scanHistory, unidentifiedObservations]);
 
   // Calendar: observation COUNT per day (§7.8 — not rarity-coded anymore).
   const dayObservationCount = useMemo(() => {
@@ -283,7 +336,13 @@ export default function ProfileScreen() {
       discoveredPlantIds,
       favoritePlantIds,
       plantNotes,
-      scanHistory: scanHistory.map(({ id, plantId, scannedAt }) => ({ id, plantId, scannedAt })),
+      scanHistory: scanHistory.map(({ id, plantId, scannedAt, revisitAt }) => ({ id, plantId, scannedAt, revisitAt })),
+      unidentifiedObservations: unidentifiedObservations.map(({ id, observedAt, note, revisitAt }) => ({
+        id,
+        observedAt,
+        note,
+        revisitAt,
+      })),
     };
     try {
       await Share.share({ message: JSON.stringify(payload, null, 2) });
@@ -475,15 +534,119 @@ export default function ProfileScreen() {
         </View>
       </View>
 
+      {/* 季節別内訳（v3 §9.2「季節別」） */}
+      {scanHistory.length > 0 && (
+        <View style={styles.section}>
+          <View style={styles.sectionTitleRow}>
+            <Ionicons name="flower-outline" size={16} color={Colors.text} />
+            <Text style={styles.sectionTitle}>季節別の観察数</Text>
+          </View>
+          <View style={styles.seasonBreakdownRow}>
+            {(['春', '夏', '秋', '冬'] as const).map((s) => (
+              <View key={s} style={styles.seasonBreakdownCell}>
+                <Text style={styles.seasonBreakdownLabel}>{s}</Text>
+                <Text style={styles.seasonBreakdownValue}>{seasonCounts[s]}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+      )}
+
+      {/* 再訪予定（v3 §9.2「再訪」） */}
+      {upcomingRevisits.length > 0 && (
+        <View style={styles.section}>
+          <View style={styles.sectionTitleRow}>
+            <Ionicons name="alarm-outline" size={16} color={Colors.text} />
+            <Text style={styles.sectionTitle}>再訪予定</Text>
+          </View>
+          <View style={styles.historyList}>
+            {upcomingRevisits.map((r) => (
+              <Pressable
+                key={`${r.kind}_${r.id}`}
+                style={styles.revisitRow}
+                onPress={() => {
+                  if (r.kind === 'scan' && r.plantId) router.push(`/plant/${r.plantId}`);
+                }}
+              >
+                <Ionicons name="alarm-outline" size={16} color={Colors.primaryDark} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.revisitLabel} numberOfLines={1}>{r.label}</Text>
+                  <Text style={styles.revisitDate}>{r.revisitAt}</Text>
+                </View>
+                <Pressable
+                  hitSlop={8}
+                  onPress={() =>
+                    r.kind === 'scan' ? setScanRevisit(r.id, undefined) : setUnidentifiedRevisit(r.id, undefined)
+                  }
+                >
+                  <Ionicons name="close-circle-outline" size={18} color={Colors.textMuted} />
+                </Pressable>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+      )}
+
+      {/* 未同定の観察（v3 §6.1「そのまま記録する」の一覧・PR17で保存導線のみ実装済み） */}
+      {unidentifiedObservations.length > 0 && (
+        <View style={styles.section}>
+          <View style={styles.sectionTitleRow}>
+            <Ionicons name="help-circle-outline" size={16} color={Colors.text} />
+            <Text style={styles.sectionTitle}>未同定の観察</Text>
+          </View>
+          <View style={styles.historyList}>
+            {unidentifiedObservations.slice(0, 20).map((o) => (
+              <View key={o.id} style={styles.historyItem}>
+                <Text style={styles.historyEmoji}>❔</Text>
+                <View style={styles.historyInfo}>
+                  <Text style={styles.historyName} numberOfLines={1}>{o.note || '未同定の植物'}</Text>
+                  <Text style={styles.historyTime}>{formatScanDate(o.observedAt)}</Text>
+                </View>
+                <Pressable
+                  hitSlop={8}
+                  onPress={() =>
+                    Alert.alert('観察記録を削除', 'この未同定の観察記録を削除してもよいですか？', [
+                      { text: 'キャンセル', style: 'cancel' },
+                      { text: '削除', style: 'destructive', onPress: () => deleteUnidentifiedObservation(o.id) },
+                    ])
+                  }
+                >
+                  <Ionicons name="trash-outline" size={18} color={Colors.textMuted} />
+                </Pressable>
+              </View>
+            ))}
+          </View>
+        </View>
+      )}
+
       {/* Scan History */}
       <View style={styles.section}>
         <View style={styles.sectionTitleRow}>
           <Ionicons name="time-outline" size={16} color={Colors.text} />
           <Text style={styles.sectionTitle}>スキャン履歴</Text>
         </View>
-        {recentScans.length === 0 ? (
+        {scanHistory.length > 0 && (
+          <View style={styles.historySearchBox}>
+            <Ionicons name="search-outline" size={14} color={Colors.textMuted} />
+            <TextInput
+              style={styles.historySearchInput}
+              value={historySearch}
+              onChangeText={setHistorySearch}
+              placeholder="植物名やメモで検索..."
+              placeholderTextColor={Colors.textMuted}
+            />
+            {historySearch.length > 0 && (
+              <Pressable onPress={() => setHistorySearch('')} accessibilityRole="button" accessibilityLabel="検索をクリア">
+                <Ionicons name="close-circle" size={16} color={Colors.textMuted} />
+              </Pressable>
+            )}
+          </View>
+        )}
+        {recentScans.length === 0 && matchingUnidentified.length === 0 ? (
           <View style={styles.emptyHistory}>
-            <Text style={styles.emptyHistoryText}>まだスキャン履歴がありません</Text>
+            <Text style={styles.emptyHistoryText}>
+              {trimmedSearch ? '一致する観察記録が見つかりませんでした' : 'まだスキャン履歴がありません'}
+            </Text>
           </View>
         ) : (
           <View style={styles.historyList}>
@@ -494,6 +657,15 @@ export default function ProfileScreen() {
                 plant={plant}
                 onPress={() => router.push(`/plant/${plant.id}`)}
               />
+            ))}
+            {matchingUnidentified.map((o) => (
+              <View key={o.id} style={styles.historyItem}>
+                <Text style={styles.historyEmoji}>❔</Text>
+                <View style={styles.historyInfo}>
+                  <Text style={styles.historyName} numberOfLines={1}>{o.note}</Text>
+                  <Text style={styles.historyTime}>{formatScanDate(o.observedAt)}</Text>
+                </View>
+              </View>
             ))}
           </View>
         )}
@@ -1051,6 +1223,46 @@ const styles = StyleSheet.create({
     shadowRadius: 5,
     elevation: 3,
   },
+  seasonBreakdownRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  seasonBreakdownCell: {
+    flex: 1,
+    backgroundColor: Colors.bgCard,
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  seasonBreakdownLabel: { fontSize: 12, fontWeight: '700', color: Colors.textSecondary },
+  seasonBreakdownValue: { fontSize: 20, fontWeight: '900', color: Colors.primary, marginTop: 2 },
+  revisitRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+    gap: 10,
+  },
+  revisitLabel: { fontSize: 14, fontWeight: '700', color: Colors.text },
+  revisitDate: { fontSize: 12, color: Colors.textMuted, marginTop: 2 },
+  historySearchBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: Colors.bgCard,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 10,
+  },
+  historySearchInput: { flex: 1, fontSize: 13, color: Colors.text },
   historyItem: {
     flexDirection: 'row',
     alignItems: 'center',
