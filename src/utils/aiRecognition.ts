@@ -1,6 +1,7 @@
 import { ScanResult, recognizePlant } from './mockAI';
 import { recognizePlantWithClaude } from './claudeAI';
 import { CapturedPhoto } from '../types/capture';
+import { IdentificationCandidate } from '../types/observation';
 
 /**
  * API key from environment variable.
@@ -16,14 +17,18 @@ const CLAUDE_API_KEY = process.env.EXPO_PUBLIC_CLAUDE_API_KEY ?? '';
 /**
  * Discriminated outcome of a scan.
  *
- * - `identified`   : a concrete plant to show / optionally register.
+ * - `identified`   : one or more candidates (§7.5 — never a single unearned
+ *                    certainty). `plant`/`confidence`/`reason` mirror the top
+ *                    candidate for callers that only care about the best
+ *                    guess; `candidates` carries the full ranked list (real
+ *                    AI only — demo mode has nothing to rank, see below).
  * - `unidentified` : real AI could not confidently match a database plant.
  *                    We deliberately do NOT invent a random plant here.
  * - `error`        : real AI call failed (network/timeout/malformed response).
  *                    We deliberately do NOT fall back to a random mock result.
  */
 export type ScanOutcome =
-  | ({ status: 'identified'; usedRealAI: boolean } & ScanResult)
+  | ({ status: 'identified'; usedRealAI: boolean; candidates?: IdentificationCandidate[] } & ScanResult)
   | { status: 'unidentified'; usedRealAI: true; reason?: string }
   | { status: 'error'; usedRealAI: true; message: string };
 
@@ -32,11 +37,13 @@ export type ScanOutcome =
  * identification outcome.
  *
  * - If `photos` is non-empty AND EXPO_PUBLIC_CLAUDE_API_KEY is set
- *   → calls Claude Vision API (real AI) with all photos in one request.
- *     Unknown/failed results surface as `unidentified` / `error` — never a
- *     random guess.
+ *   → calls Claude Vision API (real AI) with all photos in one request,
+ *     returning up to 3 ranked candidates. Unknown/failed results surface as
+ *     `unidentified` / `error` — never a random guess.
  * - Otherwise → uses weighted-random mock AI (demo mode), which always
- *   returns an `identified` result flagged with `usedRealAI: false`.
+ *   returns a single `identified` result flagged with `usedRealAI: false`
+ *   and no `candidates` list — the mock has no real analysis to rank, so we
+ *   don't dress it up as a comparison (see docs/IDENTIFICATION_PIPELINE.md).
  */
 export async function scanPlant(
   discoveredIds: string[],
@@ -48,14 +55,16 @@ export async function scanPlant(
       if (outcome.status === 'unidentified') {
         return { status: 'unidentified', usedRealAI: true, reason: outcome.reason };
       }
-      const isNewDiscovery = !discoveredIds.includes(outcome.plant.id);
+      const top = outcome.candidates[0];
+      const isNewDiscovery = !discoveredIds.includes(top.plant.id);
       return {
         status: 'identified',
         usedRealAI: true,
-        plant: outcome.plant,
-        confidence: outcome.confidence,
+        plant: top.plant,
+        confidence: top.score.visionScore ?? 0,
         isNewDiscovery,
-        reason: outcome.reason,
+        reason: top.reason,
+        candidates: outcome.candidates,
       };
     } catch (err) {
       console.warn('[AI] Claude Vision failed:', err);
@@ -67,7 +76,7 @@ export async function scanPlant(
     }
   }
 
-  // Demo mode (no key / no photos): mock always returns a plant.
+  // Demo mode (no key / no photos): mock always returns a single plant.
   const result = await recognizePlant(discoveredIds);
   return { status: 'identified', usedRealAI: false, ...result };
 }
