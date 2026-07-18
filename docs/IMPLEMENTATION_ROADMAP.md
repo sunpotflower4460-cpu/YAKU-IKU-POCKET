@@ -227,5 +227,22 @@
 - `npm run check`（typecheck + lint + jest 86件）green。既存のストア/ユーティリティを再利用する画面追加のためユニットテストの追加は無し
 - Expo web + Playwright: localStorageに複数の観察・未同定記録・再訪予定を注入し、季節別内訳（夏2件）・再訪予定の集約表示（特定済み/未特定の両方、日付順）・未同定の観察一覧・検索ボックスでの部分一致絞り込み（「ノビル」入力→該当1件に絞込）が正しく動作することをスクリーンショットで確認
 
+## PR21 スコープ（本PR、Uses Safety Architecture）
+v3 §10「料理・生活利用ハブ」の中核原則「識別候補から直接『食べる』へ誘導しない」を支える型とゲートロジックのみを実装する（UIはPR22）。
+
+含む:
+- **型定義**（`src/types/plantUse.ts`）: `SourceOrigin`（入手経路7種）、`UseEvidenceLevel`（証拠レベル6段階＋日本語ラベル）、`PlantUse`（category/allowedOrigins/evidenceLevel/preparation/warnings/contraindications/sourceRefs等）、`UseGate`（gate0〜gate3）
+- **ゲート判定ロジック**（`src/utils/useGate.ts`）:
+  - `determineMaxGate()`: 識別状態（既存の`IdentificationState`、PR6から再利用）が`user_selected`/`community_supported`/`expert_verified`のいずれでもない場合、または危険な類似種がある場合は常にgate0（学習のみ）に固定。入手経路が店舗購入・栽培品確認済みの場合のみgate2に到達可能。野生観察・野生採取はgate1止まり（本アプリはgate3＝採取手順の提供に初版では対応しないため）
+  - `requiredGateForCategory()` / `isCategoryUnlocked()`: 利用カテゴリ（食べる/飲む/栽培/保存/クラフト等）ごとに必要な最低ゲートを判定。摂取系（食べる/飲む/伝統薬用）は常にgate2以上を要求し、gate1では絶対に解放されない
+
+含まない（後続へ委譲、意図的にスコープ外）:
+- **暮らしタブUI・実際のPlantUseコンテンツ**: PR22。特に、既存の`effects`タグ（伝統的用途）を`PlantUse`レコードへ変換する際、具体的な調理手順・分量等を捏造しないという方針の設計判断が必要なため次PRへ
+- **`PracticeRecord`（実践記録）**: PlantUseコンテンツが無い状態では実践記録も作れないため同じくPR22
+
+## 検証（PR21）
+- `npm run check`（typecheck + lint + jest 95件、useGateのゲート判定ロジックテスト9件を追加）green
+- 型定義のみ・UIへの結線なしのためPlaywright検証は無し（消費側のPR22で実施）
+
 ## 既存改善の回帰防止（§1）
 ハイドレーション後セッション開始 / ローカル日付 / カメラ拒否→設定誘導 / ErrorBoundary / モーダル戻る / 画像フォールバック / モック明示 / 危険警告 / TS strict / プライバシー導線枠 / typecheck。CIで typecheck+test＋禁止語grepにより後退を検知。
