@@ -15,8 +15,8 @@
 | PR11 | Knowledge Schema（PlantDefinition/taxonomy/50種変換） | ✅ merged |
 | PR12 | Explore（検索/高度フィルター/分類/表示切替） | ✅ merged |
 | **PR13** | **Fieldbook（学習系実績/観察カレンダー/外観・AI同意・export・delete設定）** | 🟡 本PR |
-| PR14 | Backend & Real Identification（proxy/Pl@ntNet等/taxonomy/rate limit/consent） | ⬜ 判断保留（後述） |
-| PR15 | Accessibility / QA / App Store（VoiceOver/Dynamic Type/CI/E2E/assets） | ⬜ |
+| PR14 | Backend & Real Identification（proxy/Pl@ntNet等/taxonomy/rate limit/consent） | ✅ 判断保留（設計メモのみ, merged） |
+| **PR15** | **Accessibility / QA（コード範囲: a11yラベル/Reduce Motion/eslint導入）** | 🟡 本PR |
 
 ## PR8 スコープ（完了）
 含む: タブ再構成（今日/観察/探す/記録）、Today画面の情報階層再設計（Hero=「観察を始める」1CTA→最近の観察→季節→観察チャレンジ→1分で学ぶ→コレクション進捗→安全情報）、「1分で学ぶ」学習カード新設（危険類似種の見分け方を優先表示）。
@@ -121,6 +121,24 @@
 - 位置情報の同意UI設計を検証できる実機
 
 現状の`EXPO_PUBLIC_CLAUDE_API_KEY`直呼び出し構成（PR13で「同意なしには呼ばれない」ようゲート済み）はセキュリティ上の既知の妥協点として`docs/APP_STORE_AUDIT.md`に明記済み。
+
+## PR15 スコープ（本PR、コード範囲のアクセシビリティ/QA）
+含む:
+- **アイコンのみボタンのVoiceOurラベル監査**: 全画面のPressableを棚卸しし、隣接テキストが無い（=VoiceOverが読み上げるものが無い）アイコンのみのボタンに`accessibilityRole="button"`＋`accessibilityLabel`を追加（フラッシュ切替/カメラ切替/結果を表示/検索文字クリア/効果フィルター解除/お知らせを閉じる/お気に入りハート、`app/(tabs)/scan.tsx`・`app/(tabs)/zukan.tsx`・`app/(tabs)/index.tsx`・`src/components/PlantCard.tsx`）。Playwrightのaccessibility snapshotで実際にラベルが読み上げツリーに現れることを確認済み
+- **Reduce Motion対応**: 共通フック`src/utils/reduceMotion.ts`（`useReduceMotion`）を新設し、既存Skeletonの個別実装をこれに統合。OSの「視差効果を減らす」相当の設定が有効な間、スキャン中の走査線/スピナー/待機中の脈動アニメーション（`scan.tsx`）とレア発見時のシマー/スパークル演出（`ScanResultModal.tsx`）を無効化（一回きりの入場アニメーションは対象外、継続ループのみ）。Chromiumの`prefers-reduced-motion: reduce`エミュレーションで動作確認済み
+- **色だけに依存しない情報伝達の補強**: プロフィールの観察数カレンダーセルに件数・当日か否かを含む`accessibilityLabel`を追加（PR13で導入した濃淡表示への追随）
+- **eslint導入**（`eslint-config-expo`）: `npm run lint`スクリプトを新設しCIに追加。React Compiler向けの実験的ルール（`react-hooks/refs`/`react-hooks/set-state-in-effect`/`react-hooks/preserve-manual-memoization`）は、本プロジェクトがCompilerを採用しておらず、かつ長年安定稼働している`useRef(new Animated.Value(...))`等の標準的なRNパターンを一律「エラー」として検出してしまうため無効化（`.eslintrc.js`にコメントで理由を明記）。それ以外の実質的な指摘（未使用変数・`Array<T>`記法統一など）は修正
+- **ユニットテスト追加**: `useReduceMotion`フックの初期値解決・OS設定変更への追随を検証する2件
+
+含まない（後続へ委譲、意図的にスコープ外）:
+- **VoiceOver実機での通し確認・Dynamic Type最大時のレイアウト崩れ目視確認**: シミュレータ/実機が無いこの開発環境では検証できない。TestFlight実機テスト（`docs/APP_STORE_RELEASE_CHECKLIST.md`）に委譲
+- **`react-hooks/exhaustive-deps`警告の一括解消**: 既存の`Animated.Value` refをuseEffectの依存配列に含めるかどうかはRNコミュニティでも意見が分かれ、refは再レンダー間で安定するため省略しても実害が無い。警告のまま残し、CIはブロックしない（errorではなくwarning）
+- **E2Eテストの自動化・CI組み込み**: 本セッションで都度実行したPlaywright検証スクリプトは使い捨てで、リポジトリには未コミット。恒久的なE2Eスイート（fixture・CI実行環境の用意）は別途の判断が必要なため見送り
+- **アプリアイコン/スプラッシュ/EAS認証情報等の提出物**: 引き続き開発者本人のみ対応可能（`docs/APP_STORE_AUDIT.md`参照）
+
+## 検証（PR15）
+- `npm run check`（typecheck + lint + jest 69件）green。lintは0 errors・9 warnings（全て`react-hooks/exhaustive-deps`、Animated.Value refの省略という周知の安全なパターン）
+- Expo web + Playwright: `page.emulateMedia({ reducedMotion: 'reduce' })`でスキャン画面のループアニメーションが停止すること、`page.accessibility.snapshot()`で新規追加したaccessibilityLabelが読み上げツリーに現れることを確認済み
 
 ## 既存改善の回帰防止（§1）
 ハイドレーション後セッション開始 / ローカル日付 / カメラ拒否→設定誘導 / ErrorBoundary / モーダル戻る / 画像フォールバック / モック明示 / 危険警告 / TS strict / プライバシー導線枠 / typecheck。CIで typecheck+test＋禁止語grepにより後退を検知。

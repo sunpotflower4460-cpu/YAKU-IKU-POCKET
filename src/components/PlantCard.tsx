@@ -161,6 +161,8 @@ export function PlantCard({ plant, discovered, imageUri, isFavorite, hasNote, fa
               onFavorite();
             }}
             hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+            accessibilityRole="button"
+            accessibilityLabel={isFavorite ? 'お気に入りから外す' : 'お気に入りに追加'}
           >
             <Ionicons
               name={isFavorite ? 'heart' : 'heart-outline'}

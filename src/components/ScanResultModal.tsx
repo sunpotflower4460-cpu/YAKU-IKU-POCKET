@@ -22,6 +22,7 @@ import { DangerBadge } from './DangerBadge';
 import { SafetyBanner } from './SafetyBanner';
 import { getSafetyWarnings } from '../data/safety';
 import { assessCandidateSafety } from '../utils/candidateSafety';
+import { useReduceMotion } from '../utils/reduceMotion';
 
 // Gradient header color per rarity
 const RARITY_GRADIENT: Record<number, [string, string, string]> = {
@@ -89,6 +90,7 @@ export function ScanResultModal({
 }: Props) {
   const showCompare = !!candidates && candidates.length > 1;
   const candidateSafety = candidates ? assessCandidateSafety(candidates) : null;
+  const reduceMotion = useReduceMotion();
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const shimmerAnim = useRef(new Animated.Value(0)).current;
   const sparkleAnim = useRef(new Animated.Value(0)).current;
@@ -107,8 +109,8 @@ export function ScanResultModal({
       let shimmerLoop: Animated.CompositeAnimation | null = null;
       let sparkleLoop: Animated.CompositeAnimation | null = null;
 
-      // Shimmer + sparkle for ★4/★5 new discoveries
-      if (plant.rarity >= 4 && isNewDiscovery) {
+      // Shimmer + sparkle for ★4/★5 new discoveries (skipped under Reduce Motion)
+      if (plant.rarity >= 4 && isNewDiscovery && !reduceMotion) {
         shimmerLoop = Animated.loop(
           Animated.sequence([
             Animated.timing(shimmerAnim, { toValue: 1, duration: 700, useNativeDriver: true }),
@@ -136,7 +138,7 @@ export function ScanResultModal({
       shimmerAnim.setValue(0);
       sparkleAnim.setValue(0);
     }
-  }, [visible, plant, isNewDiscovery]);
+  }, [visible, plant, isNewDiscovery, reduceMotion]);
 
   if (!plant) return null;
 

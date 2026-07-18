@@ -18,15 +18,22 @@
 - [ ] App Privacy 回答（画像・位置・診断データの扱い、実AI時は第三者送信を明記）
 - [ ] 年齢レーティング質問票（毒/死・健康表現を反映）
 - [ ] EAS projectId / Apple ID / Team ID / App ID（`eas.json` 仮値）
-- [ ] TestFlight 実機テスト（SE相当/標準/Pro Max、ダーク、VoiceOver、文字最大、オフライン、API障害、空データ、100件履歴）
-- [ ] 端末内データ削除機能（§17）→ PR13
+- [ ] TestFlight 実機テスト（SE相当/標準/Pro Max、ダーク、VoiceOver実機確認、文字最大、オフライン、API障害、空データ、100件履歴）
+- [x] 端末内データ削除機能（§17）→ PR13で実装（設定 > すべてのデータを削除）
 - [ ] Reviewer Notes（デモ/実AIモードの説明）
 
 ## エンジニアリング（§20 Engineering）
 - [x] typecheck pass
-- [x] unit test pass（jest）
-- [ ] lint（PR7以降で eslint 導入）
-- [ ] expo-doctor / web export / preview build / secret scan（CIに段階導入）
+- [x] unit test pass（jest, 69件）
+- [x] lint（PR15で eslint-config-expo 導入、CIに追加。0 errors）
+- [ ] expo-doctor / web export / preview build / secret scan（web exportはCIに導入済み。expo-doctor/preview build/secret scanは残り）
+
+## アクセシビリティ（§20 A11y, PR15で対応したコード範囲）
+- [x] アイコンのみのボタンにaccessibilityLabel付与（フラッシュ/カメラ切替/検索クリア/お気に入り等の監査・修正）
+- [x] Reduce Motion対応（`useReduceMotion`フック新設。スキャン中の演出・レア発見時のシマー/スパークル・Skeletonの点滅ループを、OS設定がオンの間は無効化）
+- [x] 色だけに依存しない情報伝達（カレンダーの観察数セルにaccessibilityLabelで件数を明示。危険度バッジは既存から色+テキストラベル）
+- [x] Dynamic Type: `DynamicText`（PR7）で`allowFontScaling`を明示的に有効化
+- [ ] 🔒 VoiceOver実機での通し確認、Dynamic Type最大時のレイアウト崩れ目視確認（TestFlightでの実機テストに委譲）
 
 ## App Store 説明（§17 禁止/推奨）
 - 禁止: 「正確に植物を判定」「食べられる野草が分かる」「薬効が分かる」「安全性を保証」「専門家の代わり」「医療用途」

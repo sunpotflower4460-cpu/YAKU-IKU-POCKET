@@ -23,9 +23,9 @@ import { Plant } from '../../src/types';
 import { IdentificationCandidate } from '../../src/types/observation';
 import { Colors } from '../../src/constants/colors';
 import { isDemoMode } from '../../src/utils/appMode';
+import { useReduceMotion } from '../../src/utils/reduceMotion';
 import {
   CapturedPhoto,
-  PhotoOrgan,
   ORGAN_LABEL,
   ORGAN_CYCLE,
   MAX_CAPTURE_PHOTOS,
@@ -79,13 +79,14 @@ export default function ScanScreen() {
   const photoUri = photos[0]?.uri ?? null;
 
   // Animations
+  const reduceMotion = useReduceMotion();
   const scanLineY = useRef(new Animated.Value(0)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const spinAnim = useRef(new Animated.Value(0)).current;
 
   // Scan line
   useEffect(() => {
-    if (scanState === 'scanning') {
+    if (scanState === 'scanning' && !reduceMotion) {
       const scanLoop = Animated.loop(
         Animated.sequence([
           Animated.timing(scanLineY, {
@@ -124,11 +125,11 @@ export default function ScanScreen() {
       scanLineY.setValue(0);
       spinAnim.setValue(0);
     }
-  }, [scanState]);
+  }, [scanState, reduceMotion]);
 
   // Idle pulse
   useEffect(() => {
-    if (scanState === 'idle') {
+    if (scanState === 'idle' && !reduceMotion) {
       const pulseLoop = Animated.loop(
         Animated.sequence([
           Animated.timing(pulseAnim, { toValue: 1.06, duration: 900, useNativeDriver: true }),
@@ -140,7 +141,7 @@ export default function ScanScreen() {
     } else {
       pulseAnim.setValue(1);
     }
-  }, [scanState]);
+  }, [scanState, reduceMotion]);
 
   const spin = spinAnim.interpolate({
     inputRange: [0, 1],
@@ -361,6 +362,8 @@ export default function ScanScreen() {
           <Pressable
             style={styles.controlBtn}
             onPress={() => setFlash((f) => (f === 'off' ? 'on' : 'off'))}
+            accessibilityRole="button"
+            accessibilityLabel={flash === 'off' ? 'フラッシュをオンにする' : 'フラッシュをオフにする'}
           >
             <Ionicons
               name={flash === 'off' ? 'flash-off' : 'flash'}
@@ -386,6 +389,8 @@ export default function ScanScreen() {
             onPress={() =>
               setFacing((f) => (f === 'back' ? 'front' : 'back'))
             }
+            accessibilityRole="button"
+            accessibilityLabel="カメラを切り替える"
           >
             <Ionicons name="camera-reverse-outline" size={22} color="#FFFFFF" />
           </Pressable>
@@ -538,6 +543,8 @@ export default function ScanScreen() {
             <Pressable
               style={[styles.scanBtn, { backgroundColor: '#1565C0' }]}
               onPress={() => setModalVisible(true)}
+              accessibilityRole="button"
+              accessibilityLabel="結果を表示"
             >
               <View style={styles.scanBtnInner}>
                 <Ionicons name="book-outline" size={32} color="#FFFFFF" />
