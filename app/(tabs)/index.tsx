@@ -10,14 +10,15 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
+import * as Haptics from '../../src/utils/haptics';
 import { useGameStore, XP_PER_LEVEL } from '../../src/store/useGameStore';
 import { PLANTS, TOTAL_PLANTS } from '../../src/data/plants';
 import { DisclaimerBanner } from '../../src/components/DisclaimerBanner';
 import { OnboardingModal } from '../../src/components/OnboardingModal';
 import { Colors } from '../../src/constants/colors';
 import { getCurrentSeason, SEASON_CONFIG, getSeasonalPlants } from '../../src/utils/season';
-import { todayLocalStr } from '../../src/utils/date';
+import { todayLocalStr, localDayFromISO } from '../../src/utils/date';
+import { getTodayLearnCard } from '../../src/utils/learnCard';
 import {
   getDailyChallenges,
   getChallengePct,
@@ -37,7 +38,7 @@ const MILESTONES: [number, string, string, string][] = [
 export default function HomeScreen() {
   const router = useRouter();
   const {
-    discoveredPlantIds, playerName, xp, getLevel, getXpForCurrentLevel,
+    discoveredPlantIds, scanHistory, playerName, xp, getLevel, getXpForCurrentLevel,
     todayScanCount, todayNewCount, todayMaxRarity, todayDangers, todayCategories,
     claimedChallengeIds, claimChallenge,
     claimedSeasonalQuestIds, claimSeasonalChallenge,
@@ -97,6 +98,19 @@ export default function HomeScreen() {
     .map((id) => PLANTS.find((p) => p.id === id))
     .filter((p): p is (typeof PLANTS)[number] => p !== undefined);
 
+  // "1分で学ぶ" — one bite-sized learning card per day, prioritising
+  // dangerous-lookalike awareness (the brand's core safety value, §7.3).
+  const learnCard = useMemo(
+    () => getTodayLearnCard(todayDateStr, discoveredPlantIds),
+    [todayDateStr, discoveredPlantIds]
+  );
+
+  // This month's observation count, shown as a small supporting stat on the Hero.
+  const thisMonthCount = useMemo(() => {
+    const thisMonth = todayDateStr.slice(0, 7); // YYYY-MM (local)
+    return scanHistory.filter((r) => localDayFromISO(r.scannedAt).slice(0, 7) === thisMonth).length;
+  }, [scanHistory, todayDateStr]);
+
   // Animated XP bar
   const xpAnim = useRef(new Animated.Value(0)).current;
   useEffect(() => {
@@ -115,32 +129,54 @@ export default function HomeScreen() {
   return (
     <>
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      {/* Hero Header */}
+      {/* 今日のHero — 主役は「観察を始める」の1つ。レベル/XPは補助表示 (§7.3) */}
       <LinearGradient
         colors={['#1B5E20', '#2E7D32', '#388E3C']}
         style={styles.hero}
       >
-        <View style={styles.heroContent}>
-          <Text style={styles.appTitle}>薬育ポケット</Text>
-          <Text style={styles.playerName}>{playerName}</Text>
-
-          {/* Level & XP */}
-          <View style={styles.levelContainer}>
-            <View style={styles.levelBadge}>
-              <Text style={styles.levelLabel}>Lv</Text>
-              <Text style={styles.levelNum}>{level}</Text>
-            </View>
-            <View style={styles.xpSection}>
-              <Text style={styles.xpText}>
-                XP {xpCurrent} / {XP_PER_LEVEL}
-              </Text>
-              <View style={styles.xpBar}>
-                <Animated.View
-                  style={[styles.xpFill, { width: xpBarWidth }]}
-                />
-              </View>
-            </View>
+        <View style={styles.heroTopRow}>
+          <View>
+            <Text style={styles.appTitle}>薬育ポケット</Text>
+            <Text style={styles.playerName}>{playerName}</Text>
           </View>
+          <View style={styles.levelBadgeSmall}>
+            <Text style={styles.levelBadgeSmallText}>Lv.{level}</Text>
+          </View>
+        </View>
+
+        <Text style={styles.heroHeadline}>
+          {learnCard ? '今日も、自然を観察しよう' : '自然の観察をはじめよう'}
+        </Text>
+
+        <View style={styles.heroActionRow}>
+          <Pressable
+            style={styles.heroPrimaryBtn}
+            onPress={() => router.push('/(tabs)/scan')}
+            accessibilityRole="button"
+            accessibilityLabel="観察を始める"
+          >
+            <Ionicons name="camera" size={20} color={Colors.primaryDark} />
+            <Text style={styles.heroPrimaryBtnText}>観察を始める</Text>
+          </Pressable>
+          <Pressable
+            style={styles.heroSecondaryBtn}
+            onPress={() => router.push('/(tabs)/zukan')}
+            accessibilityRole="button"
+            accessibilityLabel="植物を探す"
+          >
+            <Ionicons name="search-outline" size={18} color="#FFFFFF" />
+            <Text style={styles.heroSecondaryBtnText}>探す</Text>
+          </Pressable>
+        </View>
+
+        <View style={styles.heroFooterRow}>
+          <Text style={styles.heroFooterText}>今月の観察 {thisMonthCount}件</Text>
+          <View style={styles.heroXpTrack}>
+            <Animated.View style={[styles.heroXpFill, { width: xpBarWidth }]} />
+          </View>
+          <Text style={styles.heroFooterText}>
+            XP {xpCurrent}/{XP_PER_LEVEL}
+          </Text>
         </View>
       </LinearGradient>
 
@@ -166,7 +202,52 @@ export default function HomeScreen() {
         </LinearGradient>
       )}
 
-      {/* Seasonal Banner */}
+      {/* 最近の観察 — Heroの直後（§7.3の情報階層順） */}
+      {recentPlants.length > 0 && (
+        <View style={styles.section}>
+          <View style={styles.sectionTitleRow}>
+            <Ionicons name="time-outline" size={16} color={Colors.text} />
+            <Text style={styles.sectionTitle}>最近の観察</Text>
+          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            {recentPlants.map((plant) => (
+              <Pressable
+                key={plant.id}
+                style={[
+                  styles.recentCard,
+                  {
+                    borderTopWidth: 3,
+                    borderTopColor:
+                      plant.danger === 'RED'
+                        ? '#EF9A9A'
+                        : plant.danger === 'YELLOW'
+                        ? '#FFD54F'
+                        : '#81C784',
+                  },
+                ]}
+                onPress={() => router.push(`/plant/${plant.id}`)}
+              >
+                <Text style={styles.recentEmoji}>{plant.emoji}</Text>
+                <Text style={styles.recentName} numberOfLines={1}>
+                  {plant.name}
+                </Text>
+                <View
+                  style={[
+                    styles.recentDangerDot,
+                    {
+                      backgroundColor:
+                        plant.danger === 'GREEN' ? '#43A047' :
+                        plant.danger === 'YELLOW' ? '#F9A825' : '#E53935',
+                    },
+                  ]}
+                />
+              </Pressable>
+            ))}
+          </ScrollView>
+        </View>
+      )}
+
+      {/* 今の季節 */}
       <View style={[styles.seasonBanner, { backgroundColor: seasonCfg.bg }]}>
         <Ionicons name={seasonCfg.icon as React.ComponentProps<typeof Ionicons>['name']} size={24} color={seasonCfg.color} />
         <View style={{ flex: 1 }}>
@@ -176,11 +257,11 @@ export default function HomeScreen() {
           <Text style={styles.seasonDesc}>{seasonCfg.desc}</Text>
         </View>
         <View style={[styles.seasonBadge, { backgroundColor: seasonCfg.color }]}>
-          <Text style={styles.seasonBadgeText}>出現UP</Text>
+          <Text style={styles.seasonBadgeText}>観察しやすい</Text>
         </View>
       </View>
 
-      {/* ── 今月の注目植物スライダー ── */}
+      {/* ── 今の季節の注目植物スライダー ── */}
       {spotlightPlants.length > 0 && (
         <View style={styles.section}>
           <View style={styles.sectionRow}>
@@ -266,51 +347,11 @@ export default function HomeScreen() {
         </View>
       )}
 
-      {/* Stats Row */}
-      <View style={styles.statsRow}>
-        <StatCard
-          icon="book-outline"
-          value={`${discoveredCount}/${TOTAL_PLANTS}`}
-          label="図鑑収録"
-          color="#4CAF50"
-        />
-        <StatCard
-          icon="leaf-outline"
-          value={String(greenCount)}
-          label="一般食用"
-          color="#2E7D32"
-        />
-        <StatCard
-          icon="star-outline"
-          value={String(rarePlants.length)}
-          label="レア発見"
-          color={Colors.rarity5}
-        />
-      </View>
-
-      {/* Action Buttons */}
-      <View style={styles.actionRow}>
-        <Pressable
-          style={[styles.actionBtn, styles.actionBtnPrimary]}
-          onPress={() => router.push('/(tabs)/scan')}
-        >
-          <Ionicons name="camera" size={24} color="#FFFFFF" />
-          <Text style={styles.actionBtnTextPrimary}>植物をスキャン</Text>
-        </Pressable>
-        <Pressable
-          style={[styles.actionBtn, styles.actionBtnSecondary]}
-          onPress={() => router.push('/(tabs)/zukan')}
-        >
-          <Ionicons name="book" size={24} color={Colors.primaryDark} />
-          <Text style={styles.actionBtnTextSecondary}>図鑑を見る</Text>
-        </Pressable>
-      </View>
-
-      {/* Daily Quests */}
+      {/* 今日の観察チャレンジ */}
       <View style={styles.section}>
         <View style={styles.sectionTitleRow}>
           <Ionicons name="list-outline" size={16} color={Colors.text} />
-          <Text style={styles.sectionTitle}>今日のクエスト</Text>
+          <Text style={styles.sectionTitle}>今日の観察チャレンジ</Text>
         </View>
         {dailyChallenges.map((challenge) => {
           const pct = getChallengePct(challenge, dailySnap);
@@ -370,56 +411,61 @@ export default function HomeScreen() {
         })}
       </View>
 
-      {/* Recent Discoveries */}
-      {recentPlants.length > 0 && (
+      {/* 1分で学ぶ — 日替わりの学びカード（毒草の見分け方を優先） */}
+      {learnCard && (
         <View style={styles.section}>
           <View style={styles.sectionTitleRow}>
-            <Ionicons name="time-outline" size={16} color={Colors.text} />
-            <Text style={styles.sectionTitle}>最近の発見</Text>
+            <Ionicons name="bulb-outline" size={16} color={Colors.text} />
+            <Text style={styles.sectionTitle}>1分で学ぶ</Text>
           </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            {recentPlants.map((plant) => (
-              <Pressable
-                key={plant.id}
-                style={[
-                  styles.recentCard,
-                  {
-                    borderTopWidth: 3,
-                    borderTopColor:
-                      plant.danger === 'RED'
-                        ? '#EF9A9A'
-                        : plant.danger === 'YELLOW'
-                        ? '#FFD54F'
-                        : '#81C784',
-                  },
-                ]}
-                onPress={() => router.push(`/plant/${plant.id}`)}
-              >
-                <Text style={styles.recentEmoji}>{plant.emoji}</Text>
-                <Text style={styles.recentName} numberOfLines={1}>
-                  {plant.name}
-                </Text>
-                <View
-                  style={[
-                    styles.recentDangerDot,
-                    {
-                      backgroundColor:
-                        plant.danger === 'GREEN' ? '#43A047' :
-                        plant.danger === 'YELLOW' ? '#F9A825' : '#E53935',
-                    },
-                  ]}
-                />
-              </Pressable>
-            ))}
-          </ScrollView>
+          <Pressable
+            style={[styles.learnCard, learnCard.isSafetyTip && styles.learnCardSafety]}
+            onPress={() => router.push(`/plant/${learnCard.plant.id}`)}
+          >
+            <View style={styles.learnCardHeader}>
+              <Text style={styles.learnCardEmoji}>{learnCard.plant.emoji}</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.learnCardName}>{learnCard.plant.name}</Text>
+                {learnCard.isSafetyTip && (
+                  <View style={styles.learnCardBadge}>
+                    <Ionicons name="warning-outline" size={11} color={Colors.dangerRed} />
+                    <Text style={styles.learnCardBadgeText}>見分け方を学ぶ</Text>
+                  </View>
+                )}
+              </View>
+            </View>
+            <Text style={styles.learnCardTip} numberOfLines={3}>
+              {learnCard.tip}
+            </Text>
+          </Pressable>
         </View>
       )}
 
-      {/* Progress */}
+      {/* Progress（発見数・レア発見などの統計もここに集約） */}
       <View style={styles.section}>
         <View style={styles.sectionTitleRow}>
           <Ionicons name="stats-chart-outline" size={16} color={Colors.text} />
           <Text style={styles.sectionTitle}>コレクション進捗</Text>
+        </View>
+        <View style={styles.statsRow}>
+          <StatCard
+            icon="book-outline"
+            value={`${discoveredCount}/${TOTAL_PLANTS}`}
+            label="図鑑収録"
+            color="#4CAF50"
+          />
+          <StatCard
+            icon="leaf-outline"
+            value={String(greenCount)}
+            label="一般食用"
+            color="#2E7D32"
+          />
+          <StatCard
+            icon="star-outline"
+            value={String(rarePlants.length)}
+            label="レア発見"
+            color={Colors.rarity5}
+          />
         </View>
         <View style={styles.progressCard}>
           <ProgressRow
@@ -605,39 +651,63 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   seasonBadgeText: { fontSize: 10, fontWeight: '800', color: '#FFFFFF' },
-  hero: { paddingTop: 60, paddingBottom: 24, paddingHorizontal: 20 },
-  heroContent: {},
-  appTitle: { fontSize: 24, fontWeight: '900', color: '#FFFFFF', letterSpacing: 1 },
-  playerName: { fontSize: 14, color: '#A5D6A7', marginTop: 2, marginBottom: 16 },
-  levelContainer: {
+  hero: { paddingTop: 60, paddingBottom: 20, paddingHorizontal: 20 },
+  heroTopRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
+  appTitle: { fontSize: 20, fontWeight: '900', color: '#FFFFFF', letterSpacing: 0.5 },
+  playerName: { fontSize: 13, color: '#A5D6A7', marginTop: 2 },
+  levelBadgeSmall: {
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  levelBadgeSmallText: { fontSize: 12, fontWeight: '800', color: '#FFFFFF' },
+  heroHeadline: {
+    fontSize: 22,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    marginTop: 18,
+    marginBottom: 16,
+    lineHeight: 28,
+  },
+  heroActionRow: { flexDirection: 'row', gap: 10 },
+  heroPrimaryBtn: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    justifyContent: 'center',
+    gap: 8,
+    minHeight: 52,
+    borderRadius: 26,
+    backgroundColor: '#FFFFFF',
   },
-  levelBadge: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+  heroPrimaryBtnText: { fontSize: 16, fontWeight: '800', color: Colors.primaryDark },
+  heroSecondaryBtn: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    minHeight: 52,
+    paddingHorizontal: 18,
+    borderRadius: 26,
+    backgroundColor: 'rgba(255,255,255,0.16)',
   },
-  levelLabel: { fontSize: 10, color: '#A5D6A7', fontWeight: '700' },
-  levelNum: { fontSize: 28, fontWeight: '900', color: '#FFFFFF' },
-  xpSection: { flex: 1 },
-  xpText: { fontSize: 11, color: '#C8E6C9', marginBottom: 4 },
-  xpBar: {
-    height: 13,
+  heroSecondaryBtnText: { fontSize: 14, fontWeight: '700', color: '#FFFFFF' },
+  heroFooterRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 18 },
+  heroFooterText: { fontSize: 11, color: '#C8E6C9', fontWeight: '600' },
+  heroXpTrack: {
+    flex: 1,
+    height: 6,
     backgroundColor: 'rgba(255,255,255,0.2)',
-    borderRadius: 7,
+    borderRadius: 3,
     overflow: 'hidden',
   },
-  xpFill: { height: '100%', backgroundColor: '#FFEB3B', borderRadius: 5 },
+  heroXpFill: { height: '100%', backgroundColor: '#FFEB3B', borderRadius: 3 },
 
   statsRow: {
     flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingTop: 16,
     gap: 10,
+    marginBottom: 14,
   },
   statCard: {
     flex: 1,
@@ -657,29 +727,23 @@ const styles = StyleSheet.create({
   statValue: { fontSize: 22, fontWeight: '900', lineHeight: 26 },
   statLabel: { fontSize: 11, color: Colors.textMuted, marginTop: 3, fontWeight: '600' },
 
-  actionRow: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingTop: 14,
-    gap: 10,
+  learnCard: {
+    backgroundColor: Colors.bgCard,
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: Colors.cardBorder,
   },
-  actionBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 16,
-    borderRadius: 14,
+  learnCardSafety: {
+    backgroundColor: Colors.dangerRedBg,
+    borderColor: '#EF9A9A',
   },
-  actionBtnPrimary: { backgroundColor: Colors.primary },
-  actionBtnSecondary: {
-    backgroundColor: Colors.primaryPale,
-    borderWidth: 2,
-    borderColor: Colors.primaryLight,
-  },
-  actionBtnTextPrimary: { color: '#FFFFFF', fontWeight: '800', fontSize: 15 },
-  actionBtnTextSecondary: { color: Colors.primaryDark, fontWeight: '800', fontSize: 15 },
+  learnCardHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
+  learnCardEmoji: { fontSize: 28 },
+  learnCardName: { fontSize: 14, fontWeight: '800', color: Colors.text },
+  learnCardBadge: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 2 },
+  learnCardBadgeText: { fontSize: 10, fontWeight: '700', color: Colors.dangerRed },
+  learnCardTip: { fontSize: 12, lineHeight: 18, color: Colors.textSecondary },
 
   section: { paddingHorizontal: 16, paddingTop: 20 },
   sectionRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },

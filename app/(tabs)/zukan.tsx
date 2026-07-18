@@ -8,7 +8,7 @@ import {
   TextInput,
   Modal,
 } from 'react-native';
-import * as Haptics from 'expo-haptics';
+import * as Haptics from '../../src/utils/haptics';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { PLANTS } from '../../src/data/plants';

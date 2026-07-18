@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
+import * as Haptics from '../../src/utils/haptics';
 import { useRouter } from 'expo-router';
 import { scanPlant } from '../../src/utils/aiRecognition';
 import { useGameStore } from '../../src/store/useGameStore';
