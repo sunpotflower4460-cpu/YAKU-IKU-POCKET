@@ -2,10 +2,25 @@ import { PLANTS } from '../data/plants';
 import { Plant } from '../types';
 import { CapturedPhoto, ORGAN_LABEL } from '../types/capture';
 import { IdentificationCandidate } from '../types/observation';
+import { SubjectCategory, SUBJECT_CATEGORY_GUIDANCE } from '../types/subject';
 import { getCurrentSeason, isPlantInSeason } from './season';
 
 const CLAUDE_API_URL = 'https://api.anthropic.com/v1/messages';
 const MAX_CANDIDATES = 3;
+
+const SUBJECT_CATEGORIES: SubjectCategory[] = [
+  'vascular_plant',
+  'moss_or_lichen',
+  'algae',
+  'dead_or_processed_plant',
+  'mushroom',
+  'insect',
+  'animal',
+  'food_or_processed',
+  'artificial_object',
+  'multiple_subjects',
+  'unclear',
+];
 
 /**
  * Result of a Claude Vision identification attempt.
@@ -21,7 +36,8 @@ const MAX_CANDIDATES = 3;
  */
 export type ClaudeScanOutcome =
   | { status: 'identified'; candidates: IdentificationCandidate[] }
-  | { status: 'unidentified'; reason?: string };
+  | { status: 'unidentified'; reason?: string }
+  | { status: 'out_of_scope'; category: SubjectCategory; guidance: string };
 
 // Plant list for prompt context
 const PLANT_NAMES_LIST = PLANTS.map(
@@ -35,6 +51,7 @@ interface RawCandidate {
 }
 
 interface ClaudeIdentifyResult {
+  subjectCategory: SubjectCategory;
   identified: boolean;
   candidates: RawCandidate[];
   reason?: string; // top-level reason used only when identified=false
@@ -67,13 +84,27 @@ async function callClaudeVision(
           ...imageBlocks,
           {
             type: 'text',
-            text: `あなたは植物同定の専門家です。この画像を解析して、以下のリストの中から一致する可能性のある植物を、最大${MAX_CANDIDATES}件、確信度が高い順に挙げてください。断定はせず、候補として提示してください。${organNote}
+            text: `あなたは植物同定の専門家です。この画像を解析してください。まず被写体の種類を分類し、種子植物・シダ植物（vascular_plant）である場合のみ、以下のリストの中から一致する可能性のある植物を、最大${MAX_CANDIDATES}件、確信度が高い順に挙げてください。断定はせず、候補として提示してください。${organNote}
+
+【被写体分類（subjectCategory）の選択肢】
+- vascular_plant: 種子植物・シダ植物（識別対象）
+- moss_or_lichen: コケ・地衣類
+- algae: 藻類
+- dead_or_processed_plant: 枯れた植物・加工された植物
+- mushroom: キノコ
+- insect: 昆虫
+- animal: 動物
+- food_or_processed: 食材・加工品
+- artificial_object: 人工物
+- multiple_subjects: 複数の被写体が混在
+- unclear: 画質不足等で判定不能
 
 【データベースの植物リスト】
 ${PLANT_NAMES_LIST}
 
 以下のJSON形式のみで回答してください（前後に説明文は不要です）：
 {
+  "subjectCategory": "上記の選択肢のいずれか1つ",
   "identified": true または false,
   "candidates": [
     { "plantName": "リストに存在する日本語名", "confidence": 40から99の整数, "reason": "根拠を1〜2文で" }
@@ -81,6 +112,7 @@ ${PLANT_NAMES_LIST}
 }
 
 注意：
+- subjectCategory が vascular_plant 以外の場合、candidates は必ず空配列にし、identified は false にしてください
 - リストにない植物や、植物として不明な場合は identified を false にし、candidates は空配列にしてください
 - plantName はリストの日本語名と完全に一致させてください
 - 確信が持てない候補は無理に含めなくてよい（1件だけでも構いません）
@@ -136,6 +168,13 @@ ${PLANT_NAMES_LIST}
     throw new Error('Claude response is not an object');
   }
   const obj = parsed as Record<string, unknown>;
+  // Never trust an unrecognised category string — fall back to 'unclear'
+  // rather than silently treating it as a plant.
+  const subjectCategory: SubjectCategory =
+    typeof obj.subjectCategory === 'string' &&
+    SUBJECT_CATEGORIES.includes(obj.subjectCategory as SubjectCategory)
+      ? (obj.subjectCategory as SubjectCategory)
+      : 'unclear';
   const identified = obj.identified === true;
   const rawCandidates = Array.isArray(obj.candidates) ? obj.candidates : [];
   const candidates: RawCandidate[] = rawCandidates
@@ -147,6 +186,7 @@ ${PLANT_NAMES_LIST}
     }));
 
   return {
+    subjectCategory,
     identified,
     candidates,
     reason: typeof obj.reason === 'string' ? obj.reason : undefined,
@@ -166,6 +206,12 @@ function findPlantByName(name: string): Plant | undefined {
 /**
  * Identify a plant from one or more captured photos using Claude Vision API.
  *
+ * A Subject Router stage (v3 §12) runs first inside the same request: only a
+ * `vascular_plant` classification proceeds to species matching. Anything
+ * else (fungus, insect, non-plant object, unclear image...) returns
+ * `out_of_scope` with an honest, category-level guidance message instead of
+ * being forced through plant identification.
+ *
  * Returns `unidentified` (never a random guess) when Claude reports nothing
  * confident, or when every candidate fails validation (not in our database,
  * or missing/invalid confidence). Valid candidates are capped at
@@ -177,6 +223,14 @@ export async function recognizePlantWithClaude(
   apiKey: string
 ): Promise<ClaudeScanOutcome> {
   const result = await callClaudeVision(photos, apiKey);
+
+  if (result.subjectCategory !== 'vascular_plant') {
+    return {
+      status: 'out_of_scope',
+      category: result.subjectCategory,
+      guidance: SUBJECT_CATEGORY_GUIDANCE[result.subjectCategory],
+    };
+  }
 
   if (!result.identified || result.candidates.length === 0) {
     return { status: 'unidentified', reason: result.reason };
