@@ -280,7 +280,7 @@ export default function ProfileScreen() {
         <View style={styles.statsGrid}>
           <StatBox label="発見数" value={`${discoveredCount}`} unit={`/ ${PLANTS.length}`} color={Colors.primary} />
           <StatBox label="合計XP" value={String(xp)} unit="XP" color={Colors.rarity5} />
-          <StatBox label="食用可能" value={String(greenCount)} unit="種" color={Colors.dangerGreen} />
+          <StatBox label="一般食用" value={String(greenCount)} unit="種" color={Colors.dangerGreen} />
           <StatBox label="要注意" value={String(yellowCount)} unit="種" color={Colors.dangerYellow} />
           <StatBox label="危険植物" value={String(redCount)} unit="種" color={Colors.dangerRed} />
           <StatBox label="★5レア" value={String(rarity5Count)} unit="種" color={Colors.rarity5} />

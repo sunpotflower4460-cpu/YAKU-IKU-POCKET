@@ -22,6 +22,8 @@ import { DisclaimerBanner } from '../../src/components/DisclaimerBanner';
 import { Colors } from '../../src/constants/colors';
 import { RARITY_XP, useGameStore } from '../../src/store/useGameStore';
 import { getCurrentSeason, isPlantInSeason } from '../../src/utils/season';
+import { SafetyBanner } from '../../src/components/SafetyBanner';
+import { getSafetyWarnings } from '../../src/data/safety';
 
 export default function PlantDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -228,6 +230,9 @@ export default function PlantDetailScreen() {
 
       {/* Body */}
       <View style={styles.body}>
+        {/* Dangerous look-alike warning (data-driven safety, not colour-only) */}
+        <SafetyBanner warnings={getSafetyWarnings(plant.id)} />
+
         {/* Description */}
         <Section icon="book-outline" title="説明">
           <Text style={styles.bodyText}>{plant.description}</Text>

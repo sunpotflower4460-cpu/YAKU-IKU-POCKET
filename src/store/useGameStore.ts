@@ -69,6 +69,13 @@ interface GameState {
   startSession: () => void;
   discoverPlant: (plantId: string) => void;
   addScan: (plantId: string, imageUri?: string) => void;
+  /**
+   * Atomically record a confirmed observation: adds to the collection, records
+   * scan history, awards XP and updates daily counters in a single state
+   * update. Use this for real (production) identifications; demo results must
+   * NOT call this (see src/utils/appMode.ts).
+   */
+  recordObservation: (plantId: string, imageUri?: string) => void;
   setPlayerName: (name: string) => void;
   claimChallenge: (challengeId: string, xpReward: number) => void;
   claimSeasonalChallenge: (challengeId: string, xpReward: number) => void;
@@ -193,6 +200,43 @@ export const useGameStore = create<GameState>()(
         }));
       },
 
+      // ── Atomic observation record (discovery + history + XP in one update) ─
+      recordObservation: (plantId: string, imageUri?: string) => {
+        const isToday = get().todayDate === todayStr();
+        const plant = PLANTS.find((p) => p.id === plantId);
+        const rarity = plant?.rarity ?? 1;
+        const record: ScanRecord = {
+          id: `scan_${Date.now()}`,
+          plantId,
+          scannedAt: new Date().toISOString(),
+          imageUri,
+        };
+        set((state) => {
+          const isNew = !state.discoveredPlantIds.includes(plantId);
+          const gainedXp = isNew ? (RARITY_XP[rarity] ?? 100) : XP_PER_RESCAN;
+          return {
+            discoveredPlantIds: isNew
+              ? [...state.discoveredPlantIds, plantId]
+              : state.discoveredPlantIds,
+            xp: state.xp + gainedXp,
+            scanHistory: [record, ...state.scanHistory].slice(0, 100),
+            todayScanCount: isToday ? state.todayScanCount + 1 : state.todayScanCount,
+            todayNewCount: isNew && isToday ? state.todayNewCount + 1 : state.todayNewCount,
+            todayMaxRarity: isToday
+              ? Math.max(state.todayMaxRarity, rarity)
+              : state.todayMaxRarity,
+            todayDangers:
+              isToday && plant?.danger && !state.todayDangers.includes(plant.danger)
+                ? [...state.todayDangers, plant.danger]
+                : state.todayDangers,
+            todayCategories:
+              isToday && plant?.category && !state.todayCategories.includes(plant.category)
+                ? [...state.todayCategories, plant.category]
+                : state.todayCategories,
+          };
+        });
+      },
+
       setHasOnboarded: () => set({ hasOnboarded: true }),
       setPlayerName: (name: string) => set({ playerName: name }),
       setLastCelebrated: (count: number) => set({ lastCelebrated: count }),
@@ -217,18 +261,26 @@ export const useGameStore = create<GameState>()(
 
       // ── Claim a completed daily quest ─────────────────────────────────────
       claimChallenge: (challengeId: string, xpReward: number) => {
-        set((state) => ({
-          claimedChallengeIds: [...state.claimedChallengeIds, challengeId],
-          xp: state.xp + xpReward,
-        }));
+        set((state) => {
+          // Guard against double-claiming the same reward (the UI hides the
+          // button, but the store must be the source of truth).
+          if (state.claimedChallengeIds.includes(challengeId)) return state;
+          return {
+            claimedChallengeIds: [...state.claimedChallengeIds, challengeId],
+            xp: state.xp + xpReward,
+          };
+        });
       },
 
       // ── Claim a completed seasonal quest ──────────────────────────────────
       claimSeasonalChallenge: (challengeId: string, xpReward: number) => {
-        set((state) => ({
-          claimedSeasonalQuestIds: [...state.claimedSeasonalQuestIds, challengeId],
-          xp: state.xp + xpReward,
-        }));
+        set((state) => {
+          if (state.claimedSeasonalQuestIds.includes(challengeId)) return state;
+          return {
+            claimedSeasonalQuestIds: [...state.claimedSeasonalQuestIds, challengeId],
+            xp: state.xp + xpReward,
+          };
+        });
       },
 
       // ── Computed ─────────────────────────────────────────────────────────
@@ -239,6 +291,10 @@ export const useGameStore = create<GameState>()(
     {
       name: 'yaku-iku-storage',
       storage: createJSONStorage(() => AsyncStorage),
+      // Bump `version` and extend `migrate` whenever the persisted shape changes
+      // so existing users' saves are upgraded instead of breaking.
+      version: 1,
+      migrate: (persisted, _version) => persisted as GameState,
       // Do not persist the transient hydration flag.
       partialize: ({ _hasHydrated, setHasHydrated, ...rest }) => rest,
       onRehydrateStorage: () => (state) => {

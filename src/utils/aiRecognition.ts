@@ -4,36 +4,67 @@ import { recognizePlantWithClaude } from './claudeAI';
 /**
  * API key from environment variable.
  * Set EXPO_PUBLIC_CLAUDE_API_KEY in your .env file to enable Claude Vision.
- * If not set, falls back to mock AI.
+ * If not set, falls back to mock AI (demo mode).
+ *
+ * NOTE (security): EXPO_PUBLIC_* variables are embedded in the shipped bundle
+ * and are extractable. For a production release the key MUST be moved behind a
+ * backend proxy — see docs/APP_STORE_AUDIT.md.
  */
 const CLAUDE_API_KEY = process.env.EXPO_PUBLIC_CLAUDE_API_KEY ?? '';
 
 /**
- * Scan a plant image and return identification result.
+ * Discriminated outcome of a scan.
+ *
+ * - `identified`   : a concrete plant to show / optionally register.
+ * - `unidentified` : real AI could not confidently match a database plant.
+ *                    We deliberately do NOT invent a random plant here.
+ * - `error`        : real AI call failed (network/timeout/malformed response).
+ *                    We deliberately do NOT fall back to a random mock result.
+ */
+export type ScanOutcome =
+  | ({ status: 'identified'; usedRealAI: boolean } & ScanResult)
+  | { status: 'unidentified'; usedRealAI: true; reason?: string }
+  | { status: 'error'; usedRealAI: true; message: string };
+
+/**
+ * Scan a plant image and return an identification outcome.
  *
  * - If base64Image is provided AND EXPO_PUBLIC_CLAUDE_API_KEY is set
- *   → calls Claude Vision API (real AI)
- * - Otherwise → uses weighted-random mock AI (Phase 1 fallback)
+ *   → calls Claude Vision API (real AI). Unknown/failed results surface as
+ *     `unidentified` / `error` — never a random guess.
+ * - Otherwise → uses weighted-random mock AI (demo mode), which always returns
+ *   an `identified` result flagged with `usedRealAI: false`.
  */
 export async function scanPlant(
   discoveredIds: string[],
   base64Image?: string
-): Promise<ScanResult & { usedRealAI: boolean; claudeFailed?: boolean }> {
+): Promise<ScanOutcome> {
   if (base64Image && CLAUDE_API_KEY) {
     try {
-      const result = await recognizePlantWithClaude(
-        base64Image,
-        discoveredIds,
-        CLAUDE_API_KEY
-      );
-      return { ...result, usedRealAI: true };
+      const outcome = await recognizePlantWithClaude(base64Image, CLAUDE_API_KEY);
+      if (outcome.status === 'unidentified') {
+        return { status: 'unidentified', usedRealAI: true, reason: outcome.reason };
+      }
+      const isNewDiscovery = !discoveredIds.includes(outcome.plant.id);
+      return {
+        status: 'identified',
+        usedRealAI: true,
+        plant: outcome.plant,
+        confidence: outcome.confidence,
+        isNewDiscovery,
+        reason: outcome.reason,
+      };
     } catch (err) {
-      console.warn('[AI] Claude Vision failed, falling back to mock:', err);
-      const fallback = await recognizePlant(discoveredIds);
-      return { ...fallback, usedRealAI: false, claudeFailed: true };
+      console.warn('[AI] Claude Vision failed:', err);
+      return {
+        status: 'error',
+        usedRealAI: true,
+        message: err instanceof Error ? err.message : 'unknown error',
+      };
     }
   }
 
+  // Demo mode (no key / no image): mock always returns a plant.
   const result = await recognizePlant(discoveredIds);
-  return { ...result, usedRealAI: false };
+  return { status: 'identified', usedRealAI: false, ...result };
 }

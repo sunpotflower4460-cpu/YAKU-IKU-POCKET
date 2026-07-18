@@ -1,0 +1,29 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Unit tests
+        run: npm test -- --ci
+      - name: Forbidden safety copy must be absent
+        run: |
+          # These strings assert edibility/foraging and must never reappear.
+          if grep -rn -e '食用可' -e '食用可能' -e '食用植物' -e '安全な収穫' -e 'AI認識精度' src app; then
+            echo "::error::Forbidden safety/copy string found"; exit 1
+          fi
+      - name: Web export
+        run: npm run build:web

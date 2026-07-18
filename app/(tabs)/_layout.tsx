@@ -1,6 +1,6 @@
 import { Tabs } from 'expo-router';
 import { useState, useEffect, useRef } from 'react';
-import { View } from 'react-native';
+import { View, AppState } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { Colors } from '../../src/constants/colors';
@@ -24,6 +24,15 @@ export default function TabLayout() {
   useEffect(() => {
     if (hasHydrated) startSession();
   }, [hasHydrated]);
+
+  // Re-check the date when the app returns to the foreground, so leaving the
+  // app open across midnight still resets daily/monthly quests and streaks.
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (next) => {
+      if (next === 'active' && hasHydrated) startSession();
+    });
+    return () => sub.remove();
+  }, [hasHydrated, startSession]);
 
   // Detect level-up whenever xp changes
   useEffect(() => {

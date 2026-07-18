@@ -1,8 +1,19 @@
 import { PLANTS } from '../data/plants';
 import { Plant } from '../types';
-import { ScanResult } from './mockAI';
 
 const CLAUDE_API_URL = 'https://api.anthropic.com/v1/messages';
+
+/**
+ * Result of a Claude Vision identification attempt.
+ *
+ * IMPORTANT (safety): we NEVER substitute a random plant when Claude cannot
+ * identify the specimen. Misidentifying e.g. トリカブト (deadly) as an edible
+ * plant is unacceptable, so an unconfident/unknown result must surface as
+ * `unidentified` rather than a confident guess.
+ */
+export type ClaudeScanOutcome =
+  | { status: 'identified'; plant: Plant; confidence: number; reason?: string }
+  | { status: 'unidentified'; reason?: string };
 
 // Plant list for prompt context
 const PLANT_NAMES_LIST = PLANTS.map(
@@ -59,15 +70,24 @@ ${PLANT_NAMES_LIST}
     ],
   };
 
-  const response = await fetch(CLAUDE_API_URL, {
-    method: 'POST',
-    headers: {
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify(body),
-  });
+  // Abort the request if the API takes too long (avoids a hung scan spinner).
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 20_000);
+  let response: Response;
+  try {
+    response = await fetch(CLAUDE_API_URL, {
+      method: 'POST',
+      headers: {
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
 
   if (!response.ok) {
     const errText = await response.text().catch(() => '');
@@ -83,7 +103,24 @@ ${PLANT_NAMES_LIST}
     throw new Error(`No JSON found in Claude response: ${text}`);
   }
 
-  return JSON.parse(jsonMatch[0]) as ClaudeIdentifyResult;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(jsonMatch[0]);
+  } catch {
+    throw new Error(`Malformed JSON in Claude response: ${jsonMatch[0]}`);
+  }
+
+  // Runtime validation — never trust the shape of an LLM response.
+  if (typeof parsed !== 'object' || parsed === null) {
+    throw new Error('Claude response is not an object');
+  }
+  const obj = parsed as Record<string, unknown>;
+  const identified = obj.identified === true;
+  const plantName = typeof obj.plantName === 'string' ? obj.plantName : undefined;
+  const confidence = typeof obj.confidence === 'number' ? obj.confidence : NaN;
+  const reason = typeof obj.reason === 'string' ? obj.reason : undefined;
+
+  return { identified, plantName, confidence, reason };
 }
 
 function findPlantByName(name: string): Plant | undefined {
@@ -98,32 +135,35 @@ function findPlantByName(name: string): Plant | undefined {
 
 /**
  * Identify a plant from a base64-encoded JPEG image using Claude Vision API.
- * Falls back to a random plant if Claude cannot identify one in the database.
+ *
+ * Returns `unidentified` (never a random guess) when Claude is not confident,
+ * when the returned name is not in the database, or when the confidence value
+ * is missing/invalid.
  */
 export async function recognizePlantWithClaude(
   base64Image: string,
-  discoveredIds: string[],
   apiKey: string
-): Promise<ScanResult> {
+): Promise<ClaudeScanOutcome> {
   const result = await callClaudeVision(base64Image, apiKey);
 
-  let plant: Plant | undefined;
-
-  if (result.identified && result.plantName) {
-    plant = findPlantByName(result.plantName);
+  if (!result.identified || !result.plantName) {
+    return { status: 'unidentified', reason: result.reason };
   }
 
-  // Fallback: random plant from database
+  const plant = findPlantByName(result.plantName);
   if (!plant) {
-    plant = PLANTS[Math.floor(Math.random() * PLANTS.length)];
+    // Claude named something not in our curated database — treat as unknown
+    // rather than mapping it onto an arbitrary entry.
+    return { status: 'unidentified', reason: result.reason };
   }
 
   const confidence =
-    result.confidence && result.confidence >= 1 && result.confidence <= 100
-      ? result.confidence
-      : Math.floor(72 + Math.random() * 27);
+    result.confidence >= 1 && result.confidence <= 100
+      ? Math.round(result.confidence)
+      : NaN;
+  if (Number.isNaN(confidence)) {
+    return { status: 'unidentified', reason: result.reason };
+  }
 
-  const isNewDiscovery = !discoveredIds.includes(plant.id);
-
-  return { plant, confidence, isNewDiscovery, reason: result.reason };
+  return { status: 'identified', plant, confidence, reason: result.reason };
 }

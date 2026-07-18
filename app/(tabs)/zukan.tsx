@@ -224,7 +224,7 @@ export default function ZukanScreen() {
         </Pressable>
         {statsOpen && (
           <View style={styles.statsGrid}>
-            <StatMini label="食用可" value={`${statsGreen}`} color={Colors.dangerGreen} dotColor="#43A047" />
+            <StatMini label="一般食用" value={`${statsGreen}`} color={Colors.dangerGreen} dotColor="#43A047" />
             <StatMini label="要注意" value={`${statsYellow}`} color={Colors.dangerYellow} dotColor="#F9A825" />
             <StatMini label="危険"   value={`${statsRed}`}    color={Colors.dangerRed} dotColor="#E53935" />
             <StatMini label="野草"     value={`${statsWild}/${PLANTS.filter(p => p.category === '野草').length}`} color={Colors.primary} />
@@ -453,7 +453,7 @@ export default function ZukanScreen() {
                     label="危険度"
                     value={
                       hintPlant.danger === 'GREEN'
-                        ? '安全（食用可）'
+                        ? '一般に食用とされる'
                         : hintPlant.danger === 'YELLOW'
                         ? '要注意'
                         : '危険（有毒）'

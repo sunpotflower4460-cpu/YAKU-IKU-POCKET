@@ -18,6 +18,8 @@ import { Plant } from '../types';
 import { Colors } from '../constants/colors';
 import { RarityStars } from './RarityStars';
 import { DangerBadge } from './DangerBadge';
+import { SafetyBanner } from './SafetyBanner';
+import { getSafetyWarnings } from '../data/safety';
 
 // Gradient header color per rarity
 const RARITY_GRADIENT: Record<number, [string, string, string]> = {
@@ -51,8 +53,9 @@ interface Props {
   confidence: number;
   isNewDiscovery: boolean;
   usedRealAI: boolean;
+  /** Demo (mock) mode: result is view-only — no save, no XP, no registration. */
+  isDemo?: boolean;
   reason?: string;
-  claudeFailed?: boolean;
   imageUri?: string;
   onAddToZukan: () => void;
   onScanAgain: () => void;
@@ -64,8 +67,8 @@ export function ScanResultModal({
   confidence,
   isNewDiscovery,
   usedRealAI,
+  isDemo = false,
   reason,
-  claudeFailed,
   imageUri,
   onAddToZukan,
   onScanAgain,
@@ -128,13 +131,13 @@ export function ScanResultModal({
       plant.danger === 'GREEN' ? '一般に食用とされる' :
       plant.danger === 'YELLOW' ? '要注意' : '危険・有毒';
     const msg =
-      `新しい植物を発見！\n\n` +
+      `植物を観察しました\n\n` +
       `${plant.emoji} ${plant.name} (${plant.nameEn})\n` +
       `レアリティ: ${rarityStars}\n` +
       `分類: ${dangerLabel}\n\n` +
-      `薬育ポケットで野草・ハーブを収集中！\n` +
+      `薬育ポケットで野草・ハーブを観察中！\n` +
       `※採取・摂取は必ず専門家にご確認ください。\n` +
-      `#薬育ポケット #野草図鑑 #${plant.name}`;
+      `#薬育ポケット #植物観察 #${plant.name}`;
     try {
       await Share.share({ message: msg });
     } catch { /* ignore */ }
@@ -247,16 +250,6 @@ export function ScanResultModal({
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.content}
           >
-            {/* Claude fallback notice */}
-            {claudeFailed && (
-              <View style={styles.fallbackNotice}>
-                <Ionicons name="warning-outline" size={13} color="#B45309" />
-                <Text style={styles.fallbackText}>
-                  Claude AI に接続できませんでした。モックAIで代替しています。
-                </Text>
-              </View>
-            )}
-
             {/* Danger alerts */}
             {isDangerous && (
               <View style={styles.alertRed}>
@@ -275,16 +268,19 @@ export function ScanResultModal({
               </View>
             )}
 
+            {/* Dangerous look-alike warning (data-driven, never colour-only) */}
+            <SafetyBanner warnings={getSafetyWarnings(plant.id)} />
+
             {/* Danger badge */}
             <View style={styles.badgeRow}>
               <DangerBadge danger={plant.danger} />
             </View>
 
-            {/* Confidence — with the mock engine this is a demo score, not a
-                real recognition result, so label it honestly. */}
+            {/* Match score. Not a certainty — a candidate match, and in demo
+                mode a random placeholder. Labelled honestly. */}
             <View style={styles.confidenceContainer}>
               <Text style={styles.confidenceLabel}>
-                {usedRealAI ? 'AI認識精度' : '一致スコア（デモ）'}
+                {usedRealAI ? '候補一致度' : '一致スコア（デモ）'}
               </Text>
               <View style={styles.confidenceBar}>
                 <View style={[styles.confidenceFill, { width: `${confidence}%` }]} />
@@ -300,12 +296,13 @@ export function ScanResultModal({
               </Text>
             </View>
 
-            {/* Mock-mode notice: be explicit that this is not real recognition */}
-            {!usedRealAI && (
+            {/* Demo-mode notice: not real recognition, and NOT recorded. */}
+            {isDemo && (
               <View style={styles.fallbackNotice}>
                 <Ionicons name="information-circle-outline" size={13} color="#B45309" />
                 <Text style={styles.fallbackText}>
-                  現在はデモ判定です。写真の内容に関わらずランダムに植物を表示しています。
+                  これはデモ表示です。写真の内容に関わらずランダムに候補を表示しており、
+                  観察記録・図鑑・XPには反映されません。
                 </Text>
               </View>
             )}
@@ -364,29 +361,36 @@ export function ScanResultModal({
 
           {/* ── Actions ── */}
           <View style={styles.actions}>
-            {/* 新発見時: シェアボタン（上段・全幅） */}
-            {isNewDiscovery && (
-              <Pressable
-                style={[styles.btn, styles.btnShare]}
-                onPress={handleShareDiscovery}
-              >
-                <Ionicons name="leaf-outline" size={16} color="#FFFFFF" />
-                <Text style={styles.btnShareText}>発見をシェア</Text>
+            {isDemo ? (
+              /* Demo: view-only. No save / XP / registration. */
+              <Pressable style={[styles.btn, styles.btnPrimary]} onPress={onScanAgain}>
+                <Text style={styles.btnPrimaryText}>閉じる（デモのため記録されません）</Text>
               </Pressable>
+            ) : (
+              <>
+                {isNewDiscovery && (
+                  <Pressable
+                    style={[styles.btn, styles.btnShare]}
+                    onPress={handleShareDiscovery}
+                  >
+                    <Ionicons name="leaf-outline" size={16} color="#FFFFFF" />
+                    <Text style={styles.btnShareText}>観察をシェア</Text>
+                  </Pressable>
+                )}
+                <View style={styles.actionRow}>
+                  <Pressable style={[styles.btn, styles.btnSecondary]} onPress={onScanAgain}>
+                    <Text style={styles.btnSecondaryText}>もう一度観察</Text>
+                  </Pressable>
+                  <Pressable style={[styles.btn, styles.btnPrimary]} onPress={onAddToZukan}>
+                    <Text style={styles.btnPrimaryText}>
+                      観察記録として保存{isNewDiscovery
+                        ? ` +${RARITY_XP[plant.rarity] ?? 100}XP`
+                        : ` +${XP_PER_RESCAN}XP`}
+                    </Text>
+                  </Pressable>
+                </View>
+              </>
             )}
-            {/* 下段: もう一度 / 図鑑登録 */}
-            <View style={styles.actionRow}>
-              <Pressable style={[styles.btn, styles.btnSecondary]} onPress={onScanAgain}>
-                <Text style={styles.btnSecondaryText}>もう一度スキャン</Text>
-              </Pressable>
-              <Pressable style={[styles.btn, styles.btnPrimary]} onPress={onAddToZukan}>
-                <Text style={styles.btnPrimaryText}>
-                  📖 図鑑に登録{isNewDiscovery
-                    ? ` +${RARITY_XP[plant.rarity] ?? 100}XP`
-                    : ` +${XP_PER_RESCAN}XP`}
-                </Text>
-              </Pressable>
-            </View>
           </View>
         </Animated.View>
       </View>
