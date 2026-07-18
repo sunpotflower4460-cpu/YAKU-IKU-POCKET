@@ -14,9 +14,10 @@
 | PR10 | Candidate Results & Compare（複数候補/スコア/比較/安全ブロック） | ✅ merged |
 | PR11 | Knowledge Schema（PlantDefinition/taxonomy/50種変換） | ✅ merged |
 | PR12 | Explore（検索/高度フィルター/分類/表示切替） | ✅ merged |
-| **PR13** | **Fieldbook（学習系実績/観察カレンダー/外観・AI同意・export・delete設定）** | 🟡 本PR |
+| PR13 | Fieldbook（学習系実績/観察カレンダー/外観・AI同意・export・delete設定） | ✅ merged |
 | PR14 | Backend & Real Identification（proxy/Pl@ntNet等/taxonomy/rate limit/consent） | ✅ 判断保留（設計メモのみ, merged） |
-| **PR15** | **Accessibility / QA（コード範囲: a11yラベル/Reduce Motion/eslint導入）** | 🟡 本PR |
+| PR15 | Accessibility / QA（コード範囲: a11yラベル/Reduce Motion/eslint導入） | ✅ merged |
+| **PR16〜PR25** | **v3統合設計図対応**（詳細は`docs/BLUEPRINT_V3.md`） | 🟡 進行中（本PRはPR16） |
 
 ## PR8 スコープ（完了）
 含む: タブ再構成（今日/観察/探す/記録）、Today画面の情報階層再設計（Hero=「観察を始める」1CTA→最近の観察→季節→観察チャレンジ→1分で学ぶ→コレクション進捗→安全情報）、「1分で学ぶ」学習カード新設（危険類似種の見分け方を優先表示）。
@@ -139,6 +140,22 @@
 ## 検証（PR15）
 - `npm run check`（typecheck + lint + jest 69件）green。lintは0 errors・9 warnings（全て`react-hooks/exhaustive-deps`、Animated.Value refの省略という周知の安全なパターン）
 - Expo web + Playwright: `page.emulateMedia({ reducedMotion: 'reduce' })`でスキャン画面のループアニメーションが停止すること、`page.accessibility.snapshot()`で新規追加したaccessibilityLabelが読み上げツリーに現れることを確認済み
+
+## PR16 スコープ（本PR、v3 Product Architecture）
+統合設計図v3を受けて、`docs/BLUEPRINT_V3.md`にギャップ分析とPR16〜PR25の計画を新設（v1計画の本ドキュメントを継承・拡張する位置づけ）。
+
+含む:
+- **`docs/BLUEPRINT_V3.md`新設**: v3設計図と現状実装の差分（既に満たしている項目/新規に必要な項目/この開発環境の制約）を整理し、PR16〜PR25の実装範囲を明記
+- **Feature flags基盤**（`src/constants/featureFlags.ts`）: PR18〜PR23で追加する新機能（現物確認チェックリスト/学習体験/Fieldbook v2/利用ゲート/暮らしハブ/Subject Router）を、実装完了までUIに出さないためのフラグを新設。各PRが自身の機能を実装し終えたときにそのフラグをtrueにする運用とする
+- **IA・状態モデルの棚卸し**: v3 §4.1のタブ構成・§7.4の確認レベル分離は既存実装（PR6/PR8）で既に満たされていることを確認し、無用なリネームや型の重複定義は行わない（`IdentificationState`を引き続き単一の確認状態ソースとする）
+
+含まない（後続へ委譲、意図的にスコープ外）:
+- `PlantUse`/`SourceOrigin`/`UseEvidenceLevel`等の型定義: 実際に消費するPR21で新設する（未使用の先行スキャフォールドは持たない）
+- `TraitCheck`型・現物確認チェックリストUI: PR18
+- 150種へのコンテンツ拡充: PR24
+
+## 検証（PR16）
+- `npm run check`（typecheck + lint + jest）green（型・ロジック変更なし、ドキュメントと定数追加のみ）
 
 ## 既存改善の回帰防止（§1）
 ハイドレーション後セッション開始 / ローカル日付 / カメラ拒否→設定誘導 / ErrorBoundary / モーダル戻る / 画像フォールバック / モック明示 / 危険警告 / TS strict / プライバシー導線枠 / typecheck。CIで typecheck+test＋禁止語grepにより後退を検知。
