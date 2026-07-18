@@ -3,6 +3,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ScanRecord } from '../types';
 import { PLANTS } from '../data/plants';
+import { todayLocalStr, localDateStrOffset } from '../utils/date';
 
 // ─── XP constants (exported for display in UI) ──────────────────────────────
 // First discovery: weighted by rarity
@@ -17,7 +18,7 @@ export const XP_PER_RESCAN = 15; // re-scanning a known plant
 export const XP_PER_LEVEL = 500;
 
 function todayStr(): string {
-  return new Date().toISOString().split('T')[0]; // YYYY-MM-DD (UTC)
+  return todayLocalStr(); // YYYY-MM-DD (device-local, JST-aware)
 }
 
 // ─── State shape ─────────────────────────────────────────────────────────────
@@ -42,6 +43,10 @@ interface GameState {
   todayDangers: string[];
   todayCategories: string[];
   claimedChallengeIds: string[];
+
+  // Hydration (true once persisted state has loaded from AsyncStorage)
+  _hasHydrated: boolean;
+  setHasHydrated: (v: boolean) => void;
 
   // Onboarding
   hasOnboarded: boolean;
@@ -103,13 +108,14 @@ export const useGameStore = create<GameState>()(
       seasonalQuestMonth: '',
       hasOnboarded: false,
 
+      _hasHydrated: false,
+      setHasHydrated: (v: boolean) => set({ _hasHydrated: v }),
+
       // ── Session start: call once on app mount ────────────────────────────
       startSession: () => {
         const { lastLoginDate, streak, todayDate, seasonalQuestMonth } = get();
         const today = todayStr();
-        const yesterday = new Date(Date.now() - 86_400_000)
-          .toISOString()
-          .split('T')[0];
+        const yesterday = localDateStrOffset(-1);
         const thisMonth = today.slice(0, 7); // YYYY-MM
 
         const newStreak =
@@ -233,6 +239,13 @@ export const useGameStore = create<GameState>()(
     {
       name: 'yaku-iku-storage',
       storage: createJSONStorage(() => AsyncStorage),
+      // Do not persist the transient hydration flag.
+      partialize: ({ _hasHydrated, setHasHydrated, ...rest }) => rest,
+      onRehydrateStorage: () => (state) => {
+        // Called once AsyncStorage has finished loading (even on first launch,
+        // where `state` is the default). Flip the flag so the UI can wait for it.
+        state?.setHasHydrated(true);
+      },
     }
   )
 );

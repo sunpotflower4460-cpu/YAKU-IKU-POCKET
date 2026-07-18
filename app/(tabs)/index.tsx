@@ -17,6 +17,7 @@ import { DisclaimerBanner } from '../../src/components/DisclaimerBanner';
 import { OnboardingModal } from '../../src/components/OnboardingModal';
 import { Colors } from '../../src/constants/colors';
 import { getCurrentSeason, SEASON_CONFIG, getSeasonalPlants } from '../../src/utils/season';
+import { todayLocalStr } from '../../src/utils/date';
 import {
   getDailyChallenges,
   getChallengePct,
@@ -42,6 +43,7 @@ export default function HomeScreen() {
     claimedSeasonalQuestIds, claimSeasonalChallenge,
     lastCelebrated, setLastCelebrated,
     hasOnboarded, setHasOnboarded,
+    _hasHydrated: hasHydrated,
   } = useGameStore();
 
   const level = getLevel();
@@ -57,8 +59,8 @@ export default function HomeScreen() {
   const season = getCurrentSeason();
   const seasonCfg = SEASON_CONFIG[season];
 
-  // Daily quest data
-  const todayDateStr = new Date().toISOString().split('T')[0];
+  // Daily quest data (local date, aligned with the store's day boundary)
+  const todayDateStr = todayLocalStr();
   const dailyChallenges = getDailyChallenges(todayDateStr);
   const dailySnap: ChallengeSnap = {
     todayScanCount, todayNewCount, todayMaxRarity, todayDangers, todayCategories,
@@ -450,7 +452,7 @@ export default function HomeScreen() {
       <View style={styles.bottomPad} />
     </ScrollView>
 
-    <OnboardingModal visible={!hasOnboarded} onComplete={setHasOnboarded} />
+    <OnboardingModal visible={hasHydrated && !hasOnboarded} onComplete={setHasOnboarded} />
     </>
   );
 }

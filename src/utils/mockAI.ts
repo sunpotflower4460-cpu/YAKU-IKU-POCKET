@@ -2,11 +2,13 @@ import { Plant, Rarity } from '../types';
 import { PLANTS } from '../data/plants';
 import { getCurrentSeason, isPlantInSeason } from './season';
 
-// Rarity weights: common plants appear more frequently
+// Rarity weights: common plants appear more frequently.
+// NOTE: the dataset currently contains no rarity-1 plants, so its weight is 0
+// to avoid selecting an empty candidate pool (see pickRarity fallback below).
 const RARITY_WEIGHTS: Record<Rarity, number> = {
-  1: 5,  // ★ very common
-  2: 35, // ★★ common
-  3: 35, // ★★★ uncommon
+  1: 0,  // ★ (no rarity-1 plants in dataset)
+  2: 38, // ★★ common
+  3: 37, // ★★★ uncommon
   4: 20, // ★★★★ rare
   5: 5,  // ★★★★★ legendary
 };
@@ -42,15 +44,18 @@ export async function recognizePlant(
 
   const season = getCurrentSeason();
   const rarity = pickRarity();
+  // Fall back to the full list if the chosen rarity has no plants, so the
+  // pool is never empty (prevents `undefined.id` crashes).
   const candidates = PLANTS.filter((p) => p.rarity === rarity);
+  const pool = candidates.length > 0 ? candidates : PLANTS;
 
   // 65% chance to pick an in-season plant when available
-  const inSeason = candidates.filter((p) => isPlantInSeason(p.season, season));
+  const inSeason = pool.filter((p) => isPlantInSeason(p.season, season));
   let plant: Plant;
   if (inSeason.length > 0 && Math.random() < 0.65) {
     plant = inSeason[Math.floor(Math.random() * inSeason.length)];
   } else {
-    plant = candidates[Math.floor(Math.random() * candidates.length)];
+    plant = pool[Math.floor(Math.random() * pool.length)];
   }
 
   const confidence = Math.floor(72 + Math.random() * 28); // 72-99%

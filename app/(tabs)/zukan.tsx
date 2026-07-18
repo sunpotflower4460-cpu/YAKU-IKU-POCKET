@@ -110,8 +110,11 @@ export default function ZukanScreen() {
       if (filterRarity === '5only' && plant.rarity !== 5) return false;
       if (filterEffect && !plant.effects.includes(filterEffect)) return false;
 
-      // Search applies only to discovered plants (undiscovered names are hidden)
-      if (search && isDiscovered) {
+      // Search: undiscovered plants have hidden ("???") names, so a search query
+      // can only match discovered plants. Hide undiscovered cards while searching
+      // so the grid actually narrows to matches.
+      if (search) {
+        if (!isDiscovered) return false;
         const q = search.toLowerCase();
         if (
           !plant.name.includes(q) &&
