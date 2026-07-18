@@ -1,5 +1,6 @@
 import { ScanResult, recognizePlant } from './mockAI';
 import { recognizePlantWithClaude } from './claudeAI';
+import { CapturedPhoto } from '../types/capture';
 
 /**
  * API key from environment variable.
@@ -27,21 +28,23 @@ export type ScanOutcome =
   | { status: 'error'; usedRealAI: true; message: string };
 
 /**
- * Scan a plant image and return an identification outcome.
+ * Scan one or more captured photos of the same specimen and return an
+ * identification outcome.
  *
- * - If base64Image is provided AND EXPO_PUBLIC_CLAUDE_API_KEY is set
- *   → calls Claude Vision API (real AI). Unknown/failed results surface as
- *     `unidentified` / `error` — never a random guess.
- * - Otherwise → uses weighted-random mock AI (demo mode), which always returns
- *   an `identified` result flagged with `usedRealAI: false`.
+ * - If `photos` is non-empty AND EXPO_PUBLIC_CLAUDE_API_KEY is set
+ *   → calls Claude Vision API (real AI) with all photos in one request.
+ *     Unknown/failed results surface as `unidentified` / `error` — never a
+ *     random guess.
+ * - Otherwise → uses weighted-random mock AI (demo mode), which always
+ *   returns an `identified` result flagged with `usedRealAI: false`.
  */
 export async function scanPlant(
   discoveredIds: string[],
-  base64Image?: string
+  photos: CapturedPhoto[] = []
 ): Promise<ScanOutcome> {
-  if (base64Image && CLAUDE_API_KEY) {
+  if (photos.length > 0 && CLAUDE_API_KEY) {
     try {
-      const outcome = await recognizePlantWithClaude(base64Image, CLAUDE_API_KEY);
+      const outcome = await recognizePlantWithClaude(photos, CLAUDE_API_KEY);
       if (outcome.status === 'unidentified') {
         return { status: 'unidentified', usedRealAI: true, reason: outcome.reason };
       }
@@ -64,7 +67,7 @@ export async function scanPlant(
     }
   }
 
-  // Demo mode (no key / no image): mock always returns a plant.
+  // Demo mode (no key / no photos): mock always returns a plant.
   const result = await recognizePlant(discoveredIds);
   return { status: 'identified', usedRealAI: false, ...result };
 }
