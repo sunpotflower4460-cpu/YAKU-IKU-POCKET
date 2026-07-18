@@ -21,6 +21,7 @@ import { useGameStore } from '../../src/store/useGameStore';
 import { ScanResultModal } from '../../src/components/ScanResultModal';
 import { Plant } from '../../src/types';
 import { IdentificationCandidate } from '../../src/types/observation';
+import { TraitCheck } from '../../src/types/traitCheck';
 import { Colors } from '../../src/constants/colors';
 import { isDemoMode } from '../../src/utils/appMode';
 import { useReduceMotion } from '../../src/utils/reduceMotion';
@@ -293,7 +294,7 @@ export default function ScanScreen() {
     );
   }
 
-  async function handleAddToZukan() {
+  async function handleAddToZukan(traitChecks: TraitCheck[]) {
     if (!result) return;
     // Safety: demo (mock) results are view-only and must never be persisted as
     // real observations, grant XP, or register plants. Only real identifications
@@ -302,7 +303,7 @@ export default function ScanScreen() {
     // Copy out of the OS cache dir so the OS can't silently evict this saved
     // observation's photo later (native only; no-op on web — see the util).
     const durableUri = photoUri ? await persistObservationPhoto(photoUri) : undefined;
-    recordObservation(result.plant.id, durableUri);
+    recordObservation(result.plant.id, durableUri, traitChecks);
     setModalVisible(false);
     setResult(null);
     setScanState('idle');

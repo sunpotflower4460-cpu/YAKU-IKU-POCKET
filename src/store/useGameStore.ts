@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ScanRecord, UnidentifiedObservation } from '../types';
+import { TraitCheck } from '../types/traitCheck';
 import { generateId } from '../utils/id';
 import { PLANTS } from '../data/plants';
 import { todayLocalStr, localDateStrOffset } from '../utils/date';
@@ -89,7 +90,7 @@ interface GameState {
    * update. Use this for real (production) identifications; demo results must
    * NOT call this (see src/utils/appMode.ts).
    */
-  recordObservation: (plantId: string, imageUri?: string) => void;
+  recordObservation: (plantId: string, imageUri?: string, traitChecks?: TraitCheck[]) => void;
   setPlayerName: (name: string) => void;
   claimChallenge: (challengeId: string, xpReward: number) => void;
   claimSeasonalChallenge: (challengeId: string, xpReward: number) => void;
@@ -237,7 +238,7 @@ export const useGameStore = create<GameState>()(
       },
 
       // ── Atomic observation record (discovery + history + XP in one update) ─
-      recordObservation: (plantId: string, imageUri?: string) => {
+      recordObservation: (plantId: string, imageUri?: string, traitChecks?: TraitCheck[]) => {
         const isToday = get().todayDate === todayStr();
         const plant = PLANTS.find((p) => p.id === plantId);
         const rarity = plant?.rarity ?? 1;
@@ -246,6 +247,7 @@ export const useGameStore = create<GameState>()(
           plantId,
           scannedAt: new Date().toISOString(),
           imageUri,
+          traitChecks: traitChecks && traitChecks.length > 0 ? traitChecks : undefined,
         };
         set((state) => {
           const isNew = !state.discoveredPlantIds.includes(plantId);
