@@ -1,6 +1,7 @@
 import { PLANTS, TOTAL_PLANTS } from '../plants';
 import { PLANT_DEFINITIONS, getPlantDefinitionById } from '../plantDefinitions';
 import { getSafetyWarnings } from '../safety';
+import { isAuthoritativeSourceUrl } from '../../utils/sourceRefValidation';
 
 describe('PLANT_DEFINITIONS (§10.1 knowledge schema derivation)', () => {
   it('has exactly one definition per cataloged plant, in the same order', () => {
@@ -26,7 +27,6 @@ describe('PLANT_DEFINITIONS (§10.1 knowledge schema derivation)', () => {
     // a handful of YELLOW (caution) species, all found via WebSearch against
     // government/municipal sources. GREEN (general_observation) species must stay
     // empty rather than have a citation invented for it.
-    const AUTHORITATIVE_HOST_PATTERN = /\.(go\.jp|lg\.jp|nihs\.go\.jp)$/;
     for (const def of PLANT_DEFINITIONS) {
       expect(def.sourceRefs).toEqual(def.safety.sourceRefs);
       if (def.safety.level === 'general_observation') {
@@ -34,9 +34,7 @@ describe('PLANT_DEFINITIONS (§10.1 knowledge schema derivation)', () => {
         continue;
       }
       for (const ref of def.sourceRefs) {
-        const url = new URL(ref);
-        expect(url.protocol).toBe('https:');
-        expect(AUTHORITATIVE_HOST_PATTERN.test(url.hostname)).toBe(true);
+        expect(isAuthoritativeSourceUrl(ref)).toBe(true);
       }
     }
   });
@@ -60,7 +58,8 @@ describe('PLANT_DEFINITIONS (§10.1 knowledge schema derivation)', () => {
   });
 
   it('builds a symmetric look-alike graph from safety.ts (both directions)', () => {
-    // p008 セリ -> lists ドクゼリ (not in DB, no inDbId) — no in-DB lookalike link
+    // p008 セリ -> lists ドクゼリ (inDbId: 'p037', added PR24) and ドクニンジン
+    // (inDbId: 'p065', added PR27); this test only asserts the p002/p024 pair below.
     // p002 ヨモギ -> lists トリカブト with inDbId 'p024', so both directions should link
     const yomogi = getPlantDefinitionById('p002')!;
     const trikabuto = getPlantDefinitionById('p024')!;

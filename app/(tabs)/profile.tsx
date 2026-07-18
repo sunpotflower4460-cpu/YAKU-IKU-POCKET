@@ -68,7 +68,7 @@ const ACHIEVEMENTS: AchievementDef[] = [
   {
     id: 'twenty_five',
     icon: 'ribbon-outline',
-    label: '半分制覇',
+    label: 'コレクター見習い',
     desc: '25種類の植物を発見した',
     check: (ctx) => ctx.discoveredPlantIds.length >= 25,
   },

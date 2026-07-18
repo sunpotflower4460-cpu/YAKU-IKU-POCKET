@@ -32,7 +32,7 @@ import {
 const MILESTONES: [number, string, string, string][] = [
   [1,  'leaf-outline',   '初めての発見！',   '図鑑の旅が始まりました！'],
   [10, 'book-outline',   '10種類発見！',    '図鑑収録が進んできました！'],
-  [25, 'ribbon-outline', '25種類発見！',    '折り返し地点です！'],
+  [25, 'ribbon-outline', '25種類発見！',    'コレクションが充実してきました！'],
   [TOTAL_PLANTS, 'trophy-outline', '図鑑完成！', `全${TOTAL_PLANTS}種類を発見しました！`],
 ];
 

@@ -16,7 +16,7 @@
 // "情報準備中" rather than inventing steps. See docs/BLUEPRINT_V3.md.
 
 import { Plant } from '../types';
-import { PlantUse } from '../types/plantUse';
+import { PlantUse, UseEvidenceLevel } from '../types/plantUse';
 
 /**
  * Real, cited general food-use descriptions for a small number of GREEN
@@ -32,7 +32,7 @@ import { PlantUse } from '../types/plantUse';
  * specific government citation, so those are left with the generic
  * "準備中" placeholder rather than a weaker source.
  */
-const FOOD_USE_OVERRIDE: Record<string, { summary: string; sourceRefs: string[] }> = {
+export const FOOD_USE_OVERRIDE: Record<string, { summary: string; sourceRefs: string[] }> = {
   p002: {
     // ヨモギ
     summary:
@@ -113,35 +113,32 @@ export function getPlantUses(plant: Plant): PlantUse[] {
   if (plant.danger === 'GREEN') {
     const medicinalNote = MEDICINAL_NOT_FOOD[plant.id];
     const foodUse = FOOD_USE_OVERRIDE[plant.id];
-    uses.push(
-      medicinalNote
-        ? {
-            id: `${plant.id}_cook`,
-            plantId: plant.id,
-            category: 'food',
-            title: '料理に使う',
-            summary: medicinalNote,
-            partsUsed: [],
-            allowedOrigins: [],
-            evidenceLevel: 'official_guidance',
-            warnings: [],
-            contraindications: [],
-            sourceRefs: ['https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/kenkou_iryou/shokuhin/syokuten/iyakuhin/index.html'],
-          }
-        : {
-            id: `${plant.id}_cook`,
-            plantId: plant.id,
-            category: 'food',
-            title: '料理に使う',
-            summary: foodUse?.summary ?? '確認済みの調理法データは準備中です。',
-            partsUsed: [],
-            allowedOrigins: ['store_bought_food', 'home_grown_verified'],
-            evidenceLevel: foodUse ? 'official_guidance' : 'unverified',
-            warnings: [],
-            contraindications: [],
-            sourceRefs: foodUse?.sourceRefs ?? [],
-          }
-    );
+    // Only the fields below vary between the three cases (crude-drug notice /
+    // real cited dish / still-pending placeholder) — everything else about
+    // the "food" card is identical, so compute just these and spread into
+    // one shared object literal rather than three near-duplicate literals.
+    const summary = medicinalNote ?? foodUse?.summary ?? '確認済みの調理法データは準備中です。';
+    const evidenceLevel: UseEvidenceLevel = medicinalNote || foodUse ? 'official_guidance' : 'unverified';
+    const sourceRefs = medicinalNote
+      ? ['https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/kenkou_iryou/shokuhin/syokuten/iyakuhin/index.html']
+      : (foodUse?.sourceRefs ?? []);
+    uses.push({
+      id: `${plant.id}_cook`,
+      plantId: plant.id,
+      category: 'food',
+      title: '料理に使う',
+      summary,
+      partsUsed: [],
+      // Same allowedOrigins regardless of case: this is exactly the set of
+      // origins under which the "food" category unlocks (see useGate.ts), so
+      // the crude-drug notice stays reachable wherever a recipe would have
+      // been — it must never be hidden by an empty allowedOrigins.
+      allowedOrigins: ['store_bought_food', 'home_grown_verified'],
+      evidenceLevel,
+      warnings: [],
+      contraindications: [],
+      sourceRefs,
+    });
   }
 
   return uses;

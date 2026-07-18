@@ -37,6 +37,13 @@ const DANGER_CONFIG: Record<
   },
 };
 
+/** Same Japanese danger-level labels as the badge itself — for other UI (e.g. related-plant cards) that needs the text without the visual badge. */
+export const DANGER_LABEL: Record<DangerLevel, string> = {
+  GREEN: DANGER_CONFIG.GREEN.label,
+  YELLOW: DANGER_CONFIG.YELLOW.label,
+  RED: DANGER_CONFIG.RED.label,
+};
+
 export function DangerBadge({ danger, size = 'md' }: Props) {
   const config = DANGER_CONFIG[danger];
   const isSmall = size === 'sm';
