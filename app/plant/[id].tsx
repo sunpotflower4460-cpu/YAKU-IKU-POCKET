@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
+import * as Haptics from '../../src/utils/haptics';
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { useLayoutEffect } from 'react';
 import { getPlantById, PLANTS } from '../../src/data/plants';

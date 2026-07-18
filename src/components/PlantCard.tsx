@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { View, Text, StyleSheet, Pressable, Animated, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
+import * as Haptics from '../utils/haptics';
 import { Plant } from '../types';
 import { Colors } from '../constants/colors';
 import { RarityStars } from './RarityStars';

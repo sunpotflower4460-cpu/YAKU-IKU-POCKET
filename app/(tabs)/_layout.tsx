@@ -2,7 +2,7 @@ import { Tabs } from 'expo-router';
 import { useState, useEffect, useRef } from 'react';
 import { View, AppState } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
+import * as Haptics from '../../src/utils/haptics';
 import { Colors } from '../../src/constants/colors';
 import { useGameStore, XP_PER_LEVEL } from '../../src/store/useGameStore';
 import { LevelUpModal } from '../../src/components/LevelUpModal';
@@ -82,7 +82,7 @@ export default function TabLayout() {
         <Tabs.Screen
           name="index"
           options={{
-            title: 'ホーム',
+            title: '今日',
             tabBarIcon: ({ color, focused, size }) => (
               <Ionicons name={focused ? 'home' : 'home-outline'} size={size} color={color} />
             ),
@@ -91,7 +91,7 @@ export default function TabLayout() {
         <Tabs.Screen
           name="scan"
           options={{
-            title: 'スキャン',
+            title: '観察',
             tabBarIcon: ({ focused }) => (
               <View
                 style={{
@@ -117,7 +117,7 @@ export default function TabLayout() {
         <Tabs.Screen
           name="zukan"
           options={{
-            title: '図鑑',
+            title: '探す',
             tabBarIcon: ({ color, focused, size }) => (
               <Ionicons name={focused ? 'book' : 'book-outline'} size={size} color={color} />
             ),
@@ -126,7 +126,7 @@ export default function TabLayout() {
         <Tabs.Screen
           name="profile"
           options={{
-            title: 'マイページ',
+            title: '記録',
             tabBarIcon: ({ color, focused, size }) => (
               <Ionicons name={focused ? 'person' : 'person-outline'} size={size} color={color} />
             ),
