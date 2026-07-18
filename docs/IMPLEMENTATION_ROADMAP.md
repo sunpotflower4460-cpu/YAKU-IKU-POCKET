@@ -12,8 +12,8 @@
 | PR8 | Navigation & Today（タブ再設計/Today Hero） | ✅ merged |
 | PR9 | Observe Capture Flow（複数写真/部位/処理段階） | ✅ merged |
 | PR10 | Candidate Results & Compare（複数候補/スコア/比較/安全ブロック） | ✅ merged |
-| **PR11** | **Knowledge Schema（PlantDefinition/taxonomy/50種変換）** | 🟡 本PR |
-| PR12 | Explore（検索/高度フィルター/分類/地域/表示切替） | ⬜ |
+| PR11 | Knowledge Schema（PlantDefinition/taxonomy/50種変換） | ✅ merged |
+| **PR12** | **Explore（検索/高度フィルター/分類/表示切替）** | 🟡 本PR |
 | PR13 | Fieldbook（Observation中心/タイムライン/地図/再解析/export・delete） | ⬜ |
 | PR14 | Backend & Real Identification（proxy/Pl@ntNet等/taxonomy/rate limit/consent） | ⬜ |
 | PR15 | Accessibility / QA / App Store（VoiceOver/Dynamic Type/CI/E2E/assets） | ⬜ |
@@ -70,6 +70,25 @@
 ## 検証（PR11）
 - `npm run check`（typecheck + jest 54件、plantDefinitions派生ロジックのテスト10件を追加）green
 - テストで検証: 50種全件のfamily/genus充足、taxonIds/sourceRefsが空であること（捏造防止）、danger→safety.levelの正しさ、look-alikeグラフの双方向性、toxicPartsが原文の範囲を超えて記載されていないこと
+
+## PR12 スコープ（本PR）
+含む:
+- **かな正規化検索**（`src/utils/kana.ts`）: ひらがな入力でカタカナ名（例: 「たんぽぽ」→タンポポ）にも一致。既存の英名/学名検索は維持
+- **最近の検索**: セッション内のみ保持する検索履歴チップ（永続化はしない — 簡潔さと今回のスコープを優先）
+- **科（family）で探す**（PR11のPlantDefinitionデータを利用）: フィルターに新規追加、実データに基づく
+- **危険な類似植物で絞り込み**（`hasDangerousLookalike`、既存`safety.ts`を再利用）: 「危険な類似植物」explore入口を実装
+- **表示切替**: グリッド（既存）/ リスト（新規コンパクト行）/ 科でまとめる（`SectionList`、PR11データで実グループ化）
+- **未観察カードの学びヒント強化**: `PlantCard`にfamilyHintプロップを追加し、「ヒント」の代わりに科名を表示（既存のヒントモーダルにも科の行を追加）。既存の「???」名称の非表示は変更なし（種の特定情報は漏らさない）
+
+含まない（後続へ委譲、意図的にスコープ外）:
+- **地域から探す・近くで記録あり**: 位置情報の収集自体が未実装（PR14/権限まわりの検討が必要）
+- **在来/外来・保全状態フィルター**: 実データが無いため実装せず、捏造もしない
+- **花の色・葉の形フィルター**: `PlantDefinition.morphology`がPR11で意図的にスパースなため、構造化データが揃うまで見送り
+- **地図・季節カレンダー表示**: 地図は位置情報が無く実装不可。季節カレンダーは今後の検討（既存Todayの季節スポットライトと重複するため優先度低）
+
+## 検証（PR12）
+- `npm run check`（typecheck + jest 58件、kana正規化テスト4件を追加）green
+- Expo web + Playwrightで実機相当の確認: グリッド/リスト/科でまとめる の3表示切替、科フィルター（キク科→6種）と危険な類似植物フィルターの組み合わせ（→ヨモギ1種に正しく絞り込み）をスクリーンショット・実測値で確認済み
 
 ## 既存改善の回帰防止（§1）
 ハイドレーション後セッション開始 / ローカル日付 / カメラ拒否→設定誘導 / ErrorBoundary / モーダル戻る / 画像フォールバック / モック明示 / 危険警告 / TS strict / プライバシー導線枠 / typecheck。CIで typecheck+test＋禁止語grepにより後退を検知。

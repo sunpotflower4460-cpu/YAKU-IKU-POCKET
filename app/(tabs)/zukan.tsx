@@ -4,6 +4,7 @@ import {
   Text,
   StyleSheet,
   FlatList,
+  SectionList,
   Pressable,
   TextInput,
   Modal,
@@ -12,13 +13,17 @@ import * as Haptics from '../../src/utils/haptics';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { PLANTS } from '../../src/data/plants';
+import { PLANT_DEFINITIONS, getPlantDefinitionById } from '../../src/data/plantDefinitions';
+import { hasDangerousLookalike } from '../../src/data/safety';
 import { useGameStore } from '../../src/store/useGameStore';
 import { PlantCard } from '../../src/components/PlantCard';
 import { RarityStars } from '../../src/components/RarityStars';
+import { DangerBadge } from '../../src/components/DangerBadge';
 import { DisclaimerBanner } from '../../src/components/DisclaimerBanner';
 import { Colors } from '../../src/constants/colors';
 import { DangerLevel, Plant, PlantCategory } from '../../src/types';
 import { getCurrentSeason, SEASON_CONFIG, isPlantInSeason } from '../../src/utils/season';
+import { normalizeForSearch } from '../../src/utils/kana';
 
 type FilterDiscovered = 'all' | 'discovered' | 'undiscovered' | 'favorites' | 'noted';
 type FilterDanger = 'all' | DangerLevel;
@@ -26,6 +31,12 @@ type FilterCategory = 'all' | PlantCategory;
 type FilterSeason = 'all' | 'current';
 type SortRarity = 'none' | 'desc' | 'asc';
 type FilterRarity = 'all' | '3up' | '4up' | '5only';
+type ViewMode = 'grid' | 'list' | 'family';
+
+/** Every family present in the dataset, sorted — powers the "科で探す" filter (§7.6). */
+const FAMILY_OPTIONS: string[] = Array.from(
+  new Set(PLANT_DEFINITIONS.map((d) => d.taxonomy.family).filter((f): f is string => !!f))
+).sort();
 
 export default function ZukanScreen() {
   const router = useRouter();
@@ -48,11 +59,15 @@ export default function ZukanScreen() {
   const [statsOpen, setStatsOpen] = useState(false);
 
   const [search, setSearch] = useState('');
+  const [recentSearches, setRecentSearches] = useState<string[]>([]);
+  const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [filterDiscovered, setFilterDiscovered] =
     useState<FilterDiscovered>('all');
   const [filterDanger, setFilterDanger] = useState<FilterDanger>('all');
   const [filterCategory, setFilterCategory] = useState<FilterCategory>('all');
   const [filterSeason, setFilterSeason] = useState<FilterSeason>('all');
+  const [filterFamily, setFilterFamily] = useState<string>('all');
+  const [onlyLookalikeRisk, setOnlyLookalikeRisk] = useState(false);
   const [sortRarity, setSortRarity] = useState<SortRarity>('none');
   const [filterRarity, setFilterRarity] = useState<FilterRarity>('all');
   const decodedInitialEffect = initialFilterEffect ? decodeURIComponent(initialFilterEffect) : null;
@@ -71,6 +86,8 @@ export default function ZukanScreen() {
     filterDanger !== 'all',
     filterCategory !== 'all',
     filterSeason !== 'all',
+    filterFamily !== 'all',
+    onlyLookalikeRisk,
     sortRarity !== 'none',
     filterRarity !== 'all',
     filterEffect !== null,
@@ -81,10 +98,18 @@ export default function ZukanScreen() {
     setFilterDanger('all');
     setFilterCategory('all');
     setFilterSeason('all');
+    setFilterFamily('all');
+    setOnlyLookalikeRisk(false);
     setSortRarity('none');
     setFilterRarity('all');
     setFilterEffect(null);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  }
+
+  function commitSearch(q: string) {
+    const trimmed = q.trim();
+    if (!trimmed) return;
+    setRecentSearches((prev) => [trimmed, ...prev.filter((s) => s !== trimmed)].slice(0, 5));
   }
 
   const currentSeason = getCurrentSeason();
@@ -109,17 +134,21 @@ export default function ZukanScreen() {
       if (filterRarity === '4up' && plant.rarity < 4) return false;
       if (filterRarity === '5only' && plant.rarity !== 5) return false;
       if (filterEffect && !plant.effects.includes(filterEffect)) return false;
+      if (filterFamily !== 'all' && getPlantDefinitionById(plant.id)?.taxonomy.family !== filterFamily)
+        return false;
+      if (onlyLookalikeRisk && !hasDangerousLookalike(plant.id)) return false;
 
       // Search: undiscovered plants have hidden ("???") names, so a search query
       // can only match discovered plants. Hide undiscovered cards while searching
-      // so the grid actually narrows to matches.
+      // so the grid actually narrows to matches. Kana-normalized so hiragana
+      // input matches katakana names and vice versa (§7.6).
       if (search) {
         if (!isDiscovered) return false;
-        const q = search.toLowerCase();
+        const q = normalizeForSearch(search);
         if (
-          !plant.name.includes(q) &&
-          !plant.nameEn.toLowerCase().includes(q) &&
-          !plant.nameLatin.toLowerCase().includes(q)
+          !normalizeForSearch(plant.name).includes(q) &&
+          !normalizeForSearch(plant.nameEn).includes(q) &&
+          !normalizeForSearch(plant.nameLatin).includes(q)
         )
           return false;
       }
@@ -134,7 +163,27 @@ export default function ZukanScreen() {
     }
 
     return result;
-  }, [discoveredPlantIds, favoritePlantIds, plantNotes, filterDiscovered, filterDanger, filterCategory, filterSeason, sortRarity, filterRarity, filterEffect, search, currentSeason]);
+  }, [
+    discoveredPlantIds, favoritePlantIds, plantNotes, filterDiscovered, filterDanger,
+    filterCategory, filterSeason, filterFamily, onlyLookalikeRisk, sortRarity,
+    filterRarity, filterEffect, search, currentSeason,
+  ]);
+
+  // Grouped by family for the "科でまとめる" view (§7.6). Sections follow
+  // FAMILY_OPTIONS order; plants without a resolved family are omitted from
+  // this view (none currently, since PR11 populates family for all 50).
+  const familySections = useMemo(() => {
+    if (viewMode !== 'family') return [];
+    const byFamily = new Map<string, Plant[]>();
+    for (const plant of filtered) {
+      const family = getPlantDefinitionById(plant.id)?.taxonomy.family ?? 'その他';
+      if (!byFamily.has(family)) byFamily.set(family, []);
+      byFamily.get(family)!.push(plant);
+    }
+    return Array.from(byFamily.entries())
+      .sort(([a], [b]) => a.localeCompare(b, 'ja'))
+      .map(([title, data]) => ({ title, data }));
+  }, [filtered, viewMode]);
 
   const discoveredCount = discoveredPlantIds.length;
 
@@ -144,6 +193,15 @@ export default function ZukanScreen() {
   const statsRed    = PLANTS.filter(p => p.danger === 'RED'    && discoveredPlantIds.includes(p.id)).length;
   const statsWild   = PLANTS.filter(p => p.category === '野草' && discoveredPlantIds.includes(p.id)).length;
   const statsHerb   = PLANTS.filter(p => p.category === 'スパイス・ハーブ' && discoveredPlantIds.includes(p.id)).length;
+
+  function handlePlantPress(item: Plant) {
+    if (discoveredPlantIds.includes(item.id)) {
+      router.push(`/plant/${item.id}`);
+    } else {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      setHintPlant(item);
+    }
+  }
 
   return (
     <View style={styles.container}>
@@ -187,15 +245,16 @@ export default function ZukanScreen() {
           })}
         </View>
 
-        {/* Search */}
+        {/* Search — ひらがな/カタカナ/英名/学名すべてに対応（§7.6） */}
         <View style={styles.searchBox}>
           <Ionicons name="search-outline" size={16} color={Colors.textMuted} />
           <TextInput
             style={styles.searchInput}
-            placeholder="発見済みの植物を検索..."
+            placeholder="発見済みの植物を検索（和名・英名・学名）..."
             placeholderTextColor={Colors.textMuted}
             value={search}
             onChangeText={setSearch}
+            onSubmitEditing={() => commitSearch(search)}
             returnKeyType="search"
           />
           {search.length > 0 && (
@@ -207,6 +266,27 @@ export default function ZukanScreen() {
             </Pressable>
           )}
         </View>
+
+        {/* Recent searches — session-local (§7.6 "最近の検索") */}
+        {search.length === 0 && recentSearches.length > 0 && (
+          <View style={styles.recentSearchRow}>
+            <Ionicons name="time-outline" size={12} color="rgba(255,255,255,0.7)" />
+            {recentSearches.map((q) => (
+              <Pressable
+                key={q}
+                style={styles.recentSearchChip}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setSearch(q);
+                }}
+              >
+                <Text style={styles.recentSearchChipText} numberOfLines={1}>
+                  {q}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        )}
       </View>
 
       {/* Statistics Dashboard */}
@@ -350,6 +430,33 @@ export default function ZukanScreen() {
           />
         </FilterRow>
 
+        <FilterRow label="科">
+          <FilterChip
+            label="すべて"
+            active={filterFamily === 'all'}
+            onPress={() => setFilterFamily('all')}
+            activeColor={Colors.primary}
+          />
+          {FAMILY_OPTIONS.map((family) => (
+            <FilterChip
+              key={family}
+              label={family.split(' ')[0]}
+              active={filterFamily === family}
+              onPress={() => setFilterFamily(family)}
+              activeColor="#6A1B9A"
+            />
+          ))}
+        </FilterRow>
+
+        <FilterRow label="注意">
+          <FilterChip
+            label="危険な類似植物あり"
+            active={onlyLookalikeRisk}
+            onPress={() => setOnlyLookalikeRisk((v) => !v)}
+            activeColor={Colors.dangerRed}
+          />
+        </FilterRow>
+
         <FilterRow label="並び順">
           <FilterChip
             label="デフォルト"
@@ -393,10 +500,15 @@ export default function ZukanScreen() {
         )}
       </View>
 
-      {/* Count */}
-      <Text style={styles.countText}>
-        {filtered.length}種類を表示
-      </Text>
+      {/* Count + view mode (§7.6 表示切替) */}
+      <View style={styles.countRow}>
+        <Text style={styles.countText}>{filtered.length}種類を表示</Text>
+        <View style={styles.viewModeRow}>
+          <ViewModeBtn icon="grid-outline" active={viewMode === 'grid'} onPress={() => setViewMode('grid')} label="グリッド" />
+          <ViewModeBtn icon="list-outline" active={viewMode === 'list'} onPress={() => setViewMode('list')} label="リスト" />
+          <ViewModeBtn icon="git-branch-outline" active={viewMode === 'family'} onPress={() => setViewMode('family')} label="科でまとめる" />
+        </View>
+      </View>
 
       {/* Active effect filter chip */}
       {filterEffect && (
@@ -442,6 +554,13 @@ export default function ZukanScreen() {
 
                 {/* Hint rows */}
                 <View style={styles.hintRows}>
+                  {getPlantDefinitionById(hintPlant.id)?.taxonomy.family && (
+                    <HintRow
+                      icon="git-branch-outline"
+                      label="科"
+                      value={getPlantDefinitionById(hintPlant.id)!.taxonomy.family!}
+                    />
+                  )}
                   <HintRow icon="calendar-outline" label="旬の時期" value={hintPlant.season} />
                   <HintRow
                     icon="folder-outline"
@@ -487,49 +606,147 @@ export default function ZukanScreen() {
         </Pressable>
       </Modal>
 
-      {/* Grid */}
-      <FlatList
-        data={filtered}
-        keyExtractor={(item) => item.id}
-        numColumns={3}
-        contentContainerStyle={styles.grid}
-        keyboardShouldPersistTaps="handled"
-        removeClippedSubviews={true}
-        maxToRenderPerBatch={15}
-        windowSize={10}
-        renderItem={({ item }) => (
-          <PlantCard
-            plant={item}
-            discovered={discoveredPlantIds.includes(item.id)}
-            imageUri={imageUriMap[item.id]}
-            isFavorite={favoritePlantIds.includes(item.id)}
-            hasNote={!!plantNotes[item.id]}
-            onPress={() => {
-              if (discoveredPlantIds.includes(item.id)) {
-                router.push(`/plant/${item.id}`);
-              } else {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                setHintPlant(item);
-              }
-            }}
-            onFavorite={() => toggleFavorite(item.id)}
-          />
-        )}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Ionicons name="leaf-outline" size={48} color={Colors.textMuted} />
-            <Text style={styles.emptyText}>
-              条件に一致する植物がありません
-            </Text>
-          </View>
-        }
-        ListFooterComponent={
-          <View style={styles.footerPad}>
-            <DisclaimerBanner compact />
-          </View>
-        }
-      />
+      {/* Results — grid (default), compact list, or grouped by family (§7.6 表示切替) */}
+      {viewMode === 'family' ? (
+        <SectionList
+          sections={familySections}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.grid}
+          keyboardShouldPersistTaps="handled"
+          renderSectionHeader={({ section }) => (
+            <View style={styles.familySectionHeader}>
+              <Text style={styles.familySectionTitle}>{section.title}</Text>
+              <Text style={styles.familySectionCount}>{section.data.length}種</Text>
+            </View>
+          )}
+          renderItem={({ item }) => (
+            <PlantListRow
+              plant={item}
+              discovered={discoveredPlantIds.includes(item.id)}
+              isFavorite={favoritePlantIds.includes(item.id)}
+              onPress={() => handlePlantPress(item)}
+            />
+          )}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Ionicons name="leaf-outline" size={48} color={Colors.textMuted} />
+              <Text style={styles.emptyText}>条件に一致する植物がありません</Text>
+            </View>
+          }
+          ListFooterComponent={
+            <View style={styles.footerPad}>
+              <DisclaimerBanner compact />
+            </View>
+          }
+        />
+      ) : (
+        <FlatList
+          data={filtered}
+          keyExtractor={(item) => item.id}
+          numColumns={viewMode === 'list' ? 1 : 3}
+          key={viewMode} // numColumns can't change without remounting FlatList
+          contentContainerStyle={styles.grid}
+          keyboardShouldPersistTaps="handled"
+          removeClippedSubviews={true}
+          maxToRenderPerBatch={15}
+          windowSize={10}
+          renderItem={({ item }) =>
+            viewMode === 'list' ? (
+              <PlantListRow
+                plant={item}
+                discovered={discoveredPlantIds.includes(item.id)}
+                isFavorite={favoritePlantIds.includes(item.id)}
+                onPress={() => handlePlantPress(item)}
+              />
+            ) : (
+              <PlantCard
+                plant={item}
+                discovered={discoveredPlantIds.includes(item.id)}
+                imageUri={imageUriMap[item.id]}
+                isFavorite={favoritePlantIds.includes(item.id)}
+                hasNote={!!plantNotes[item.id]}
+                familyHint={getPlantDefinitionById(item.id)?.taxonomy.family}
+                onPress={() => handlePlantPress(item)}
+                onFavorite={() => toggleFavorite(item.id)}
+              />
+            )
+          }
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Ionicons name="leaf-outline" size={48} color={Colors.textMuted} />
+              <Text style={styles.emptyText}>
+                条件に一致する植物がありません
+              </Text>
+            </View>
+          }
+          ListFooterComponent={
+            <View style={styles.footerPad}>
+              <DisclaimerBanner compact />
+            </View>
+          }
+        />
+      )}
     </View>
+  );
+}
+
+function ViewModeBtn({
+  icon,
+  active,
+  onPress,
+  label,
+}: {
+  icon: React.ComponentProps<typeof Ionicons>['name'];
+  active: boolean;
+  onPress: () => void;
+  label: string;
+}) {
+  return (
+    <Pressable
+      style={[styles.viewModeBtn, active && styles.viewModeBtnActive]}
+      onPress={() => {
+        Haptics.selectionAsync();
+        onPress();
+      }}
+      accessibilityRole="button"
+      accessibilityLabel={`表示切替: ${label}`}
+      accessibilityState={{ selected: active }}
+    >
+      <Ionicons name={icon} size={15} color={active ? '#FFFFFF' : Colors.textMuted} />
+    </Pressable>
+  );
+}
+
+/** Compact row used by the "リスト" and "科でまとめる" view modes (§7.6). */
+function PlantListRow({
+  plant,
+  discovered,
+  isFavorite,
+  onPress,
+}: {
+  plant: Plant;
+  discovered: boolean;
+  isFavorite: boolean;
+  onPress: () => void;
+}) {
+  const family = getPlantDefinitionById(plant.id)?.taxonomy.family;
+  return (
+    <Pressable style={styles.listRow} onPress={onPress}>
+      <View style={styles.listEmojiWrap}>
+        <Text style={styles.listEmoji}>{discovered ? plant.emoji : '？'}</Text>
+      </View>
+      <View style={styles.listInfo}>
+        <Text style={styles.listName} numberOfLines={1}>
+          {discovered ? plant.name : '？？？'}
+        </Text>
+        <Text style={styles.listSub} numberOfLines={1}>
+          {discovered ? plant.nameLatin : (family ?? '未発見')}
+        </Text>
+      </View>
+      <RarityStars rarity={plant.rarity} size="sm" />
+      {discovered && <DangerBadge danger={plant.danger} size="sm" />}
+      {discovered && isFavorite && <Ionicons name="heart" size={14} color="#E53935" />}
+    </Pressable>
   );
 }
 
@@ -655,6 +872,23 @@ const styles = StyleSheet.create({
   },
   searchInput: { flex: 1, color: '#FFFFFF', fontSize: 14 },
 
+  // Recent searches
+  recentSearchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 8,
+  },
+  recentSearchChip: {
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 10,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    maxWidth: 120,
+  },
+  recentSearchChipText: { fontSize: 11, color: '#FFFFFF', fontWeight: '600' },
+
   filtersContainer: {
     backgroundColor: Colors.bgCard,
     paddingHorizontal: 16,
@@ -733,13 +967,75 @@ const styles = StyleSheet.create({
   chipText: { fontSize: 12, color: Colors.textSecondary, fontWeight: '600' },
   chipTextActive: { color: '#FFFFFF' },
 
-  countText: {
-    fontSize: 12,
-    color: Colors.textMuted,
+  countRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingTop: 10,
     paddingBottom: 4,
   },
+  countText: {
+    fontSize: 12,
+    color: Colors.textMuted,
+  },
+  viewModeRow: {
+    flexDirection: 'row',
+    gap: 4,
+    backgroundColor: Colors.bg,
+    borderRadius: 10,
+    padding: 2,
+  },
+  viewModeBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  viewModeBtnActive: {
+    backgroundColor: Colors.primary,
+  },
+
+  // Compact list row (list / family view modes)
+  listRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: Colors.bgCard,
+    borderRadius: 12,
+    padding: 10,
+    marginHorizontal: 4,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: Colors.cardBorder,
+  },
+  listEmojiWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: Colors.bg,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  listEmoji: { fontSize: 20 },
+  listInfo: { flex: 1 },
+  listName: { fontSize: 13, fontWeight: '700', color: Colors.text },
+  listSub: { fontSize: 11, color: Colors.textMuted, marginTop: 1 },
+
+  // Family-grouped section headers
+  familySectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: Colors.bg,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    marginTop: 6,
+  },
+  familySectionTitle: { fontSize: 13, fontWeight: '800', color: Colors.primaryDark },
+  familySectionCount: { fontSize: 11, color: Colors.textMuted, fontWeight: '600' },
+
   activeEffectRow: {
     flexDirection: 'row',
     alignItems: 'center',
