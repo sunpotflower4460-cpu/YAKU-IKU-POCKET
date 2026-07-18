@@ -40,4 +40,25 @@ describe('getPlantUses (PR22, honesty policy)', () => {
     expect(food!.allowedOrigins).not.toContain('wild_observed');
     expect(food!.allowedOrigins).not.toContain('wild_collected');
   });
+
+  it('surfaces a real, cited dish name for the small set of species with a verified source (PR32)', () => {
+    const yomogi = getPlantById('p002')!; // ヨモギ
+    const uses = getPlantUses(yomogi);
+    const food = uses.find((u) => u.category === 'food')!;
+    expect(food.summary).not.toContain('準備中');
+    expect(food.evidenceLevel).toBe('official_guidance');
+    expect(food.sourceRefs.length).toBeGreaterThan(0);
+    for (const ref of food.sourceRefs) {
+      expect(new URL(ref).hostname.endsWith('.go.jp')).toBe(true);
+    }
+  });
+
+  it('never claims a food use for a species legally treated as a crude drug, not a food (PR32)', () => {
+    const gennoshoko = getPlantById('p031')!; // ゲンノショウコ, GREEN danger but not a food ingredient
+    const uses = getPlantUses(gennoshoko);
+    const food = uses.find((u) => u.category === 'food')!;
+    expect(food.summary).not.toContain('準備中');
+    expect(food.summary).toContain('生薬');
+    expect(food.preparation).toBeUndefined();
+  });
 });
