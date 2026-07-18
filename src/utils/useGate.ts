@@ -7,12 +7,35 @@
 
 import { DangerLevel } from '../types';
 import { IdentificationState } from '../types/observation';
-import { PlantUseCategory, SourceOrigin, UseGate } from '../types/plantUse';
+import { PlantUse, PlantUseCategory, SourceOrigin, UseGate } from '../types/plantUse';
 
 const CONFIRMED_STATES: IdentificationState[] = ['user_selected', 'community_supported', 'expert_verified'];
 
 /** This app does not provide wild-harvest instructions in its initial release (v3 §10.3 Gate 3). */
 const GATE3_SUPPORTED = false;
+
+/**
+ * Origins whose species identity was established by a channel independent of
+ * the user's own field-ID skill — a retailer's food-safety chain, a nursery
+ * label — so a dangerous WILD look-alike isn't a real risk for that specific
+ * specimen (PR33). This is the single source of truth for that distinction;
+ * anything NOT in this list (including any future SourceOrigin value nobody
+ * has added here yet) fails CLOSED and stays subject to the look-alike cap
+ * below, rather than a future addition silently bypassing it (PR34).
+ *
+ * Note this only relaxes the *look-alike* risk, not the general self-report
+ * weakness of `origin` itself (still just a user tapping a button, with no
+ * verification) — see PlantUse.allowedOrigins / isUseUnlocked() below, which
+ * additionally restricts nursery_plant/store_bought_herb away from content
+ * (like a specific real recipe) that was only ever cited for confirmed food
+ * purchases or verified home-grown specimens.
+ */
+const NON_FIELD_ORIGINS: readonly SourceOrigin[] = [
+  'store_bought_food',
+  'store_bought_herb',
+  'home_grown_verified',
+  'nursery_plant',
+];
 
 export function determineMaxGate(params: {
   origin: SourceOrigin;
@@ -31,15 +54,10 @@ export function determineMaxGate(params: {
   // read as "unlocked for use" for something this app flags as dangerous.
   if (plantDanger === 'RED') return 'gate0';
 
-  // A dangerous look-alike caps the gate at gate0 ONLY when the origin is a
-  // field identification (wild/unknown) — that's exactly the scenario where
-  // "this species is often confused with X in the wild" is a real risk. A
-  // store-bought or home-grown-verified specimen's species identity was
-  // already established by a channel independent of the user's own field ID
-  // skill (a retailer, a nursery label), so the wild-confusion risk doesn't
-  // apply to it and must not block the gate2 content that origin earns.
-  const isFieldOrigin = origin === 'wild_observed' || origin === 'wild_collected' || origin === 'unknown';
-  if (isFieldOrigin && hasDangerousLookalike) return 'gate0';
+  // A dangerous look-alike caps the gate at gate0 unless the origin is one of
+  // the NON_FIELD_ORIGINS above (see that constant's comment for the
+  // reasoning and the fail-closed rationale).
+  if (!NON_FIELD_ORIGINS.includes(origin) && hasDangerousLookalike) return 'gate0';
 
   switch (origin) {
     case 'store_bought_food':
@@ -90,4 +108,26 @@ export function isGateAtLeast(achieved: UseGate, required: UseGate): boolean {
 
 export function isCategoryUnlocked(category: PlantUseCategory, achievedGate: UseGate): boolean {
   return isGateAtLeast(achievedGate, requiredGateForCategory(category));
+}
+
+/**
+ * Whether a specific PlantUse card should render as unlocked (PR34). This is
+ * the check the plant detail screen should call instead of
+ * `isCategoryUnlocked` directly — `PlantUse.allowedOrigins` had been declared
+ * on every use since PR22 but was never actually consulted anywhere, so a
+ * card whose content is only valid for e.g. `store_bought_food` (a real,
+ * cited recipe) would render as unlocked for ANY origin that reaches the
+ * category's gate, including `nursery_plant` — an origin this app cannot
+ * verify any better than a wild find (see NON_FIELD_ORIGINS's comment).
+ *
+ * An empty `allowedOrigins` is treated as "not origin-restricted" (unlocked
+ * whenever the category gate is reached) rather than "never unlockable" —
+ * every use currently in this app's content sets a non-empty list, but a
+ * future one that genuinely has no origin restriction shouldn't be
+ * permanently hidden by omission.
+ */
+export function isUseUnlocked(use: PlantUse, achievedGate: UseGate, origin: SourceOrigin): boolean {
+  if (!isCategoryUnlocked(use.category, achievedGate)) return false;
+  if (use.allowedOrigins.length === 0) return true;
+  return use.allowedOrigins.includes(origin);
 }

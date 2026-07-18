@@ -28,7 +28,7 @@ import { getSafetyWarnings } from '../../src/data/safety';
 import { localDateStrOffset } from '../../src/utils/date';
 import { getPlantDefinitionById } from '../../src/data/plantDefinitions';
 import { getPlantUses } from '../../src/data/plantUses';
-import { determineMaxGate, isCategoryUnlocked, requiredGateForCategory } from '../../src/utils/useGate';
+import { determineMaxGate, isUseUnlocked, requiredGateForCategory } from '../../src/utils/useGate';
 import { SourceOrigin, USE_GATE_LABEL, UseGate } from '../../src/types/plantUse';
 
 const ORIGIN_LABEL: Record<SourceOrigin, string> = {
@@ -198,7 +198,7 @@ export default function PlantDetailScreen() {
         isPlantInSeason(p.season, currentSeason) &&
         discoveredSet.has(p.id)
     ).slice(0, 6);
-  }, [plant, discoveredPlantIds]);
+  }, [plant, discoveredPlantIds, currentSeason]);
 
   useLayoutEffect(() => {
     if (plant) {
@@ -536,7 +536,7 @@ export default function PlantDetailScreen() {
               </View>
 
               {plantUses.map((use) => {
-                const unlocked = isCategoryUnlocked(use.category, achievedGate);
+                const unlocked = isUseUnlocked(use, achievedGate, bestOrigin ?? 'unknown');
                 return (
                   <View key={use.id} style={[styles.useCard, !unlocked && styles.useCardLocked]}>
                     <View style={styles.useCardHeaderRow}>
