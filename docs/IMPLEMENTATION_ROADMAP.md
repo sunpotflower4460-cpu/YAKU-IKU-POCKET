@@ -17,7 +17,7 @@
 | PR13 | Fieldbook（学習系実績/観察カレンダー/外観・AI同意・export・delete設定） | ✅ merged |
 | PR14 | Backend & Real Identification（proxy/Pl@ntNet等/taxonomy/rate limit/consent） | ✅ 判断保留（設計メモのみ, merged） |
 | PR15 | Accessibility / QA（コード範囲: a11yラベル/Reduce Motion/eslint導入） | ✅ merged |
-| **PR16〜PR25** | **v3統合設計図対応**（詳細は`docs/BLUEPRINT_V3.md`） | 🟡 進行中（本PRはPR16） |
+| **PR16〜PR25** | **v3統合設計図対応**（詳細は`docs/BLUEPRINT_V3.md`） | ✅ merged（PR25で完了） |
 
 ## PR8 スコープ（完了）
 含む: タブ再構成（今日/観察/探す/記録）、Today画面の情報階層再設計（Hero=「観察を始める」1CTA→最近の観察→季節→観察チャレンジ→1分で学ぶ→コレクション進捗→安全情報）、「1分で学ぶ」学習カード新設（危険類似種の見分け方を優先表示）。
@@ -300,6 +300,27 @@ v3が掲げる「150種のCore Guide」という目標に向けて、既存50種
 ## 検証（PR24）
 - `npm run check`（typecheck + lint + jest 107件）green。既存の`plantDefinitions.test.ts`（全種の科・属データの網羅性を検証するテスト）が追加25種を自動検証し、テストコード自体の変更は不要だった
 - Expo web + Playwright: オンボーディング（「75種類の野草・ハーブを集めよう！」）・記録タブの統計カード（「0 / 75 発見数」）・実績カードの共有シート（「0/75種」）で、いずれも新しい種数が正しく反映されていることをスクリーンショットで確認
+
+## PR25 スコープ（本PR、App Store Quality仕上げ）
+PR15がPR6〜15のUIに対して行ったアクセシビリティ監査・修正を、PR16〜24で新設した「v3」UI（学習体験の3段階アコーディオン・現物確認チェックリスト・Fieldbook v2・暮らしタブ・複数写真キャプチャ）に対して同じ基準で実施する。
+
+含む:
+- **アイコンのみ/テキストのみボタンのVoiceOver監査・修正**（`app/plant/[id].tsx`）: お気に入りトグル（`accessibilityState={{selected}}`を追加）、再訪チップ（設定/解除）、入手経路選択ボタン、実践記録の追加・削除ボタン（アイコンのみ）、養生メモの削除ボタン、に`accessibilityRole="button"`・必要に応じて`accessibilityLabel`を追加
+- **色だけに依存しない情報伝達の補強**（`app/plant/[id].tsx`「関連植物」カード）: 危険度が枠色・ドット色のみで表現され、スクリーンリーダーには植物名しか読み上げられなかった問題を修正。`RELATED_DANGER_LABEL`（`DangerBadge`と同じ日本語ラベル）を`accessibilityLabel`に含めて危険度を音声でも伝達
+- **Fieldbook v2のアクセシビリティ・入れ子Pressable解消**（`app/(tabs)/profile.tsx`）: 再訪予定リストの行が「行全体がPressable」の中に「削除ボタンのPressable」を入れ子にしていた問題（VoiceOverのフォーカス順序が壊れるアンチパターン）を解消し、遷移可能な行のみ内側にPressableを持たせ、削除ボタンは兄弟要素として独立させた。未同定の観察の削除ボタン（アイコンのみ）にも`accessibilityLabel`を追加
+- **複数写真キャプチャのアクセシビリティ**（`app/(tabs)/scan.tsx`）: 部位タグの切替チップ・写真削除ボタンに`accessibilityRole="button"`を追加（ラベル自体はPR9/PR17時点で既に付与済みだったため今回はroleのみ補完）
+- **ドキュメント最終化**: `docs/KNOWLEDGE_SCHEMA.md`の「50種全件」というPR11時点のハードコードされた記述を、PR24以降のカタログ拡張に追随する「カタログ全種」という表現に修正。`docs/IMPLEMENTATION_ROADMAP.md`のPR16〜25行を進行中から完了に更新
+
+含まない（意図的にスコープ外、理由を明記）:
+- **VoiceOver/TalkBack実機での通し確認・Dynamic Type最大時のレイアウト崩れ目視確認**: PR15と同じ理由で、シミュレータ/実機の無いこの開発環境では検証できない。`docs/APP_STORE_RELEASE_CHECKLIST.md`のTestFlight実機テスト項目に引き続き委譲
+- **`ScanResultModal.tsx`のTraitCheckチェックリスト・候補比較カード**: 監査の結果、PR18/PR10時点で既に`accessibilityRole`・状態を含む`accessibilityLabel`が適切に実装済みと確認されたため、追加の修正は無し（監査で「問題なし」と確認したことも記録として残す）
+- **`ExpandableTier`アコーディオンヘッダー自体**: PR19時点で`accessibilityRole="button"`・`accessibilityState={{expanded}}`・説明的な`accessibilityLabel`が既に実装済みと確認されたため、追加の修正は無し
+- **PlantUseカード（ロック/アンロック状態）のアクセシビリティ**: ロック理由が可視テキストとして既に表示されており色のみに依存していないため、現状で十分と判断し追加修正は見送り
+- **150種目標の継続**: 種数拡充自体はPR24の担当領域であり、本PRは品質仕上げのみ
+
+## 検証（PR25）
+- `npm run check`（typecheck + lint + jest 107件）green。UIへのアクセシビリティ属性追加のみでロジック変更が無いため、テストコードの追加・変更は無し
+- Expo web + Playwrightで`page.accessibility.snapshot()`を取得し、お気に入りボタン（「お気に入りに追加」）、3段階アコーディオン（「3分で見分ける（タップで開く）」等、展開状態が読み上げラベルに反映されること）、実践記録の追加ボタン（「実践記録を追加」）が読み上げツリーに正しいラベルで現れることを確認
 
 ## 既存改善の回帰防止（§1）
 ハイドレーション後セッション開始 / ローカル日付 / カメラ拒否→設定誘導 / ErrorBoundary / モーダル戻る / 画像フォールバック / モック明示 / 危険警告 / TS strict / プライバシー導線枠 / typecheck。CIで typecheck+test＋禁止語grepにより後退を検知。

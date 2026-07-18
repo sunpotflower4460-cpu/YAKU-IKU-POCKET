@@ -517,6 +517,7 @@ export default function ScanScreen() {
                     <Pressable
                       style={styles.photoOrganChip}
                       onPress={() => handleCycleOrgan(p.id)}
+                      accessibilityRole="button"
                       accessibilityLabel={`部位: ${ORGAN_LABEL[p.organ]}（タップで変更）`}
                     >
                       <Text style={styles.photoOrganChipText}>{ORGAN_LABEL[p.organ]}</Text>
@@ -524,6 +525,7 @@ export default function ScanScreen() {
                     <Pressable
                       style={styles.photoDeleteBtn}
                       onPress={() => handleRemovePhoto(p.id)}
+                      accessibilityRole="button"
                       accessibilityLabel="この写真を削除"
                     >
                       <Ionicons name="close" size={12} color="#FFFFFF" />

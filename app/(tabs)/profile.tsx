@@ -561,27 +561,35 @@ export default function ProfileScreen() {
           </View>
           <View style={styles.historyList}>
             {upcomingRevisits.map((r) => (
-              <Pressable
-                key={`${r.kind}_${r.id}`}
-                style={styles.revisitRow}
-                onPress={() => {
-                  if (r.kind === 'scan' && r.plantId) router.push(`/plant/${r.plantId}`);
-                }}
-              >
+              <View key={`${r.kind}_${r.id}`} style={styles.revisitRow}>
                 <Ionicons name="alarm-outline" size={16} color={Colors.primaryDark} />
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.revisitLabel} numberOfLines={1}>{r.label}</Text>
-                  <Text style={styles.revisitDate}>{r.revisitAt}</Text>
-                </View>
+                {r.kind === 'scan' && r.plantId ? (
+                  <Pressable
+                    style={{ flex: 1 }}
+                    onPress={() => router.push(`/plant/${r.plantId}`)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${r.label}の図鑑詳細を開く、再訪予定 ${r.revisitAt}`}
+                  >
+                    <Text style={styles.revisitLabel} numberOfLines={1}>{r.label}</Text>
+                    <Text style={styles.revisitDate}>{r.revisitAt}</Text>
+                  </Pressable>
+                ) : (
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.revisitLabel} numberOfLines={1}>{r.label}</Text>
+                    <Text style={styles.revisitDate}>{r.revisitAt}</Text>
+                  </View>
+                )}
                 <Pressable
                   hitSlop={8}
                   onPress={() =>
                     r.kind === 'scan' ? setScanRevisit(r.id, undefined) : setUnidentifiedRevisit(r.id, undefined)
                   }
+                  accessibilityRole="button"
+                  accessibilityLabel="再訪予定を削除"
                 >
                   <Ionicons name="close-circle-outline" size={18} color={Colors.textMuted} />
                 </Pressable>
-              </Pressable>
+              </View>
             ))}
           </View>
         </View>
@@ -610,6 +618,8 @@ export default function ProfileScreen() {
                       { text: '削除', style: 'destructive', onPress: () => deleteUnidentifiedObservation(o.id) },
                     ])
                   }
+                  accessibilityRole="button"
+                  accessibilityLabel="この未同定の観察記録を削除"
                 >
                   <Ionicons name="trash-outline" size={18} color={Colors.textMuted} />
                 </Pressable>
