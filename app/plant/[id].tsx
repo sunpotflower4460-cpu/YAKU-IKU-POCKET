@@ -25,6 +25,7 @@ import { getCurrentSeason, isPlantInSeason } from '../../src/utils/season';
 import { SafetyBanner } from '../../src/components/SafetyBanner';
 import { getSafetyWarnings } from '../../src/data/safety';
 import { localDateStrOffset } from '../../src/utils/date';
+import { getPlantDefinitionById } from '../../src/data/plantDefinitions';
 
 export default function PlantDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -36,6 +37,8 @@ export default function PlantDetailScreen() {
   } = useGameStore();
 
   const plant = getPlantById(id ?? '');
+  const def = plant ? getPlantDefinitionById(plant.id) : undefined;
+  const lookalikes = plant ? getSafetyWarnings(plant.id) : [];
 
   // Fieldbook learning achievement (§7.8): record that the user opened a
   // dangerous plant's detail page (i.e. read its safety information).
@@ -47,6 +50,8 @@ export default function PlantDetailScreen() {
   const isFavorite = favoritePlantIds.includes(id ?? '');
   const savedNote = plantNotes[id ?? ''] ?? '';
   const [noteText, setNoteText] = useState(savedNote);
+  // 3段階学習（v3 §8.2）: 「30秒で知る」は常時表示、残り2段階は開閉式。
+  const [expandedTier, setExpandedTier] = useState<'compare' | 'deep' | null>(null);
   const [noteSaved, setNoteSaved] = useState(false);
   // Persisted photo URIs point at the cache dir, which the OS may purge.
   // If the image fails to load, fall back to the solid gradient hero.
@@ -280,42 +285,19 @@ export default function PlantDetailScreen() {
         {/* Dangerous look-alike warning (data-driven safety, not colour-only) */}
         <SafetyBanner warnings={getSafetyWarnings(plant.id)} />
 
-        {/* Description */}
-        <Section icon="book-outline" title="説明">
+        {/* ── 30秒で知る（v3 §8.2、常時表示） ── */}
+        <Section icon="flash-outline" title="30秒で知る">
           <Text style={styles.bodyText}>{plant.description}</Text>
-        </Section>
-
-        {/* Effects — framed as traditional lore, not medical advice */}
-        {plant.effects.length > 0 && (
-          <Section icon="leaf-outline" title="伝統的な用途・言い伝え">
-            <View style={styles.effectTags}>
-              {plant.effects.map((effect) => (
-                <Pressable
-                  key={effect}
-                  style={({ pressed }) => [
-                    styles.effectTag,
-                    pressed && styles.effectTagPressed,
-                  ]}
-                  onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    router.push(`/(tabs)/zukan?filterEffect=${encodeURIComponent(effect)}`);
-                  }}
-                >
-                  <Text style={styles.effectText}>{effect}</Text>
-                  <Text style={styles.effectTagArrow}>›</Text>
-                </Pressable>
-              ))}
-            </View>
-            <Text style={styles.effectsCaveat}>
-              ※ 伝統的な言い伝えであり、効果・効能を保証するものではありません。医療目的での使用はしないでください。
-            </Text>
-          </Section>
-        )}
-
-        {/* Habitat & Season */}
-        <Section icon="map-outline" title="自生環境・季節">
           <InfoRow icon="location-outline" label="生息地" value={plant.habitat} />
           <InfoRow icon="calendar-outline" label="旬の時期" value={plant.season} />
+          {(plant.warningNote || lookalikes[0]) && (
+            <View style={styles.quickCautionRow}>
+              <Ionicons name="alert-circle-outline" size={13} color={Colors.dangerRed} />
+              <Text style={styles.quickCautionText} numberOfLines={2}>
+                {plant.warningNote ?? lookalikes[0].note}
+              </Text>
+            </View>
+          )}
         </Section>
 
         {/* Rarity info */}
@@ -355,6 +337,97 @@ export default function PlantDetailScreen() {
             </View>
           </Section>
         )}
+
+        {/* ── 3分で見分ける（v3 §8.2） ── */}
+        <ExpandableTier
+          icon="git-compare-outline"
+          title="3分で見分ける"
+          expanded={expandedTier === 'compare'}
+          onToggle={() => setExpandedTier((t) => (t === 'compare' ? null : 'compare'))}
+        >
+          {def && (def.taxonomy.family || def.taxonomy.genus) && (
+            <View style={styles.identPointRow}>
+              {def.taxonomy.family && <InfoRow icon="git-branch-outline" label="科" value={def.taxonomy.family} />}
+              {def.taxonomy.genus && <InfoRow icon="leaf-outline" label="属" value={def.taxonomy.genus} />}
+            </View>
+          )}
+          {lookalikes.length > 0 ? (
+            <>
+              <Text style={styles.tierSubLabel}>危険な類似種との違い</Text>
+              {lookalikes.map((risk) => (
+                <View key={risk.name} style={styles.lookalikeCard}>
+                  <View style={styles.lookalikeNameRow}>
+                    <Ionicons
+                      name={risk.severity === 'high_risk' ? 'skull-outline' : 'warning-outline'}
+                      size={13}
+                      color={Colors.dangerRed}
+                    />
+                    <Text style={styles.lookalikeName}>{risk.name}</Text>
+                  </View>
+                  <Text style={styles.lookalikeNote}>{risk.note}</Text>
+                </View>
+              ))}
+            </>
+          ) : (
+            <Text style={styles.tierEmptyText}>危険な類似種は登録されていません。</Text>
+          )}
+          <Pressable
+            style={styles.compareCta}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              router.push('/(tabs)/scan');
+            }}
+          >
+            <Ionicons name="camera-outline" size={15} color="#FFFFFF" />
+            <Text style={styles.compareCtaText}>観察して現物と見比べる</Text>
+          </Pressable>
+        </ExpandableTier>
+
+        {/* ── 深く学ぶ（v3 §8.2） ── */}
+        <ExpandableTier
+          icon="library-outline"
+          title="深く学ぶ"
+          expanded={expandedTier === 'deep'}
+          onToggle={() => setExpandedTier((t) => (t === 'deep' ? null : 'deep'))}
+        >
+          <InfoRow icon="flask-outline" label="学名" value={plant.nameLatin} />
+          {def?.taxonomy.family && <InfoRow icon="git-branch-outline" label="科" value={def.taxonomy.family} />}
+          {def?.taxonomy.genus && <InfoRow icon="leaf-outline" label="属" value={def.taxonomy.genus} />}
+
+          {plant.effects.length > 0 && (
+            <>
+              <Text style={styles.tierSubLabel}>伝統的な用途・言い伝え</Text>
+              <View style={styles.effectTags}>
+                {plant.effects.map((effect) => (
+                  <Pressable
+                    key={effect}
+                    style={({ pressed }) => [
+                      styles.effectTag,
+                      pressed && styles.effectTagPressed,
+                    ]}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      router.push(`/(tabs)/zukan?filterEffect=${encodeURIComponent(effect)}`);
+                    }}
+                  >
+                    <Text style={styles.effectText}>{effect}</Text>
+                    <Text style={styles.effectTagArrow}>›</Text>
+                  </Pressable>
+                ))}
+              </View>
+              <Text style={styles.effectsCaveat}>
+                ※ 伝統的な言い伝えであり、効果・効能を保証するものではありません。医療目的での使用はしないでください。
+              </Text>
+            </>
+          )}
+
+          <Text style={styles.tierSubLabel}>データの確度・出典</Text>
+          <Text style={styles.tierEmptyText}>
+            {def?.reviewStatus === 'expert'
+              ? '専門家によるレビュー済みの情報です。'
+              : '編集部が一般的な植物学の知見をもとに作成した情報です（専門データベースとの連携・専門家レビューは今後の対応予定）。'}
+          </Text>
+        </ExpandableTier>
 
         {/* 養生メモ */}
         <View style={styles.noteSection}>
@@ -487,6 +560,39 @@ function InfoRow({
       <Ionicons name={icon} size={14} color={Colors.textSecondary} style={styles.infoIcon} />
       <Text style={styles.infoLabel}>{label}</Text>
       <Text style={styles.infoValue}>{value}</Text>
+    </View>
+  );
+}
+
+/** A collapsible learning tier ("3分で見分ける" / "深く学ぶ", v3 §8.2). */
+function ExpandableTier({
+  icon,
+  title,
+  expanded,
+  onToggle,
+  children,
+}: {
+  icon: React.ComponentProps<typeof Ionicons>['name'];
+  title: string;
+  expanded: boolean;
+  onToggle: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <View style={styles.section}>
+      <Pressable
+        style={styles.tierHeaderRow}
+        onPress={onToggle}
+        accessibilityRole="button"
+        accessibilityState={{ expanded }}
+        accessibilityLabel={`${title}（タップで${expanded ? '閉じる' : '開く'}）`}
+      >
+        <Ionicons name={icon} size={15} color={Colors.primary} />
+        <Text style={styles.sectionTitle}>{title}</Text>
+        <View style={{ flex: 1 }} />
+        <Ionicons name={expanded ? 'chevron-up' : 'chevron-down'} size={16} color={Colors.textMuted} />
+      </Pressable>
+      {expanded && <View style={styles.tierBody}>{children}</View>}
     </View>
   );
 }
@@ -663,6 +769,49 @@ const styles = StyleSheet.create({
     width: 60,
   },
   infoValue: { fontSize: 13, color: Colors.text, flex: 1, lineHeight: 20 },
+
+  quickCautionRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 6,
+    marginTop: 4,
+    padding: 10,
+    borderRadius: 10,
+    backgroundColor: Colors.dangerRedBg,
+  },
+  quickCautionText: { flex: 1, fontSize: 12, color: Colors.dangerRed, lineHeight: 17, fontWeight: '600' },
+
+  tierHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  tierBody: { marginTop: 12 },
+  tierSubLabel: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: Colors.textSecondary,
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  tierEmptyText: { fontSize: 12, color: Colors.textMuted, lineHeight: 18 },
+  identPointRow: { marginBottom: 4 },
+  lookalikeCard: {
+    backgroundColor: Colors.dangerRedBg,
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 8,
+  },
+  lookalikeNameRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
+  lookalikeName: { fontSize: 13, fontWeight: '800', color: Colors.dangerRed },
+  lookalikeNote: { fontSize: 12, color: Colors.text, lineHeight: 18 },
+  compareCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: Colors.primary,
+    borderRadius: 10,
+    paddingVertical: 10,
+    marginTop: 8,
+  },
+  compareCtaText: { color: '#FFFFFF', fontWeight: '800', fontSize: 13 },
 
   rarityDetail: {
     flexDirection: 'row',
