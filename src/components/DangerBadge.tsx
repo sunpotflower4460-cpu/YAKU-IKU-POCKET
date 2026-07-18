@@ -44,6 +44,21 @@ export const DANGER_LABEL: Record<DangerLevel, string> = {
   RED: DANGER_CONFIG.RED.label,
 };
 
+/**
+ * Same dot colors as the badge itself — for other UI (stat chips, related-
+ * plant cards, recent-observation cards) that draws its own small danger-dot
+ * instead of rendering a full DangerBadge. Only `dotColor` is exposed here,
+ * not the full DANGER_CONFIG: several call sites use `bg`/`border` accent
+ * shades that intentionally differ per screen, so exporting those wholesale
+ * would invite an unreviewed blanket replacement of colors that were never
+ * meant to match this badge's exact palette.
+ */
+export const DANGER_DOT_COLOR: Record<DangerLevel, string> = {
+  GREEN: DANGER_CONFIG.GREEN.dotColor,
+  YELLOW: DANGER_CONFIG.YELLOW.dotColor,
+  RED: DANGER_CONFIG.RED.dotColor,
+};
+
 export function DangerBadge({ danger, size = 'md' }: Props) {
   const config = DANGER_CONFIG[danger];
   const isSmall = size === 'sm';
