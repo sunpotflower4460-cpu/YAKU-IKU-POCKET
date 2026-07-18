@@ -65,6 +65,16 @@ interface GameState {
   claimedSeasonalQuestIds: string[];
   seasonalQuestMonth: string; // YYYY-MM
 
+  // Fieldbook settings (PR13, §7.8)
+  /** Manual appearance override; 'system' follows the OS setting (ThemeProvider default). */
+  themeOverride: 'system' | 'light' | 'dark';
+  /** Explicit consent to send captured photos to the real AI provider (§11 "同意画面"). */
+  aiConsentGiven: boolean;
+  /** Plants whose detail page has been opened while danger === 'RED' (safety-card learning achievement). */
+  viewedSafetyCardPlantIds: string[];
+  /** Set once the user has picked a non-top candidate in the compare view (§7.5). */
+  hasComparedCandidates: boolean;
+
   // Actions
   startSession: () => void;
   discoverPlant: (plantId: string) => void;
@@ -82,6 +92,12 @@ interface GameState {
   setLastCelebrated: (count: number) => void;
   toggleFavorite: (plantId: string) => void;
   setPlantNote: (plantId: string, note: string) => void;
+  setThemeOverride: (mode: 'system' | 'light' | 'dark') => void;
+  setAiConsentGiven: (given: boolean) => void;
+  markSafetyCardViewed: (plantId: string) => void;
+  markCandidatesCompared: () => void;
+  /** Erases all persisted user data (§17 "端末内にデータ削除機能"). Irreversible. */
+  resetAllData: () => void;
 
   // Computed helpers
   getLevel: () => number;
@@ -89,31 +105,39 @@ interface GameState {
   getXpToNextLevel: () => number;
 }
 
+// Fields reset by `resetAllData`. Kept separate from `_hasHydrated`/hydration
+// machinery, which must survive a reset within the same running session.
+const INITIAL_USER_DATA = {
+  discoveredPlantIds: [] as string[],
+  scanHistory: [] as ScanRecord[],
+  playerName: 'ハーブマスター',
+  xp: 0,
+  streak: 0,
+  lastLoginDate: '',
+  todayDate: '',
+  todayScanCount: 0,
+  todayNewCount: 0,
+  todayMaxRarity: 0,
+  todayDangers: [] as string[],
+  todayCategories: [] as string[],
+  claimedChallengeIds: [] as string[],
+  lastCelebrated: 0,
+  favoritePlantIds: [] as string[],
+  plantNotes: {} as Record<string, string>,
+  claimedSeasonalQuestIds: [] as string[],
+  seasonalQuestMonth: '',
+  hasOnboarded: false,
+  themeOverride: 'system' as const,
+  aiConsentGiven: false,
+  viewedSafetyCardPlantIds: [] as string[],
+  hasComparedCandidates: false,
+};
+
 // ─── Store ───────────────────────────────────────────────────────────────────
 export const useGameStore = create<GameState>()(
   persist(
     (set, get) => ({
-      discoveredPlantIds: [],
-      scanHistory: [],
-      playerName: 'ハーブマスター',
-      xp: 0,
-
-      streak: 0,
-      lastLoginDate: '',
-
-      todayDate: '',
-      todayScanCount: 0,
-      todayNewCount: 0,
-      todayMaxRarity: 0,
-      todayDangers: [],
-      todayCategories: [],
-      claimedChallengeIds: [],
-      lastCelebrated: 0,
-      favoritePlantIds: [],
-      plantNotes: {},
-      claimedSeasonalQuestIds: [],
-      seasonalQuestMonth: '',
-      hasOnboarded: false,
+      ...INITIAL_USER_DATA,
 
       _hasHydrated: false,
       setHasHydrated: (v: boolean) => set({ _hasHydrated: v }),
@@ -240,6 +264,20 @@ export const useGameStore = create<GameState>()(
       setHasOnboarded: () => set({ hasOnboarded: true }),
       setPlayerName: (name: string) => set({ playerName: name }),
       setLastCelebrated: (count: number) => set({ lastCelebrated: count }),
+      setThemeOverride: (mode) => set({ themeOverride: mode }),
+      setAiConsentGiven: (given: boolean) => set({ aiConsentGiven: given }),
+
+      markSafetyCardViewed: (plantId: string) => {
+        set((state) =>
+          state.viewedSafetyCardPlantIds.includes(plantId)
+            ? state
+            : { viewedSafetyCardPlantIds: [...state.viewedSafetyCardPlantIds, plantId] }
+        );
+      },
+
+      markCandidatesCompared: () => set({ hasComparedCandidates: true }),
+
+      resetAllData: () => set({ ...INITIAL_USER_DATA }),
 
       toggleFavorite: (plantId: string) => {
         set((state) => ({

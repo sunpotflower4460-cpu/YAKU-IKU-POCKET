@@ -2,6 +2,7 @@ import React, { createContext, useContext, useMemo } from 'react';
 import { useColorScheme } from 'react-native';
 import { AppColors, lightColors, darkColors } from './colors';
 import { space, radius, type, weight, motion, minTapTarget } from './tokens';
+import { useGameStore } from '../store/useGameStore';
 
 export type ThemeMode = 'light' | 'dark';
 
@@ -32,13 +33,15 @@ function buildTheme(mode: ThemeMode): Theme {
 const ThemeContext = createContext<Theme>(buildTheme('light'));
 
 /**
- * Provides the resolved theme (light/dark) based on the device's system
- * setting. An in-app override (Settings > appearance) can be layered on top
- * in a later PR (Fieldbook settings, §7.8) — for now it follows the OS.
+ * Provides the resolved theme (light/dark), following the device's system
+ * setting unless the user has set an explicit override in Fieldbook settings
+ * (§7.8 "ダークモード"). `themeOverride` defaults to 'system'.
  */
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const scheme = useColorScheme();
-  const theme = useMemo(() => buildTheme(scheme === 'dark' ? 'dark' : 'light'), [scheme]);
+  const override = useGameStore((s) => s.themeOverride);
+  const resolvedMode: ThemeMode = override === 'system' ? (scheme === 'dark' ? 'dark' : 'light') : override;
+  const theme = useMemo(() => buildTheme(resolvedMode), [resolvedMode]);
   return <ThemeContext.Provider value={theme}>{children}</ThemeContext.Provider>;
 }
 

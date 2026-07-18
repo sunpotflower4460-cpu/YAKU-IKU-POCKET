@@ -13,9 +13,9 @@
 | PR9 | Observe Capture Flow（複数写真/部位/処理段階） | ✅ merged |
 | PR10 | Candidate Results & Compare（複数候補/スコア/比較/安全ブロック） | ✅ merged |
 | PR11 | Knowledge Schema（PlantDefinition/taxonomy/50種変換） | ✅ merged |
-| **PR12** | **Explore（検索/高度フィルター/分類/表示切替）** | 🟡 本PR |
-| PR13 | Fieldbook（Observation中心/タイムライン/地図/再解析/export・delete） | ⬜ |
-| PR14 | Backend & Real Identification（proxy/Pl@ntNet等/taxonomy/rate limit/consent） | ⬜ |
+| PR12 | Explore（検索/高度フィルター/分類/表示切替） | ✅ merged |
+| **PR13** | **Fieldbook（学習系実績/観察カレンダー/外観・AI同意・export・delete設定）** | 🟡 本PR |
+| PR14 | Backend & Real Identification（proxy/Pl@ntNet等/taxonomy/rate limit/consent） | ⬜ 判断保留（後述） |
 | PR15 | Accessibility / QA / App Store（VoiceOver/Dynamic Type/CI/E2E/assets） | ⬜ |
 
 ## PR8 スコープ（完了）
@@ -89,6 +89,38 @@
 ## 検証（PR12）
 - `npm run check`（typecheck + jest 58件、kana正規化テスト4件を追加）green
 - Expo web + Playwrightで実機相当の確認: グリッド/リスト/科でまとめる の3表示切替、科フィルター（キク科→6種）と危険な類似植物フィルターの組み合わせ（→ヨモギ1種に正しく絞り込み）をスクリーンショット・実測値で確認済み
+
+## PR13 スコープ（本PR）
+含む:
+- **観察数ベースのカレンダー**（プロフィール/記録タブ）: 従来の「その日発見した最大レアリティで色分け」を廃止し、その日の観察件数に応じた3段階の濃淡（`OBSERVATION_INTENSITY`）に変更。§7.8「レアリティ色ではなく観察数または多様性」に準拠。各セルに件数を含む`accessibilityLabel`を追加（色だけに依存しない）
+- **学習系の実績バッジを4件追加**（`app/(tabs)/profile.tsx`）: 科の探求者（5科以上、PR11の`getPlantDefinitionById`を利用）／メモ魔（メモ10件）／季節をまたぐ観察（同一植物を異なる季節に観察、`seasonForDate`で判定）／危険植物を学ぶ（RED植物の安全情報カードを1回以上確認）。既存9件の収集系実績と合わせて13件に。実績判定は`AchievementContext`という明示的な型にまとめ、`string[]`をそのまま渡す旧実装より意図が明確な形に整理
+- **ストア拡張**（`useGameStore.ts`）: `themeOverride`（外観設定）、`aiConsentGiven`（実AI利用への同意）、`viewedSafetyCardPlantIds`（安全カード既読記録、上記実績用）、`hasComparedCandidates`（候補比較を使ったか、上記実績用）を追加。全て新規キーの追加のみで既存フィールドを変更しないため、persistの`version`引き上げは不要（欠損時はデフォルト値にフォールバック）
+- **危険度に応じたAI利用モードの動的切り替え**: `isDemoMode(aiConsentGiven)`／`canPersistObservations(aiConsentGiven)`（`src/utils/appMode.ts`）を新設し、実AI利用は「APIキーがある」かつ「ユーザーが同意している」の両方を満たす場合のみに限定（旧実装はAPIキーの有無だけで判定しており、同意なしに実AIが呼ばれ得た）。`scanPlant()`・`plant/[id].tsx`（RED植物の安全カード既読記録）を追随させた
+- **設定セクション新設**（記録タブ最下部）:
+  - 外観（自動/ライト/ダーク、`themeOverride`）
+  - AI画像識別への同意トグル（オフ時はデモモードで動作し写真を外部送信しない旨を明記）
+  - データエクスポート（`Share` APIでJSON出力。画像URIは含めず、id/plantId/scannedAtのみの履歴・XP・図鑑・メモ・お気に入りを含む）
+  - すべてのデータを削除（`Alert.alert`で確認の上`resetAllData()`）
+  - データソース・出典について（`docs/DATA_SOURCES_AND_LICENSES.md`と整合する静的パネル、editorialレベルである旨を明記）
+  - プライバシーポリシー・利用規約・お問い合わせ（既存導線を統合）
+
+含まない（後続へ委譲、意図的にスコープ外）:
+- **観察タイムライン・地図表示**: 位置情報が未実装のため地図は不可。タイムライン専用画面は既存の「スキャン履歴」リストと重複が大きく、本PRでは既存リストのままとした
+- **再解析（候補を選び直して再識別）**: バックエンド/実AIの精度に依存する機能でPR14以降に自然に含まれるため見送り
+- **実データ出典（GBIF/POWO等）とのリンク**: PR14（バックエンド）が前提
+
+## 検証（PR13）
+- `npm run check`（typecheck + jest 67件、store設定系テスト4件・resetAllDataテスト2件・season純関数テスト2件を追加）green
+- Expo web + Playwrightで実機相当の確認: プロフィール画面のカレンダー（凡例「観察数: 少→多」表示）、13件の実績バッジ（新規4件を含む）、設定セクション（外観セグメント切替でライト選択が反映されること、AI同意トグル、データエクスポート/削除、データソース・出典モーダルの開閉）をスクリーンショットで確認済み
+
+## PR14: 判断保留（バックエンド・実AI連携）
+統合仕様書§9〜13が要求するバックエンドプロキシ（APIキー非公開化）、Pl@ntNet等の外部識別API連携、taxonomy resolver、レート制限、位置情報同意フロー、observabilityは、いずれも**実際に稼働するサーバーインフラのデプロイ・外部APIの契約・秘密情報の管理**を要し、この開発環境（コードのみのサンドボックス）では安全に実装・検証できない。無理に実装すると「動いているように見えて実際は繋がっていない」機能を作り込むリスクが高く、本プロジェクトが一貫して掲げる「捏造しない」原則に反する。
+そのため、**PR14はコード実装を行わず、必要要件を`docs/IDENTIFICATION_PIPELINE.md`（既存）に整理した設計としてのみ残し、実装は次のいずれかの環境が整ってから着手することとする**:
+- バックエンド（プロキシ）をデプロイできるサーバー環境
+- Pl@ntNet等の外部識別APIキー・契約
+- 位置情報の同意UI設計を検証できる実機
+
+現状の`EXPO_PUBLIC_CLAUDE_API_KEY`直呼び出し構成（PR13で「同意なしには呼ばれない」ようゲート済み）はセキュリティ上の既知の妥協点として`docs/APP_STORE_AUDIT.md`に明記済み。
 
 ## 既存改善の回帰防止（§1）
 ハイドレーション後セッション開始 / ローカル日付 / カメラ拒否→設定誘導 / ErrorBoundary / モーダル戻る / 画像フォールバック / モック明示 / 危険警告 / TS strict / プライバシー導線枠 / typecheck。CIで typecheck+test＋禁止語grepにより後退を検知。

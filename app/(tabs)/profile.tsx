@@ -9,11 +9,15 @@ import {
   Modal,
   Image,
   Linking,
+  Share,
+  Alert,
+  Switch,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { PLANTS } from '../../src/data/plants';
+import { getPlantDefinitionById } from '../../src/data/plantDefinitions';
 import { useGameStore } from '../../src/store/useGameStore';
 import { DisclaimerBanner } from '../../src/components/DisclaimerBanner';
 import { DangerBadge } from '../../src/components/DangerBadge';
@@ -21,30 +25,29 @@ import { ShareCard } from '../../src/components/ShareCard';
 import { Colors } from '../../src/constants/colors';
 import { getPlayerTitle } from '../../src/utils/playerTitle';
 import { XP_PER_LEVEL } from '../../src/store/useGameStore';
-import { getCurrentSeason, SEASON_CONFIG } from '../../src/utils/season';
+import { getCurrentSeason, SEASON_CONFIG, seasonForDate } from '../../src/utils/season';
 import { todayLocalStr, localDayFromISO } from '../../src/utils/date';
-import { PRIVACY_POLICY_URL, TERMS_URL, APP_VERSION } from '../../src/constants/app';
+import { PRIVACY_POLICY_URL, TERMS_URL, SUPPORT_EMAIL, APP_VERSION } from '../../src/constants/app';
+import { ScanRecord } from '../../src/types';
 
-// Prebuilt plantId → rarity lookup (O(1) access, static data)
-const PLANT_RARITY: Record<string, number> = Object.fromEntries(
-  PLANTS.map((p) => [p.id, p.rarity])
-);
+// Observation-count intensity tiers for the calendar (§7.8: "レアリティ色ではな
+// く観察数または多様性" — no longer keyed to rarity).
+const OBSERVATION_INTENSITY = [Colors.primaryLight, Colors.primary, Colors.primaryDark];
 
-// Rarity index → color mapping (module-level to avoid per-render allocation)
-const RARITY_COLORS = [
-  Colors.rarity1,
-  Colors.rarity2,
-  Colors.rarity3,
-  Colors.rarity4,
-  Colors.rarity5,
-];
+interface AchievementContext {
+  discoveredPlantIds: string[];
+  plantNotes: Record<string, string>;
+  scanHistory: ScanRecord[];
+  viewedSafetyCardPlantIds: string[];
+  hasComparedCandidates: boolean;
+}
 
 interface AchievementDef {
   id: string;
   icon: string;
   label: string;
   desc: string;
-  check: (ids: string[]) => boolean;
+  check: (ctx: AchievementContext) => boolean;
 }
 
 const ACHIEVEMENTS: AchievementDef[] = [
@@ -53,44 +56,44 @@ const ACHIEVEMENTS: AchievementDef[] = [
     icon: 'leaf-outline',
     label: '初めての発見',
     desc: '初めて植物を発見した',
-    check: (ids) => ids.length >= 1,
+    check: (ctx) => ctx.discoveredPlantIds.length >= 1,
   },
   {
     id: 'ten_plants',
     icon: 'book-outline',
     label: '図鑑の始まり',
     desc: '10種類の植物を発見した',
-    check: (ids) => ids.length >= 10,
+    check: (ctx) => ctx.discoveredPlantIds.length >= 10,
   },
   {
     id: 'twenty_five',
     icon: 'ribbon-outline',
     label: '半分制覇',
     desc: '25種類の植物を発見した',
-    check: (ids) => ids.length >= 25,
+    check: (ctx) => ctx.discoveredPlantIds.length >= 25,
   },
   {
     id: 'all_fifty',
     icon: 'trophy-outline',
     label: '図鑑完成',
     desc: '全50種類の植物を発見した',
-    check: (ids) => ids.length >= 50,
+    check: (ctx) => ctx.discoveredPlantIds.length >= 50,
   },
   {
     id: 'danger_master',
     icon: 'skull-outline',
     label: '毒草の知識',
     desc: '危険（RED）植物を発見した',
-    check: (ids) =>
-      PLANTS.filter((p) => p.danger === 'RED').some((p) => ids.includes(p.id)),
+    check: (ctx) =>
+      PLANTS.filter((p) => p.danger === 'RED').some((p) => ctx.discoveredPlantIds.includes(p.id)),
   },
   {
     id: 'herb_collector',
     icon: 'leaf',
     label: 'ハーブ愛好家',
     desc: 'ハーブを10種類発見した',
-    check: (ids) =>
-      PLANTS.filter((p) => p.category === 'スパイス・ハーブ' && ids.includes(p.id))
+    check: (ctx) =>
+      PLANTS.filter((p) => p.category === 'スパイス・ハーブ' && ctx.discoveredPlantIds.includes(p.id))
         .length >= 10,
   },
   {
@@ -98,25 +101,76 @@ const ACHIEVEMENTS: AchievementDef[] = [
     icon: 'compass-outline',
     label: '野草ハンター',
     desc: '野草を10種類発見した',
-    check: (ids) =>
-      PLANTS.filter((p) => p.category === '野草' && ids.includes(p.id)).length >= 10,
+    check: (ctx) =>
+      PLANTS.filter((p) => p.category === '野草' && ctx.discoveredPlantIds.includes(p.id)).length >= 10,
   },
   {
     id: 'rare_finder',
     icon: 'star-outline',
     label: 'レアハンター',
     desc: '★5レアを発見した',
-    check: (ids) =>
-      PLANTS.filter((p) => p.rarity === 5).some((p) => ids.includes(p.id)),
+    check: (ctx) =>
+      PLANTS.filter((p) => p.rarity === 5).some((p) => ctx.discoveredPlantIds.includes(p.id)),
   },
   {
     id: 'all_categories',
     icon: 'grid-outline',
     label: 'バランス型',
     desc: '野草とハーブ両方を発見した',
-    check: (ids) =>
-      PLANTS.some((p) => p.category === '野草' && ids.includes(p.id)) &&
-      PLANTS.some((p) => p.category === 'スパイス・ハーブ' && ids.includes(p.id)),
+    check: (ctx) =>
+      PLANTS.some((p) => p.category === '野草' && ctx.discoveredPlantIds.includes(p.id)) &&
+      PLANTS.some((p) => p.category === 'スパイス・ハーブ' && ctx.discoveredPlantIds.includes(p.id)),
+  },
+  // ── 学習系（統合仕様書§7.8: 収集数だけでなく学習系を増やす） ──
+  {
+    id: 'family_diversity',
+    icon: 'git-branch-outline',
+    label: '科の探求者',
+    desc: '5つの科の植物を観察した',
+    check: (ctx) => {
+      const families = new Set(
+        ctx.discoveredPlantIds
+          .map((id) => getPlantDefinitionById(id)?.taxonomy.family)
+          .filter((f): f is string => !!f)
+      );
+      return families.size >= 5;
+    },
+  },
+  {
+    id: 'note_taker',
+    icon: 'create-outline',
+    label: 'メモ魔',
+    desc: '10件のメモを残した',
+    check: (ctx) => Object.keys(ctx.plantNotes).length >= 10,
+  },
+  {
+    id: 'cross_season',
+    icon: 'sync-outline',
+    label: '季節をまたぐ観察',
+    desc: '同じ植物を異なる季節に観察した',
+    check: (ctx) => {
+      const seasonsByPlant = new Map<string, Set<string>>();
+      for (const record of ctx.scanHistory) {
+        const season = seasonForDate(new Date(record.scannedAt));
+        if (!seasonsByPlant.has(record.plantId)) seasonsByPlant.set(record.plantId, new Set());
+        seasonsByPlant.get(record.plantId)!.add(season);
+      }
+      return [...seasonsByPlant.values()].some((s) => s.size >= 2);
+    },
+  },
+  {
+    id: 'safety_reader',
+    icon: 'shield-checkmark-outline',
+    label: '危険植物を学ぶ',
+    desc: '危険植物の安全情報を確認した',
+    check: (ctx) => ctx.viewedSafetyCardPlantIds.length >= 1,
+  },
+  {
+    id: 'candidate_comparer',
+    icon: 'git-compare-outline',
+    label: '見比べ上手',
+    desc: '複数候補を見比べて選んだ',
+    check: (ctx) => ctx.hasComparedCandidates,
   },
 ];
 
@@ -134,10 +188,16 @@ function formatScanDate(iso: string): string {
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { playerName, xp, discoveredPlantIds, setPlayerName, streak, getLevel, getXpForCurrentLevel, getXpToNextLevel, scanHistory } = useGameStore();
+  const {
+    playerName, xp, discoveredPlantIds, setPlayerName, streak, getLevel, getXpForCurrentLevel,
+    getXpToNextLevel, scanHistory, plantNotes, viewedSafetyCardPlantIds, hasComparedCandidates,
+    themeOverride, setThemeOverride, aiConsentGiven, setAiConsentGiven, resetAllData,
+    favoritePlantIds,
+  } = useGameStore();
   const [editNameVisible, setEditNameVisible] = useState(false);
   const [tempName, setTempName] = useState(playerName);
   const [shareCardVisible, setShareCardVisible] = useState(false);
+  const [sourcesVisible, setSourcesVisible] = useState(false);
 
   const season = getCurrentSeason();
   const seasonCfg = SEASON_CONFIG[season];
@@ -150,8 +210,12 @@ export default function ProfileScreen() {
   const discoveredCount = discoveredPlantIds.length;
   const totalPlants = PLANTS.length;
 
+  const achievementCtx: AchievementContext = useMemo(
+    () => ({ discoveredPlantIds, plantNotes, scanHistory, viewedSafetyCardPlantIds, hasComparedCandidates }),
+    [discoveredPlantIds, plantNotes, scanHistory, viewedSafetyCardPlantIds, hasComparedCandidates]
+  );
   const unlockedAchievements = ACHIEVEMENTS.filter((a) =>
-    a.check(discoveredPlantIds)
+    a.check(achievementCtx)
   ).map((a) => ({ icon: a.icon, label: a.label }));
   const greenCount = PLANTS.filter(
     (p) => p.danger === 'GREEN' && discoveredPlantIds.includes(p.id)
@@ -175,15 +239,12 @@ export default function ProfileScreen() {
     [scanHistory]
   );
 
-  // Calendar: max rarity scanned per day (O(1) plant lookup via PLANT_RARITY map)
-  const dayMaxRarity = useMemo(() => {
+  // Calendar: observation COUNT per day (§7.8 — not rarity-coded anymore).
+  const dayObservationCount = useMemo(() => {
     const map: Record<string, number> = {};
     for (const record of scanHistory) {
       const day = localDayFromISO(record.scannedAt);
-      const rarity = PLANT_RARITY[record.plantId] ?? 1;
-      if (!map[day] || rarity > map[day]) {
-        map[day] = rarity;
-      }
+      map[day] = (map[day] ?? 0) + 1;
     }
     return map;
   }, [scanHistory]);
@@ -210,6 +271,36 @@ export default function ProfileScreen() {
       setPlayerName(tempName.trim());
     }
     setEditNameVisible(false);
+  }
+
+  async function handleExportData() {
+    const payload = {
+      exportedAt: new Date().toISOString(),
+      playerName,
+      xp,
+      level,
+      streak,
+      discoveredPlantIds,
+      favoritePlantIds,
+      plantNotes,
+      scanHistory: scanHistory.map(({ id, plantId, scannedAt }) => ({ id, plantId, scannedAt })),
+    };
+    try {
+      await Share.share({ message: JSON.stringify(payload, null, 2) });
+    } catch {
+      // ユーザーによるキャンセル等。エラー表示は不要。
+    }
+  }
+
+  function handleDeleteAllData() {
+    Alert.alert(
+      'すべてのデータを削除',
+      '図鑑・XP・履歴・メモ・設定がすべて消去されます。この操作は取り消せません。よろしいですか？',
+      [
+        { text: 'キャンセル', style: 'cancel' },
+        { text: '削除する', style: 'destructive', onPress: () => resetAllData() },
+      ]
+    );
   }
 
   return (
@@ -312,11 +403,14 @@ export default function ProfileScreen() {
               const dd = String(day).padStart(2, '0');
               const dateStr = `${calendarData.year}-${calendarData.mm}-${dd}`;
               const isToday = dateStr === calendarData.todayStr;
-              const maxRarity = dayMaxRarity[dateStr];
-              const fillColor = maxRarity ? RARITY_COLORS[maxRarity - 1] : undefined;
+              const count = dayObservationCount[dateStr] ?? 0;
+              const intensityIdx = count <= 0 ? -1 : Math.min(count - 1, OBSERVATION_INTENSITY.length - 1);
+              const fillColor = intensityIdx >= 0 ? OBSERVATION_INTENSITY[intensityIdx] : undefined;
+              const a11yLabel = `${calendarData.month + 1}月${day}日${isToday ? '（今日）' : ''}、観察${count}件`;
               return (
                 <View
                   key={dateStr}
+                  accessibilityLabel={a11yLabel}
                   style={[
                     styles.calendarCell,
                     styles.calendarDayCell,
@@ -338,10 +432,11 @@ export default function ProfileScreen() {
           </View>
           {/* Legend */}
           <View style={styles.calendarLegend}>
-            <Text style={styles.calendarLegendLabel}>レアリティ: </Text>
-            {RARITY_COLORS.map((c, i) => (
+            <Text style={styles.calendarLegendLabel}>観察数: 少</Text>
+            {OBSERVATION_INTENSITY.map((c, i) => (
               <View key={i} style={[styles.calendarLegendDot, { backgroundColor: c }]} />
             ))}
+            <Text style={styles.calendarLegendLabel}>多</Text>
           </View>
         </View>
       </View>
@@ -354,7 +449,7 @@ export default function ProfileScreen() {
         </View>
         <View style={styles.achievementsGrid}>
           {ACHIEVEMENTS.map((ach) => {
-            const unlocked = ach.check(discoveredPlantIds);
+            const unlocked = ach.check(achievementCtx);
             return (
               <View
                 key={ach.id}
@@ -409,25 +504,97 @@ export default function ProfileScreen() {
         <DisclaimerBanner />
       </View>
 
-      {/* Legal / about */}
+      {/* Settings */}
       <View style={styles.section}>
-        <Pressable
-          style={styles.legalRow}
-          onPress={() => Linking.openURL(PRIVACY_POLICY_URL).catch(() => {})}
-        >
-          <Ionicons name="shield-checkmark-outline" size={16} color={Colors.textSecondary} />
-          <Text style={styles.legalRowText}>プライバシーポリシー</Text>
-          <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
-        </Pressable>
-        <Pressable
-          style={styles.legalRow}
-          onPress={() => Linking.openURL(TERMS_URL).catch(() => {})}
-        >
-          <Ionicons name="document-text-outline" size={16} color={Colors.textSecondary} />
-          <Text style={styles.legalRowText}>利用規約</Text>
-          <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
-        </Pressable>
-        <Text style={styles.versionText}>バージョン {APP_VERSION}</Text>
+        <View style={styles.sectionTitleRow}>
+          <Ionicons name="settings-outline" size={16} color={Colors.text} />
+          <Text style={styles.sectionTitle}>設定</Text>
+        </View>
+
+        {/* Appearance */}
+        <View style={styles.settingsCard}>
+          <Text style={styles.settingsGroupLabel}>外観</Text>
+          <View style={styles.segmentedRow}>
+            {(['system', 'light', 'dark'] as const).map((mode) => (
+              <Pressable
+                key={mode}
+                onPress={() => setThemeOverride(mode)}
+                style={[styles.segmentBtn, themeOverride === mode && styles.segmentBtnActive]}
+                accessibilityRole="button"
+                accessibilityState={{ selected: themeOverride === mode }}
+              >
+                <Text style={[styles.segmentBtnText, themeOverride === mode && styles.segmentBtnTextActive]}>
+                  {mode === 'system' ? '自動' : mode === 'light' ? 'ライト' : 'ダーク'}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+
+        {/* AI consent */}
+        <View style={styles.settingsCard}>
+          <View style={styles.settingsRowHeader}>
+            <Text style={styles.settingsGroupLabel}>AI画像識別への同意</Text>
+            <Switch
+              value={aiConsentGiven}
+              onValueChange={setAiConsentGiven}
+              accessibilityLabel="AI画像識別への同意"
+            />
+          </View>
+          <Text style={styles.settingsDesc}>
+            オンにすると、撮影した写真がAnthropic社のClaude
+            APIに送信され、植物の識別に使用されます。オフの場合はデモ（ランダム判定）モードで動作し、写真は外部に送信されません。デモ結果は図鑑・XP・履歴に反映されません。
+          </Text>
+        </View>
+
+        {/* Data export / delete */}
+        <View style={styles.settingsCard}>
+          <Text style={styles.settingsGroupLabel}>データ管理</Text>
+          <Pressable style={styles.legalRow} onPress={handleExportData}>
+            <Ionicons name="share-outline" size={16} color={Colors.textSecondary} />
+            <Text style={styles.legalRowText}>データをエクスポート</Text>
+            <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
+          </Pressable>
+          <Pressable style={styles.legalRow} onPress={handleDeleteAllData}>
+            <Ionicons name="trash-outline" size={16} color={Colors.dangerRed} />
+            <Text style={[styles.legalRowText, { color: Colors.dangerRed }]}>すべてのデータを削除</Text>
+            <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
+          </Pressable>
+        </View>
+
+        {/* Sources & licenses */}
+        <View style={styles.settingsCard}>
+          <Pressable style={styles.legalRow} onPress={() => setSourcesVisible(true)}>
+            <Ionicons name="library-outline" size={16} color={Colors.textSecondary} />
+            <Text style={styles.legalRowText}>データソース・出典について</Text>
+            <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
+          </Pressable>
+          <Pressable
+            style={styles.legalRow}
+            onPress={() => Linking.openURL(PRIVACY_POLICY_URL).catch(() => {})}
+          >
+            <Ionicons name="shield-checkmark-outline" size={16} color={Colors.textSecondary} />
+            <Text style={styles.legalRowText}>プライバシーポリシー</Text>
+            <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
+          </Pressable>
+          <Pressable
+            style={styles.legalRow}
+            onPress={() => Linking.openURL(TERMS_URL).catch(() => {})}
+          >
+            <Ionicons name="document-text-outline" size={16} color={Colors.textSecondary} />
+            <Text style={styles.legalRowText}>利用規約</Text>
+            <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
+          </Pressable>
+          <Pressable
+            style={styles.legalRow}
+            onPress={() => Linking.openURL(`mailto:${SUPPORT_EMAIL}`).catch(() => {})}
+          >
+            <Ionicons name="mail-outline" size={16} color={Colors.textSecondary} />
+            <Text style={styles.legalRowText}>お問い合わせ</Text>
+            <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
+          </Pressable>
+          <Text style={styles.versionText}>バージョン {APP_VERSION}</Text>
+        </View>
       </View>
 
       <View style={{ height: 32 }} />
@@ -485,6 +652,37 @@ export default function ProfileScreen() {
                 <Text style={styles.modalBtnSaveText}>保存</Text>
               </Pressable>
             </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Sources & Licenses Modal */}
+      <Modal
+        visible={sourcesVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSourcesVisible(false)}
+      >
+        <Pressable style={styles.modalOverlay} onPress={() => setSourcesVisible(false)}>
+          <Pressable style={styles.modalCard} onPress={() => {}}>
+            <Text style={styles.modalTitle}>データソース・出典について</Text>
+            <ScrollView style={{ maxHeight: 320 }}>
+              <Text style={styles.sourcesText}>
+                本アプリの植物データ（科・属などの分類情報を含む）は、編集部が一般的な植物学の知見をもとに作成したものです（reviewStatus:
+                editorial）。特定の公的データベース（GBIF・POWO・iNaturalist・YListなど）とはまだ連携しておらず、個々の記載に外部データベースIDや出典を紐づけていません。
+                {'\n\n'}
+                効能・用途に関する記述は、医学的な効果を保証するものではなく、伝統的な言い伝え・慣習的な利用として紹介しています。
+                {'\n\n'}
+                実際の識別（AI認識）にはAnthropic社のClaude
+                APIを利用しています（同意した場合のみ）。将来的に専門データベースとの連携や専門家レビューを追加し、出典を明示していく予定です。
+              </Text>
+            </ScrollView>
+            <Pressable
+              style={[styles.modalBtn, styles.modalBtnSave, { marginTop: 16 }]}
+              onPress={() => setSourcesVisible(false)}
+            >
+              <Text style={styles.modalBtnSaveText}>閉じる</Text>
+            </Pressable>
           </Pressable>
         </Pressable>
       </Modal>
@@ -588,6 +786,63 @@ const styles = StyleSheet.create({
   xpLabel: { fontSize: 11, color: '#C8E6C9', textAlign: 'center' },
 
   section: { paddingHorizontal: 16, paddingTop: 20 },
+  settingsCard: {
+    backgroundColor: Colors.bgCard,
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 5,
+    elevation: 2,
+  },
+  settingsGroupLabel: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: Colors.text,
+    marginBottom: 10,
+  },
+  settingsRowHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  settingsDesc: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    lineHeight: 18,
+  },
+  segmentedRow: {
+    flexDirection: 'row',
+    backgroundColor: Colors.bg,
+    borderRadius: 10,
+    padding: 3,
+    gap: 4,
+  },
+  segmentBtn: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  segmentBtnActive: {
+    backgroundColor: Colors.primary,
+  },
+  segmentBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.textSecondary,
+  },
+  segmentBtnTextActive: {
+    color: '#FFFFFF',
+  },
+  sourcesText: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+    lineHeight: 20,
+  },
   legalRow: {
     flexDirection: 'row',
     alignItems: 'center',
