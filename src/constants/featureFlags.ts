@@ -6,8 +6,12 @@
 export const FEATURE_FLAGS = {
   /** PR18: per-trait match/mismatch/unknown checklist in candidate compare. */
   compareInField: true,
-  /** PR19: 30秒/3分/深く学ぶ structured learning on the plant detail screen. */
-  learningExperience: false,
+  /**
+   * PR19: 30秒/3分/深く学ぶ structured learning on the plant detail screen.
+   * Shipped complete (not partial) in PR19, so app/plant/[id].tsx doesn't
+   * gate on this — nothing to hide mid-rollout. Kept `true` for the record.
+   */
+  learningExperience: true,
   /** PR20: timeline/revisit/natural-language search Fieldbook rebuild. */
   fieldbookV2: false,
   /** PR21+PR22: PlantUse gates and the 暮らし (cooking/living) hub. */
