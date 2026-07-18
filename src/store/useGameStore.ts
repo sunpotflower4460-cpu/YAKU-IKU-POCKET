@@ -1,7 +1,8 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { ScanRecord } from '../types';
+import { ScanRecord, UnidentifiedObservation } from '../types';
+import { generateId } from '../utils/id';
 import { PLANTS } from '../data/plants';
 import { todayLocalStr, localDateStrOffset } from '../utils/date';
 
@@ -75,6 +76,9 @@ interface GameState {
   /** Set once the user has picked a non-top candidate in the compare view (§7.5). */
   hasComparedCandidates: boolean;
 
+  // Observations saved without a plant match (v3 §6.1 "そのまま記録する"). PR17.
+  unidentifiedObservations: UnidentifiedObservation[];
+
   // Actions
   startSession: () => void;
   discoverPlant: (plantId: string) => void;
@@ -96,6 +100,13 @@ interface GameState {
   setAiConsentGiven: (given: boolean) => void;
   markSafetyCardViewed: (plantId: string) => void;
   markCandidatesCompared: () => void;
+  /** Save a photo the user chose not to (or could not) identify — still real Fieldbook value (v3 §6.1). */
+  recordUnidentifiedObservation: (imageUri?: string, note?: string) => void;
+  deleteUnidentifiedObservation: (id: string) => void;
+  /** Set or clear a "come back and check again" reminder date on a scan history entry. */
+  setScanRevisit: (scanId: string, revisitAt: string | undefined) => void;
+  /** Same as `setScanRevisit` for an unidentified (no plant match) observation. */
+  setUnidentifiedRevisit: (observationId: string, revisitAt: string | undefined) => void;
   /** Erases all persisted user data (§17 "端末内にデータ削除機能"). Irreversible. */
   resetAllData: () => void;
 
@@ -131,6 +142,7 @@ const INITIAL_USER_DATA = {
   aiConsentGiven: false,
   viewedSafetyCardPlantIds: [] as string[],
   hasComparedCandidates: false,
+  unidentifiedObservations: [] as UnidentifiedObservation[],
 };
 
 // ─── Store ───────────────────────────────────────────────────────────────────
@@ -211,7 +223,7 @@ export const useGameStore = create<GameState>()(
       addScan: (plantId: string, imageUri?: string) => {
         const { todayDate } = get();
         const record: ScanRecord = {
-          id: `scan_${Date.now()}`,
+          id: generateId('scan'),
           plantId,
           scannedAt: new Date().toISOString(),
           imageUri,
@@ -230,7 +242,7 @@ export const useGameStore = create<GameState>()(
         const plant = PLANTS.find((p) => p.id === plantId);
         const rarity = plant?.rarity ?? 1;
         const record: ScanRecord = {
-          id: `scan_${Date.now()}`,
+          id: generateId('scan'),
           plantId,
           scannedAt: new Date().toISOString(),
           imageUri,
@@ -276,6 +288,38 @@ export const useGameStore = create<GameState>()(
       },
 
       markCandidatesCompared: () => set({ hasComparedCandidates: true }),
+
+      recordUnidentifiedObservation: (imageUri?: string, note?: string) => {
+        const observation: UnidentifiedObservation = {
+          id: generateId('unid'),
+          observedAt: new Date().toISOString(),
+          imageUri,
+          note,
+        };
+        set((state) => ({
+          unidentifiedObservations: [observation, ...state.unidentifiedObservations].slice(0, 100),
+        }));
+      },
+
+      deleteUnidentifiedObservation: (id: string) => {
+        set((state) => ({
+          unidentifiedObservations: state.unidentifiedObservations.filter((o) => o.id !== id),
+        }));
+      },
+
+      setScanRevisit: (scanId: string, revisitAt: string | undefined) => {
+        set((state) => ({
+          scanHistory: state.scanHistory.map((r) => (r.id === scanId ? { ...r, revisitAt } : r)),
+        }));
+      },
+
+      setUnidentifiedRevisit: (observationId: string, revisitAt: string | undefined) => {
+        set((state) => ({
+          unidentifiedObservations: state.unidentifiedObservations.map((o) =>
+            o.id === observationId ? { ...o, revisitAt } : o
+          ),
+        }));
+      },
 
       resetAllData: () => set({ ...INITIAL_USER_DATA }),
 

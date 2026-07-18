@@ -157,5 +157,23 @@
 ## 検証（PR16）
 - `npm run check`（typecheck + lint + jest）green（型・ロジック変更なし、ドキュメントと定数追加のみ）
 
+## PR17 スコープ（本PR、Observation Core強化）
+含む:
+- **撮影写真の永続化**（旧監査フォローアップの恒久対応）: `src/utils/observationPhotoStorage.ts`の`persistObservationPhoto()`が、観察を保存するタイミングでのみ（デモ/破棄した撮影では実行しない）キャッシュディレクトリの写真を`expo-file-system`の`documentDirectory`へコピーし、OSのキャッシュ削除による画像消失を防ぐ。Webは永続/キャッシュの区別が無いためno-op（元のURIをそのまま返す）
+- **そのまま記録する（v3 §6.1）**: 実AIが`unidentified`（判定不能）を返した際、従来は写真を破棄してアラートを出すだけだったが、「未特定のまま記録する」選択肢を追加。`recordUnidentifiedObservation`が新設した`unidentifiedObservations`（`UnidentifiedObservation[]`、`ScanRecord`とは独立した配列）に保存する。デモ結果は`usedRealAI: true`の場合にしか`unidentified`状態にならない型設計のため、デモ写真がここに紛れ込むことは構造的に起こらない
+- **再訪記録**（v3 §6.1「再訪を記録する」・§9.1「再訪予定」）: `ScanRecord`/`UnidentifiedObservation`双方に任意の`revisitAt`（ISO日付）を追加。植物詳細画面に「再訪を記録する」チップを新設し、2週間後/1ヶ月後/次の季節（3ヶ月後）のプリセットから選べる。ストアアクション`setScanRevisit`/`setUnidentifiedRevisit`は追加のみのフィールドのためversion引き上げ不要
+- **IDの衝突バグを修正**: `scan_${Date.now()}`/`unid_${Date.now()}`は同一ミリ秒内に複数レコードを作ると同じIDになり得た（テストで実際に検出）。`src/utils/id.ts`の`generateId()`（タイムスタンプ＋ランダムサフィックス）に統一
+
+含まない（後続へ委譲、意図的にスコープ外）:
+- **`unidentifiedObservations`のFieldbook表示・削除UI**: 保存する導線のみ本PRで実装し、記録タブでの一覧表示・並び替え・削除UIはPR20（Fieldbook v2）に含める（`deleteUnidentifiedObservation`アクション自体は用意済み）
+- **育てている植物を記録するモード（v3 §6.1）**: 観察モードの追加分岐であり、`SourceOrigin`型（PR21）が無いと入手経路を正しく表現できないため見送り
+
+## 既知の発見（PR17検証中、対応は別PR）
+`react-native-web`が`Alert.alert`を実装していないため、Webビルドでは確認ダイアログ（メモ削除・データ全削除・本PRで追加した未特定記録の選択肢・再訪日時選択等、計8箇所）が無音に機能しない。iOS/Android実機（App Store提出の主要ターゲット）では影響しない。詳細と対応方針は`docs/APP_STORE_AUDIT.md`に記載。
+
+## 検証（PR17）
+- `npm run check`（typecheck + lint + jest 79件、observationPhotoStorage/id/store新規テストを追加）green
+- Expo web + Playwright: 植物詳細画面にスキャン履歴を注入し、「再訪を記録する」チップの表示・タップ動作を確認（`Alert.alert`がWebで発火しないため選択肢の見た目はネイティブ実機でのみ最終確認可能、上記の既知の発見として記録）
+
 ## 既存改善の回帰防止（§1）
 ハイドレーション後セッション開始 / ローカル日付 / カメラ拒否→設定誘導 / ErrorBoundary / モーダル戻る / 画像フォールバック / モック明示 / 危険警告 / TS strict / プライバシー導線枠 / typecheck。CIで typecheck+test＋禁止語grepにより後退を検知。

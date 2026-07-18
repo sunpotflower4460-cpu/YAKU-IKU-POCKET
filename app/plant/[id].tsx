@@ -24,12 +24,16 @@ import { RARITY_XP, useGameStore } from '../../src/store/useGameStore';
 import { getCurrentSeason, isPlantInSeason } from '../../src/utils/season';
 import { SafetyBanner } from '../../src/components/SafetyBanner';
 import { getSafetyWarnings } from '../../src/data/safety';
+import { localDateStrOffset } from '../../src/utils/date';
 
 export default function PlantDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const navigation = useNavigation();
   const router = useRouter();
-  const { scanHistory, favoritePlantIds, toggleFavorite, plantNotes, setPlantNote, discoveredPlantIds, markSafetyCardViewed } = useGameStore();
+  const {
+    scanHistory, favoritePlantIds, toggleFavorite, plantNotes, setPlantNote,
+    discoveredPlantIds, markSafetyCardViewed, setScanRevisit,
+  } = useGameStore();
 
   const plant = getPlantById(id ?? '');
 
@@ -92,6 +96,30 @@ export default function PlantDetailScreen() {
         year: 'numeric', month: 'short', day: 'numeric',
       })
     : null;
+
+  // Most recent observation of this plant — revisit reminders attach here
+  // (scanHistory is newest-first, so filtering preserves that order).
+  const latestScan = plantScans[0] ?? null;
+  const revisitLabel = latestScan?.revisitAt
+    ? new Date(latestScan.revisitAt).toLocaleDateString('ja-JP', {
+        year: 'numeric', month: 'short', day: 'numeric',
+      })
+    : null;
+
+  function handleSetRevisit() {
+    if (!latestScan) return;
+    Alert.alert('再訪を記録する', '花や実がつく頃にまた見に行くための目安です。いつ頃にしますか？', [
+      { text: 'キャンセル', style: 'cancel' },
+      { text: '2週間後', onPress: () => setScanRevisit(latestScan.id, localDateStrOffset(14)) },
+      { text: '1ヶ月後', onPress: () => setScanRevisit(latestScan.id, localDateStrOffset(30)) },
+      { text: '次の季節（3ヶ月後）', onPress: () => setScanRevisit(latestScan.id, localDateStrOffset(90)) },
+    ]);
+  }
+
+  function handleClearRevisit() {
+    if (!latestScan) return;
+    setScanRevisit(latestScan.id, undefined);
+  }
 
   // 関連植物（同カテゴリ & 現季節 & 発見済み & 自分以外）— plant が undefined の場合は空配列
   const currentSeason = getCurrentSeason();
@@ -233,6 +261,17 @@ export default function PlantDetailScreen() {
             <Ionicons name="camera-outline" size={12} color={Colors.textSecondary} />
             <Text style={styles.discoveryChipText}>{scanCount}回スキャン済み</Text>
           </View>
+          {revisitLabel ? (
+            <Pressable style={styles.discoveryChip} onPress={handleClearRevisit}>
+              <Ionicons name="alarm-outline" size={12} color={Colors.primaryDark} />
+              <Text style={styles.discoveryChipText}>再訪予定: {revisitLabel}（タップで取消）</Text>
+            </Pressable>
+          ) : (
+            <Pressable style={styles.discoveryChip} onPress={handleSetRevisit}>
+              <Ionicons name="alarm-outline" size={12} color={Colors.textSecondary} />
+              <Text style={styles.discoveryChipText}>再訪を記録する</Text>
+            </Pressable>
+          )}
         </View>
       )}
 

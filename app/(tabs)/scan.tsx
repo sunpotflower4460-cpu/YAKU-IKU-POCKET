@@ -24,6 +24,7 @@ import { IdentificationCandidate } from '../../src/types/observation';
 import { Colors } from '../../src/constants/colors';
 import { isDemoMode } from '../../src/utils/appMode';
 import { useReduceMotion } from '../../src/utils/reduceMotion';
+import { persistObservationPhoto } from '../../src/utils/observationPhotoStorage';
 import {
   CapturedPhoto,
   ORGAN_LABEL,
@@ -50,7 +51,13 @@ const DEMO_STAGE_LABEL: Record<ProcessingStage, string> = {
 
 export default function ScanScreen() {
   const router = useRouter();
-  const { discoveredPlantIds, recordObservation, aiConsentGiven, markCandidatesCompared } = useGameStore();
+  const {
+    discoveredPlantIds,
+    recordObservation,
+    recordUnidentifiedObservation,
+    aiConsentGiven,
+    markCandidatesCompared,
+  } = useGameStore();
   const demoMode = isDemoMode(aiConsentGiven);
 
   // Camera permissions
@@ -213,7 +220,12 @@ export default function ScanScreen() {
         setScanState('idle');
         Alert.alert(
           '特定できませんでした',
-          'この写真からは植物を特定できませんでした。別の角度・部位（葉や花）の写真を追加して、もう一度お試しください。',
+          'この写真からは植物を特定できませんでした。別の角度・部位（葉や花）の写真を追加して、もう一度お試しください。判定できなくても、写真だけを記録として残すこともできます。',
+          [
+            { text: '写真を撮り直す', style: 'cancel', onPress: () => setPhotos([]) },
+            { text: '別の写真を追加する' },
+            { text: '未特定のまま記録する', onPress: handleSaveUnidentified },
+          ]
         );
         return;
       }
@@ -281,18 +293,31 @@ export default function ScanScreen() {
     );
   }
 
-  function handleAddToZukan() {
+  async function handleAddToZukan() {
     if (!result) return;
     // Safety: demo (mock) results are view-only and must never be persisted as
     // real observations, grant XP, or register plants. Only real identifications
     // reach this save path.
     if (demoMode) return;
-    recordObservation(result.plant.id, photoUri ?? undefined);
+    // Copy out of the OS cache dir so the OS can't silently evict this saved
+    // observation's photo later (native only; no-op on web — see the util).
+    const durableUri = photoUri ? await persistObservationPhoto(photoUri) : undefined;
+    recordObservation(result.plant.id, durableUri);
     setModalVisible(false);
     setResult(null);
     setScanState('idle');
     setPhotos([]);
     router.push(`/plant/${result.plant.id}`);
+  }
+
+  // Save the photos as a Fieldbook entry with no plant match — "判定不能でも
+  // 記録価値を失わせない" (v3 §5 Flow A / §6.1「そのまま記録する」).
+  async function handleSaveUnidentified() {
+    const durableUri = photoUri ? await persistObservationPhoto(photoUri) : undefined;
+    recordUnidentifiedObservation(durableUri);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    setScanState('idle');
+    setPhotos([]);
   }
 
   function handleScanAgain() {

@@ -19,6 +19,7 @@ beforeEach(() => {
     aiConsentGiven: false,
     viewedSafetyCardPlantIds: [],
     hasComparedCandidates: false,
+    unidentifiedObservations: [],
   });
 });
 
@@ -90,10 +91,60 @@ describe('Fieldbook settings (PR13)', () => {
   });
 });
 
+describe('unidentified observations (v3 §6.1 "そのまま記録する", PR17)', () => {
+  it('saves a photo with no plant match, without touching XP or the collection', () => {
+    const { recordUnidentifiedObservation } = useGameStore.getState();
+    recordUnidentifiedObservation('file://mystery.jpg', 'よく分からない葉っぱ');
+    const s = useGameStore.getState();
+    expect(s.unidentifiedObservations).toHaveLength(1);
+    expect(s.unidentifiedObservations[0].imageUri).toBe('file://mystery.jpg');
+    expect(s.unidentifiedObservations[0].note).toBe('よく分からない葉っぱ');
+    expect(s.xp).toBe(0);
+    expect(s.discoveredPlantIds).toEqual([]);
+  });
+
+  it('deleteUnidentifiedObservation removes only the targeted entry', () => {
+    const { recordUnidentifiedObservation, deleteUnidentifiedObservation } = useGameStore.getState();
+    recordUnidentifiedObservation('file://a.jpg');
+    recordUnidentifiedObservation('file://b.jpg');
+    const [keep, remove] = useGameStore.getState().unidentifiedObservations;
+    deleteUnidentifiedObservation(remove.id);
+    const s = useGameStore.getState();
+    expect(s.unidentifiedObservations).toHaveLength(1);
+    expect(s.unidentifiedObservations[0].id).toBe(keep.id);
+  });
+
+  it('setUnidentifiedRevisit sets and clears a revisit date', () => {
+    const { recordUnidentifiedObservation, setUnidentifiedRevisit } = useGameStore.getState();
+    recordUnidentifiedObservation('file://a.jpg');
+    const id = useGameStore.getState().unidentifiedObservations[0].id;
+    setUnidentifiedRevisit(id, '2026-08-01');
+    expect(useGameStore.getState().unidentifiedObservations[0].revisitAt).toBe('2026-08-01');
+    setUnidentifiedRevisit(id, undefined);
+    expect(useGameStore.getState().unidentifiedObservations[0].revisitAt).toBeUndefined();
+  });
+});
+
+describe('setScanRevisit (PR17)', () => {
+  it('sets a revisit date on the matching scan history entry only', () => {
+    const { recordObservation, setScanRevisit } = useGameStore.getState();
+    const [a, b] = PLANTS;
+    recordObservation(a.id);
+    recordObservation(b.id);
+    const [recentRecord, olderRecord] = useGameStore.getState().scanHistory;
+    setScanRevisit(recentRecord.id, '2026-09-01');
+    const s = useGameStore.getState();
+    expect(s.scanHistory.find((r) => r.id === recentRecord.id)?.revisitAt).toBe('2026-09-01');
+    expect(s.scanHistory.find((r) => r.id === olderRecord.id)?.revisitAt).toBeUndefined();
+  });
+});
+
 describe('resetAllData (§17 data deletion)', () => {
   it('erases collection, XP, notes, favorites, and settings back to defaults', () => {
-    const { recordObservation, setPlayerName, setPlantNote, toggleFavorite, setAiConsentGiven, markCandidatesCompared } =
-      useGameStore.getState();
+    const {
+      recordObservation, setPlayerName, setPlantNote, toggleFavorite, setAiConsentGiven,
+      markCandidatesCompared, recordUnidentifiedObservation,
+    } = useGameStore.getState();
     const plant = PLANTS[0];
     recordObservation(plant.id);
     setPlayerName('テスト太郎');
@@ -101,6 +152,7 @@ describe('resetAllData (§17 data deletion)', () => {
     toggleFavorite(plant.id);
     setAiConsentGiven(true);
     markCandidatesCompared();
+    recordUnidentifiedObservation('file://a.jpg');
 
     useGameStore.getState().resetAllData();
 
@@ -113,6 +165,7 @@ describe('resetAllData (§17 data deletion)', () => {
     expect(s.favoritePlantIds).toEqual([]);
     expect(s.aiConsentGiven).toBe(false);
     expect(s.hasComparedCandidates).toBe(false);
+    expect(s.unidentifiedObservations).toEqual([]);
   });
 
   it('does not clear the transient hydration flag', () => {
