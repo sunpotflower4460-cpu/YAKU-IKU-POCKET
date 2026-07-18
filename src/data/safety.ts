@@ -44,13 +44,19 @@ export const DANGEROUS_LOOKALIKES: Record<string, LookalikeRisk[]> = {
       note: 'ヒガンバナ科の細長い葉と混同されることがあります。コルヒチンによる死亡事故例があります。',
     },
   ],
-  // セリ — resembles the deadly ドクゼリ.
+  // セリ — resembles the deadly ドクゼリ and the naturalised ドクニンジン.
   p008: [
     {
       name: 'ドクゼリ',
       inDbId: 'p037', // catalogued PR24
       severity: 'high_risk',
       note: '猛毒のドクゼリと外見が非常に似ています。水辺では専門家の確認なしに採取・摂取しないでください。',
+    },
+    {
+      name: 'ドクニンジン',
+      inDbId: 'p065', // catalogued PR27
+      severity: 'high_risk',
+      note: 'ニンジンやパセリに似た葉を持つ帰化植物の猛毒種です。茎の赤紫の斑点の有無を確認し、不安があれば口にしないでください。',
     },
   ],
   // ヨモギ — confused with the deadly トリカブト (in our dataset).
@@ -60,6 +66,15 @@ export const DANGEROUS_LOOKALIKES: Record<string, LookalikeRisk[]> = {
       inDbId: 'p024',
       severity: 'high_risk',
       note: '猛毒のトリカブトやニリンソウと若葉が似ており、混同による死亡事故が報告されています。',
+    },
+  ],
+  // ミツバ — leaves resemble the naturalised ドクニンジン.
+  p015: [
+    {
+      name: 'ドクニンジン',
+      inDbId: 'p065', // catalogued PR27
+      severity: 'high_risk',
+      note: 'パセリのような葉を持つ帰化植物の猛毒種と混同されることがあります。見慣れない場所に生えているセリ科の草を自己判断で採らないでください。',
     },
   ],
   // ウド — young shoots resemble the deadly ハシリドコロ in early spring.
