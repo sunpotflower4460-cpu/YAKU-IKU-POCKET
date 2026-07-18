@@ -15,11 +15,13 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { Plant } from '../types';
+import { IdentificationCandidate } from '../types/observation';
 import { Colors } from '../constants/colors';
 import { RarityStars } from './RarityStars';
 import { DangerBadge } from './DangerBadge';
 import { SafetyBanner } from './SafetyBanner';
 import { getSafetyWarnings } from '../data/safety';
+import { assessCandidateSafety } from '../utils/candidateSafety';
 
 // Gradient header color per rarity
 const RARITY_GRADIENT: Record<number, [string, string, string]> = {
@@ -56,6 +58,15 @@ interface Props {
   /** Demo (mock) mode: result is view-only — no save, no XP, no registration. */
   isDemo?: boolean;
   reason?: string;
+  /**
+   * Ranked candidates from real AI (§7.5). Undefined/length<=1 keeps the
+   * classic single-result view — demo mode has no real ranking to compare,
+   * so it never populates this (see docs/IDENTIFICATION_PIPELINE.md).
+   */
+  candidates?: IdentificationCandidate[];
+  /** Which candidate's plant is currently selected for saving. */
+  selectedPlantId?: string;
+  onSelectCandidate?: (candidate: IdentificationCandidate) => void;
   imageUri?: string;
   onAddToZukan: () => void;
   onScanAgain: () => void;
@@ -69,10 +80,15 @@ export function ScanResultModal({
   usedRealAI,
   isDemo = false,
   reason,
+  candidates,
+  selectedPlantId,
+  onSelectCandidate,
   imageUri,
   onAddToZukan,
   onScanAgain,
 }: Props) {
+  const showCompare = !!candidates && candidates.length > 1;
+  const candidateSafety = candidates ? assessCandidateSafety(candidates) : null;
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const shimmerAnim = useRef(new Animated.Value(0)).current;
   const sparkleAnim = useRef(new Animated.Value(0)).current;
@@ -250,6 +266,73 @@ export function ScanResultModal({
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.content}
           >
+            {/* ── Candidate compare (§7.5) — shown only when real AI returned
+                more than one plausible match. Never asserts a single answer. */}
+            {showCompare && candidates && (
+              <View style={styles.compareContainer}>
+                <Text style={styles.compareHeadline}>
+                  候補を{candidates.length}件に絞りました
+                </Text>
+                <Text style={styles.compareSubtext}>
+                  タップして候補を選び、内容を確認してください。
+                </Text>
+
+                {/* Safety block: shown regardless of which candidate ranks #1
+                    (§7.5 "候補1位が安全側でも警告") */}
+                {candidateSafety && (candidateSafety.hasDangerousCandidate || candidateSafety.hasLookalikeRisk) && (
+                  <View style={styles.compareSafetyBlock}>
+                    <Ionicons name="warning" size={14} color={Colors.dangerRed} />
+                    <Text style={styles.compareSafetyText}>
+                      候補の中に危険植物、または有毒な類似種が含まれます。この観察結果を採取・摂取の判断に使用しないでください。
+                    </Text>
+                  </View>
+                )}
+
+                <View style={styles.candidateList}>
+                  {candidates.map((c) => {
+                    const selected = c.plant.id === selectedPlantId;
+                    return (
+                      <Pressable
+                        key={c.plant.id}
+                        style={[styles.candidateCard, selected && styles.candidateCardSelected]}
+                        onPress={() => onSelectCandidate?.(c)}
+                        accessibilityRole="button"
+                        accessibilityLabel={`候補${c.score.overallRank}: ${c.plant.name}、候補一致度${c.score.visionScore ?? '不明'}${selected ? '、選択中' : ''}`}
+                      >
+                        <Text style={styles.candidateEmoji}>{c.plant.emoji}</Text>
+                        <View style={{ flex: 1 }}>
+                          <View style={styles.candidateNameRow}>
+                            <Text style={styles.candidateRank}>候補{c.score.overallRank}</Text>
+                            <Text style={styles.candidateName}>{c.plant.name}</Text>
+                          </View>
+                          <Text style={styles.candidateLatin}>{c.plant.nameLatin}</Text>
+                          <View style={styles.candidateMetaRow}>
+                            <DangerBadge danger={c.plant.danger} size="sm" />
+                            {c.score.visionScore !== undefined && (
+                              <Text style={styles.candidateScore}>一致度 {c.score.visionScore}%</Text>
+                            )}
+                            {c.score.seasonScore === 1 && (
+                              <View style={styles.candidateSeasonChip}>
+                                <Ionicons name="leaf-outline" size={10} color={Colors.primaryDark} />
+                                <Text style={styles.candidateSeasonChipText}>季節適合</Text>
+                              </View>
+                            )}
+                          </View>
+                        </View>
+                        {selected && (
+                          <Ionicons name="checkmark-circle" size={20} color={Colors.primaryDark} />
+                        )}
+                      </Pressable>
+                    );
+                  })}
+                </View>
+
+                <Text style={styles.compareBelowNote}>
+                  選択中の候補「{plant.name}」の詳細を以下に表示しています。
+                </Text>
+              </View>
+            )}
+
             {/* Danger alerts */}
             {isDangerous && (
               <View style={styles.alertRed}>
@@ -576,6 +659,56 @@ const styles = StyleSheet.create({
     marginBottom: 14,
     justifyContent: 'center',
   },
+
+  // ── Candidate compare (§7.5) ──
+  compareContainer: { width: '100%', marginBottom: 16 },
+  compareHeadline: { fontSize: 16, fontWeight: '800', color: Colors.text, textAlign: 'center' },
+  compareSubtext: { fontSize: 12, color: Colors.textMuted, textAlign: 'center', marginTop: 2, marginBottom: 12 },
+  compareSafetyBlock: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    backgroundColor: Colors.dangerRedBg,
+    borderColor: Colors.dangerRed,
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 10,
+    marginBottom: 12,
+  },
+  compareSafetyText: { flex: 1, fontSize: 12, lineHeight: 17, color: Colors.dangerRed, fontWeight: '700' },
+  candidateList: { gap: 8 },
+  candidateCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: Colors.bgCard,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: Colors.cardBorder,
+    padding: 10,
+  },
+  candidateCardSelected: {
+    borderColor: Colors.primaryDark,
+    backgroundColor: Colors.primaryPale,
+  },
+  candidateEmoji: { fontSize: 30 },
+  candidateNameRow: { flexDirection: 'row', alignItems: 'baseline', gap: 6 },
+  candidateRank: { fontSize: 10, fontWeight: '800', color: Colors.textMuted },
+  candidateName: { fontSize: 14, fontWeight: '800', color: Colors.text },
+  candidateLatin: { fontSize: 11, fontStyle: 'italic', color: Colors.textMuted, marginTop: 1 },
+  candidateMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6, flexWrap: 'wrap' },
+  candidateScore: { fontSize: 11, fontWeight: '700', color: Colors.textSecondary },
+  candidateSeasonChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: Colors.primaryPale,
+    borderRadius: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  candidateSeasonChipText: { fontSize: 10, fontWeight: '700', color: Colors.primaryDark },
+  compareBelowNote: { fontSize: 11, color: Colors.textMuted, textAlign: 'center', marginTop: 12 },
   confidenceContainer: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -20,6 +20,7 @@ import { scanPlant } from '../../src/utils/aiRecognition';
 import { useGameStore } from '../../src/store/useGameStore';
 import { ScanResultModal } from '../../src/components/ScanResultModal';
 import { Plant } from '../../src/types';
+import { IdentificationCandidate } from '../../src/types/observation';
 import { Colors } from '../../src/constants/colors';
 import { IS_DEMO_MODE } from '../../src/utils/appMode';
 import {
@@ -70,6 +71,7 @@ export default function ScanScreen() {
     confidence: number;
     isNewDiscovery: boolean;
     reason?: string;
+    candidates?: IdentificationCandidate[];
   } | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
 
@@ -233,6 +235,7 @@ export default function ScanScreen() {
         confidence: outcome.confidence,
         isNewDiscovery: outcome.isNewDiscovery,
         reason: outcome.reason,
+        candidates: outcome.candidates,
       });
       setUsedRealAI(outcome.usedRealAI);
 
@@ -252,6 +255,23 @@ export default function ScanScreen() {
       setScanState('idle');
       Alert.alert('スキャン失敗', 'もう一度お試しください。');
     }
+  }
+
+  // User picked a different candidate in the compare view (§7.5) — switch
+  // the result to reflect their choice so it (not the top rank) gets saved.
+  function handleSelectCandidate(candidate: IdentificationCandidate) {
+    Haptics.selectionAsync();
+    setResult((prev) =>
+      prev
+        ? {
+            ...prev,
+            plant: candidate.plant,
+            confidence: candidate.score.visionScore ?? prev.confidence,
+            isNewDiscovery: !discoveredPlantIds.includes(candidate.plant.id),
+            reason: candidate.reason,
+          }
+        : prev
+    );
   }
 
   function handleAddToZukan() {
@@ -538,6 +558,9 @@ export default function ScanScreen() {
         usedRealAI={usedRealAI}
         isDemo={IS_DEMO_MODE}
         reason={result?.reason}
+        candidates={result?.candidates}
+        selectedPlantId={result?.plant.id}
+        onSelectCandidate={handleSelectCandidate}
         imageUri={photoUri ?? undefined}
         onAddToZukan={handleAddToZukan}
         onScanAgain={handleScanAgain}

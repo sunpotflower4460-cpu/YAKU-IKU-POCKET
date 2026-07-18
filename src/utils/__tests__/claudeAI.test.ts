@@ -15,6 +15,10 @@ function mockFetchOnce(responseText: string, ok = true, status = 200) {
   });
 }
 
+function candidateBody(candidates: Array<{ plantName?: string; confidence?: unknown; reason?: string }>) {
+  return JSON.stringify({ identified: true, candidates });
+}
+
 describe('recognizePlantWithClaude', () => {
   afterEach(() => {
     jest.restoreAllMocks();
@@ -22,9 +26,7 @@ describe('recognizePlantWithClaude', () => {
 
   it('sends one image block per captured photo', async () => {
     const target = PLANTS[0];
-    mockFetchOnce(
-      JSON.stringify({ identified: true, plantName: target.name, confidence: 90, reason: 'test' })
-    );
+    mockFetchOnce(candidateBody([{ plantName: target.name, confidence: 90, reason: 'test' }]));
 
     await recognizePlantWithClaude([photo('a'), photo('b'), photo('c')], 'test-key');
 
@@ -34,35 +36,92 @@ describe('recognizePlantWithClaude', () => {
     expect(imageBlocks).toHaveLength(3);
   });
 
-  it('returns identified when Claude names a plant in our database', async () => {
+  it('returns a single candidate when Claude names one plant in our database', async () => {
     const target = PLANTS[0];
+    mockFetchOnce(candidateBody([{ plantName: target.name, confidence: 88, reason: 'leaf shape' }]));
+
+    const outcome = await recognizePlantWithClaude([photo('a')], 'test-key');
+    expect(outcome.status).toBe('identified');
+    if (outcome.status === 'identified') {
+      expect(outcome.candidates).toHaveLength(1);
+      expect(outcome.candidates[0].plant.id).toBe(target.id);
+      expect(outcome.candidates[0].score.visionScore).toBe(88);
+      expect(outcome.candidates[0].score.overallRank).toBe(1);
+    }
+  });
+
+  it('returns up to 3 ranked candidates, sorted by confidence descending', async () => {
+    const [a, b, c] = PLANTS;
     mockFetchOnce(
-      JSON.stringify({ identified: true, plantName: target.name, confidence: 88, reason: 'leaf shape' })
+      candidateBody([
+        { plantName: a.name, confidence: 60 },
+        { plantName: b.name, confidence: 90 },
+        { plantName: c.name, confidence: 75 },
+      ])
     );
 
     const outcome = await recognizePlantWithClaude([photo('a')], 'test-key');
     expect(outcome.status).toBe('identified');
     if (outcome.status === 'identified') {
-      expect(outcome.plant.id).toBe(target.id);
-      expect(outcome.confidence).toBe(88);
+      expect(outcome.candidates.map((cd) => cd.plant.id)).toEqual([b.id, c.id, a.id]);
+      expect(outcome.candidates.map((cd) => cd.score.overallRank)).toEqual([1, 2, 3]);
     }
   });
 
-  it('never invents a plant when Claude says identified but names something outside the database', async () => {
-    mockFetchOnce(JSON.stringify({ identified: true, plantName: '存在しない植物X', confidence: 90 }));
+  it('caps candidates at 3 even if Claude returns more', async () => {
+    const [a, b, c, d] = PLANTS;
+    mockFetchOnce(
+      candidateBody([
+        { plantName: a.name, confidence: 95 },
+        { plantName: b.name, confidence: 90 },
+        { plantName: c.name, confidence: 85 },
+        { plantName: d.name, confidence: 80 },
+      ])
+    );
+    const outcome = await recognizePlantWithClaude([photo('a')], 'test-key');
+    expect(outcome.status).toBe('identified');
+    if (outcome.status === 'identified') {
+      expect(outcome.candidates).toHaveLength(3);
+    }
+  });
+
+  it('never invents a plant when a candidate names something outside the database', async () => {
+    mockFetchOnce(candidateBody([{ plantName: '存在しない植物X', confidence: 90 }]));
     const outcome = await recognizePlantWithClaude([photo('a')], 'test-key');
     expect(outcome.status).toBe('unidentified');
+  });
+
+  it('drops an invalid candidate but keeps the valid ones from the same response', async () => {
+    const target = PLANTS[0];
+    mockFetchOnce(
+      candidateBody([
+        { plantName: '存在しない植物X', confidence: 95 },
+        { plantName: target.name, confidence: 80 },
+      ])
+    );
+    const outcome = await recognizePlantWithClaude([photo('a')], 'test-key');
+    expect(outcome.status).toBe('identified');
+    if (outcome.status === 'identified') {
+      expect(outcome.candidates).toHaveLength(1);
+      expect(outcome.candidates[0].plant.id).toBe(target.id);
+    }
   });
 
   it('returns unidentified when Claude reports identified: false', async () => {
-    mockFetchOnce(JSON.stringify({ identified: false, reason: '不明瞭' }));
+    mockFetchOnce(JSON.stringify({ identified: false, reason: '不明瞭', candidates: [] }));
     const outcome = await recognizePlantWithClaude([photo('a')], 'test-key');
     expect(outcome.status).toBe('unidentified');
   });
 
-  it('returns unidentified when confidence is missing/invalid (never fabricates one)', async () => {
+  it('returns unidentified when candidates is empty', async () => {
+    mockFetchOnce(candidateBody([]));
+    const outcome = await recognizePlantWithClaude([photo('a')], 'test-key');
+    expect(outcome.status).toBe('unidentified');
+  });
+
+  it('drops a candidate with missing/invalid confidence (never fabricates one)', async () => {
     const target = PLANTS[0];
-    mockFetchOnce(JSON.stringify({ identified: true, plantName: target.name, confidence: 'high' }));
+    mockFetchOnce(candidateBody([{ plantName: target.name, confidence: 'high' as any }]));
     const outcome = await recognizePlantWithClaude([photo('a')], 'test-key');
     expect(outcome.status).toBe('unidentified');
   });

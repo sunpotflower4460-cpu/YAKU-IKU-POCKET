@@ -1,9 +1,12 @@
-// Observation / identification state model (introduced in PR6).
+// Observation / identification state model (introduced in PR6, extended PR10).
 //
 // This is intentionally lightweight. The full PlantDefinition / Observation
-// rebuild (multi-photo, taxonomy IDs, candidate lists) lands in later PRs
-// (KNOWLEDGE_SCHEMA / PR11, PR13). PR6 only formalizes the identification
-// *state* and the *safety* model so the UI can stop asserting certainty.
+// rebuild (multi-photo, taxonomy IDs) lands in later PRs (KNOWLEDGE_SCHEMA /
+// PR11, PR13). PR6 formalizes the identification *state* and *safety* model;
+// PR10 adds the candidate list so results can present "a few possibilities"
+// instead of a single unearned certainty.
+
+import { Plant } from '.';
 
 /**
  * How confident we are about what a photo shows.
@@ -52,4 +55,26 @@ export interface SafetyProfile {
   emergencyGuidance?: string;
   sourceRefs: string[];
   reviewedAt?: string;
+}
+
+/**
+ * Per-candidate score breakdown (PR10, §10.1 CandidateScore).
+ *
+ * Only fields we can honestly compute are populated:
+ * - `visionScore`  : the model's own confidence (or, in demo mode, undefined —
+ *                    demo mode does no real analysis, so it gets no score here).
+ * - `seasonScore`  : computed locally from the plant's season data, not the LLM.
+ * `regionScore`/`morphologyScore` are omitted until real location/morphology
+ * data exists (see docs/IDENTIFICATION_PIPELINE.md) — we do not fabricate them.
+ */
+export interface CandidateScore {
+  visionScore?: number;
+  seasonScore?: number;
+  overallRank: number;
+}
+
+export interface IdentificationCandidate {
+  plant: Plant;
+  score: CandidateScore;
+  reason?: string;
 }
