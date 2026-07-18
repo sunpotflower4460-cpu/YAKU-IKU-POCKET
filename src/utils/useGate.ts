@@ -5,6 +5,7 @@
 // data-driven (identification state + source origin + look-alike risk) —
 // never inferred from AI confidence scores alone.
 
+import { DangerLevel } from '../types';
 import { IdentificationState } from '../types/observation';
 import { PlantUseCategory, SourceOrigin, UseGate } from '../types/plantUse';
 
@@ -17,13 +18,19 @@ export function determineMaxGate(params: {
   origin: SourceOrigin;
   identificationState: IdentificationState;
   hasDangerousLookalike: boolean;
+  /** The plant's own inherent danger (not a look-alike risk) — RED never earns gate2+. */
+  plantDanger?: DangerLevel;
 }): UseGate {
-  const { origin, identificationState, hasDangerousLookalike } = params;
+  const { origin, identificationState, hasDangerousLookalike, plantDanger } = params;
 
   // Species not confirmed by the user (still just AI candidates, or
   // unidentified), or a dangerous look-alike exists: learning only.
   if (!CONFIRMED_STATES.includes(identificationState)) return 'gate0';
   if (hasDangerousLookalike) return 'gate0';
+  // Belt-and-suspenders: even if content generation is careful never to
+  // offer ingestion content for a RED plant, the gate itself should never
+  // read as "unlocked for use" for something this app flags as dangerous.
+  if (plantDanger === 'RED') return 'gate0';
 
   switch (origin) {
     case 'store_bought_food':

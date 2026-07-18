@@ -1,8 +1,9 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { ScanRecord, UnidentifiedObservation } from '../types';
+import { ScanRecord, UnidentifiedObservation, PracticeRecord } from '../types';
 import { TraitCheck } from '../types/traitCheck';
+import { SourceOrigin } from '../types/plantUse';
 import { generateId } from '../utils/id';
 import { PLANTS } from '../data/plants';
 import { todayLocalStr, localDateStrOffset } from '../utils/date';
@@ -80,6 +81,9 @@ interface GameState {
   // Observations saved without a plant match (v3 §6.1 "そのまま記録する"). PR17.
   unidentifiedObservations: UnidentifiedObservation[];
 
+  // Personal cooking/living journal entries (v3 §11.3). PR22.
+  practiceRecords: PracticeRecord[];
+
   // Actions
   startSession: () => void;
   discoverPlant: (plantId: string) => void;
@@ -108,6 +112,10 @@ interface GameState {
   setScanRevisit: (scanId: string, revisitAt: string | undefined) => void;
   /** Same as `setScanRevisit` for an unidentified (no plant match) observation. */
   setUnidentifiedRevisit: (observationId: string, revisitAt: string | undefined) => void;
+  /** Tag how a specimen was obtained — feeds the 暮らし content gate (v3 §10, PR22). */
+  setScanOrigin: (scanId: string, origin: SourceOrigin) => void;
+  addPracticeRecord: (plantId: string, category: string, note: string) => void;
+  deletePracticeRecord: (id: string) => void;
   /** Erases all persisted user data (§17 "端末内にデータ削除機能"). Irreversible. */
   resetAllData: () => void;
 
@@ -144,6 +152,7 @@ const INITIAL_USER_DATA = {
   viewedSafetyCardPlantIds: [] as string[],
   hasComparedCandidates: false,
   unidentifiedObservations: [] as UnidentifiedObservation[],
+  practiceRecords: [] as PracticeRecord[],
 };
 
 // ─── Store ───────────────────────────────────────────────────────────────────
@@ -321,6 +330,27 @@ export const useGameStore = create<GameState>()(
             o.id === observationId ? { ...o, revisitAt } : o
           ),
         }));
+      },
+
+      setScanOrigin: (scanId: string, origin: SourceOrigin) => {
+        set((state) => ({
+          scanHistory: state.scanHistory.map((r) => (r.id === scanId ? { ...r, sourceOrigin: origin } : r)),
+        }));
+      },
+
+      addPracticeRecord: (plantId: string, category: string, note: string) => {
+        const record: PracticeRecord = {
+          id: generateId('practice'),
+          plantId,
+          category,
+          createdAt: new Date().toISOString(),
+          note,
+        };
+        set((state) => ({ practiceRecords: [record, ...state.practiceRecords].slice(0, 200) }));
+      },
+
+      deletePracticeRecord: (id: string) => {
+        set((state) => ({ practiceRecords: state.practiceRecords.filter((r) => r.id !== id) }));
       },
 
       resetAllData: () => set({ ...INITIAL_USER_DATA }),
