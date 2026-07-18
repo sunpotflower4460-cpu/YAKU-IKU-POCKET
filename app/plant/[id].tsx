@@ -29,9 +29,17 @@ export default function PlantDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const navigation = useNavigation();
   const router = useRouter();
-  const { scanHistory, favoritePlantIds, toggleFavorite, plantNotes, setPlantNote, discoveredPlantIds } = useGameStore();
+  const { scanHistory, favoritePlantIds, toggleFavorite, plantNotes, setPlantNote, discoveredPlantIds, markSafetyCardViewed } = useGameStore();
 
   const plant = getPlantById(id ?? '');
+
+  // Fieldbook learning achievement (§7.8): record that the user opened a
+  // dangerous plant's detail page (i.e. read its safety information).
+  useEffect(() => {
+    if (plant?.danger === 'RED') {
+      markSafetyCardViewed(plant.id);
+    }
+  }, [plant?.id, plant?.danger]);
   const isFavorite = favoritePlantIds.includes(id ?? '');
   const savedNote = plantNotes[id ?? ''] ?? '';
   const [noteText, setNoteText] = useState(savedNote);

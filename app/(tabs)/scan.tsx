@@ -22,7 +22,7 @@ import { ScanResultModal } from '../../src/components/ScanResultModal';
 import { Plant } from '../../src/types';
 import { IdentificationCandidate } from '../../src/types/observation';
 import { Colors } from '../../src/constants/colors';
-import { IS_DEMO_MODE } from '../../src/utils/appMode';
+import { isDemoMode } from '../../src/utils/appMode';
 import {
   CapturedPhoto,
   PhotoOrgan,
@@ -50,7 +50,8 @@ const DEMO_STAGE_LABEL: Record<ProcessingStage, string> = {
 
 export default function ScanScreen() {
   const router = useRouter();
-  const { discoveredPlantIds, recordObservation } = useGameStore();
+  const { discoveredPlantIds, recordObservation, aiConsentGiven, markCandidatesCompared } = useGameStore();
+  const demoMode = isDemoMode(aiConsentGiven);
 
   // Camera permissions
   const [permission, requestPermission] = useCameraPermissions();
@@ -202,7 +203,7 @@ export default function ScanScreen() {
       await new Promise((r) => setTimeout(r, 400)); // let the stage render before the network call
 
       setProcessingStage('identifying');
-      const outcome = await scanPlant(discoveredPlantIds, photos);
+      const outcome = await scanPlant(discoveredPlantIds, photos, aiConsentGiven);
 
       // Real AI could not confidently match a database plant. Never invent a
       // random result — tell the user it could not be identified.
@@ -261,6 +262,11 @@ export default function ScanScreen() {
   // the result to reflect their choice so it (not the top rank) gets saved.
   function handleSelectCandidate(candidate: IdentificationCandidate) {
     Haptics.selectionAsync();
+    // Picking a candidate other than the top rank counts as "having compared"
+    // for the Fieldbook learning achievement (§7.8).
+    if (result && candidate.plant.id !== result.plant.id) {
+      markCandidatesCompared();
+    }
     setResult((prev) =>
       prev
         ? {
@@ -279,7 +285,7 @@ export default function ScanScreen() {
     // Safety: demo (mock) results are view-only and must never be persisted as
     // real observations, grant XP, or register plants. Only real identifications
     // reach this save path.
-    if (IS_DEMO_MODE) return;
+    if (demoMode) return;
     recordObservation(result.plant.id, photoUri ?? undefined);
     setModalVisible(false);
     setResult(null);
@@ -363,7 +369,7 @@ export default function ScanScreen() {
             />
           </Pressable>
 
-          {!IS_DEMO_MODE ? (
+          {!demoMode ? (
             <View style={styles.aiModeBadge}>
               <Ionicons name="hardware-chip-outline" size={12} color="#FFFFFF" />
               <Text style={styles.aiModeText}>Claude AI</Text>
@@ -411,7 +417,7 @@ export default function ScanScreen() {
               <Ionicons
                 name={
                   scanState === 'idle' ? 'leaf-outline' :
-                  scanState === 'scanning' ? (!IS_DEMO_MODE ? 'hardware-chip-outline' : 'dice-outline') :
+                  scanState === 'scanning' ? (!demoMode ? 'hardware-chip-outline' : 'dice-outline') :
                   'checkmark-circle-outline'
                 }
                 size={14}
@@ -423,7 +429,7 @@ export default function ScanScreen() {
                       ? '植物にカメラをかざしてください'
                       : `${photos.length}枚 撮影済み — 続けて撮影するか識別してください`)
                   : scanState === 'scanning'
-                  ? (!IS_DEMO_MODE ? REAL_STAGE_LABEL[processingStage] : DEMO_STAGE_LABEL[processingStage])
+                  ? (!demoMode ? REAL_STAGE_LABEL[processingStage] : DEMO_STAGE_LABEL[processingStage])
                   : 'スキャン完了'}
               </Text>
             </View>
@@ -437,7 +443,7 @@ export default function ScanScreen() {
           )}
           <Text style={styles.hintText}>
             {scanState === 'scanning'
-              ? (!IS_DEMO_MODE ? REAL_STAGE_LABEL[processingStage] : DEMO_STAGE_LABEL[processingStage])
+              ? (!demoMode ? REAL_STAGE_LABEL[processingStage] : DEMO_STAGE_LABEL[processingStage])
               : 'AI判定は参考情報です。自己判断での採取・摂取は危険です'}
           </Text>
         </View>
@@ -522,7 +528,7 @@ export default function ScanScreen() {
               </View>
             </View>
             <Text style={styles.scanLabel}>
-              {!IS_DEMO_MODE ? REAL_STAGE_LABEL[processingStage] : DEMO_STAGE_LABEL[processingStage]}
+              {!demoMode ? REAL_STAGE_LABEL[processingStage] : DEMO_STAGE_LABEL[processingStage]}
             </Text>
           </>
         )}
@@ -556,7 +562,7 @@ export default function ScanScreen() {
         confidence={result?.confidence ?? 0}
         isNewDiscovery={result?.isNewDiscovery ?? false}
         usedRealAI={usedRealAI}
-        isDemo={IS_DEMO_MODE}
+        isDemo={demoMode}
         reason={result?.reason}
         candidates={result?.candidates}
         selectedPlantId={result?.plant.id}

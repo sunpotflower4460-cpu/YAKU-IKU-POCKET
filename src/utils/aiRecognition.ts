@@ -15,6 +15,12 @@ import { IdentificationCandidate } from '../types/observation';
 const CLAUDE_API_KEY = process.env.EXPO_PUBLIC_CLAUDE_API_KEY ?? '';
 
 /**
+ * §11 "同意画面": even with a key configured, photos must not be sent to the
+ * real AI provider until the user has explicitly consented (Fieldbook
+ * settings). Callers pass the current consent value from the store.
+ */
+
+/**
  * Discriminated outcome of a scan.
  *
  * - `identified`   : one or more candidates (§7.5 — never a single unearned
@@ -47,9 +53,10 @@ export type ScanOutcome =
  */
 export async function scanPlant(
   discoveredIds: string[],
-  photos: CapturedPhoto[] = []
+  photos: CapturedPhoto[] = [],
+  aiConsentGiven: boolean = false
 ): Promise<ScanOutcome> {
-  if (photos.length > 0 && CLAUDE_API_KEY) {
+  if (photos.length > 0 && CLAUDE_API_KEY && aiConsentGiven) {
     try {
       const outcome = await recognizePlantWithClaude(photos, CLAUDE_API_KEY);
       if (outcome.status === 'unidentified') {

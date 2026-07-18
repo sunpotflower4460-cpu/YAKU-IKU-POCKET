@@ -2,12 +2,21 @@ export type Season = '春' | '夏' | '秋' | '冬';
 
 const SEASON_ORDER: Season[] = ['春', '夏', '秋', '冬'];
 
-export function getCurrentSeason(): Season {
-  const month = new Date().getMonth() + 1; // 1-12
+/** Pure month→season mapping (1-12), reusable for any date (not just "now"). */
+export function seasonForMonth(month: number): Season {
   if (month >= 3 && month <= 5) return '春';
   if (month >= 6 && month <= 8) return '夏';
   if (month >= 9 && month <= 11) return '秋';
   return '冬';
+}
+
+/** Season for an arbitrary local Date — used e.g. to bucket past scan history. */
+export function seasonForDate(date: Date): Season {
+  return seasonForMonth(date.getMonth() + 1);
+}
+
+export function getCurrentSeason(): Season {
+  return seasonForMonth(new Date().getMonth() + 1);
 }
 
 export interface SeasonConfig {
