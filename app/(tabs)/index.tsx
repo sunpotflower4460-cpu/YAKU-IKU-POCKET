@@ -15,6 +15,7 @@ import { useGameStore, XP_PER_LEVEL } from '../../src/store/useGameStore';
 import { PLANTS, TOTAL_PLANTS } from '../../src/data/plants';
 import { DisclaimerBanner } from '../../src/components/DisclaimerBanner';
 import { OnboardingModal } from '../../src/components/OnboardingModal';
+import { DANGER_LABEL } from '../../src/components/DangerBadge';
 import { Colors } from '../../src/constants/colors';
 import { getCurrentSeason, SEASON_CONFIG, getSeasonalPlants } from '../../src/utils/season';
 import { todayLocalStr, localDayFromISO } from '../../src/utils/date';
@@ -333,9 +334,8 @@ export default function HomeScreen() {
                           },
                         ]}
                       />
-                      <Text style={styles.spotlightDangerText}>
-                        {plant.danger === 'RED' ? '要注意' :
-                         plant.danger === 'YELLOW' ? '注意' : '一般食用'}
+                      <Text style={styles.spotlightDangerText} numberOfLines={1}>
+                        {DANGER_LABEL[plant.danger]}
                       </Text>
                     </View>
                   ) : (
@@ -768,6 +768,7 @@ const styles = StyleSheet.create({
     marginRight: 10,
     alignItems: 'center',
     width: 116,
+    overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,

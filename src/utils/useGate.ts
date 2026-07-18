@@ -59,12 +59,9 @@ export function determineMaxGate(params: {
   // reasoning and the fail-closed rationale).
   if (!NON_FIELD_ORIGINS.includes(origin) && hasDangerousLookalike) return 'gate0';
 
+  if (NON_FIELD_ORIGINS.includes(origin)) return 'gate2';
+
   switch (origin) {
-    case 'store_bought_food':
-    case 'store_bought_herb':
-    case 'home_grown_verified':
-    case 'nursery_plant':
-      return 'gate2';
     case 'wild_observed':
       return 'gate1';
     case 'wild_collected':
@@ -106,6 +103,15 @@ export function isGateAtLeast(achieved: UseGate, required: UseGate): boolean {
   return GATE_RANK[achieved] >= GATE_RANK[required];
 }
 
+/**
+ * Whether a use *category* has reached its required gate — the gate-rank
+ * check only, with no `allowedOrigins` check. Do NOT use this to decide
+ * whether to render a `PlantUse` card as unlocked; that check must also
+ * enforce `allowedOrigins`, so use `isUseUnlocked` for that instead (PR34).
+ * This stays exported for cases that need the gate-only fact — e.g.
+ * distinguishing "gate not reached" from "origin not allowed" when composing
+ * a locked-state message.
+ */
 export function isCategoryUnlocked(category: PlantUseCategory, achievedGate: UseGate): boolean {
   return isGateAtLeast(achievedGate, requiredGateForCategory(category));
 }
