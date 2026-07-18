@@ -178,17 +178,23 @@ const TOXIC_PARTS_OVERRIDE: Record<string, string[]> = {
 };
 
 /**
- * Real citation URLs for every RED-danger (`high_risk`) species (PR29).
+ * Real citation URLs for RED-danger (`high_risk`, PR29) and, since PR30, some
+ * YELLOW-danger (`caution`) species.
  *
  * Each URL was found via WebSearch and is a government (厚生労働省 / 都道府県 /
- * 市区町村) or public-interest-body page whose search-result title explicitly
- * names the species. This session's WebFetch tool cannot reach .go.jp/.lg.jp
- * domains (blocked by this environment's outbound network policy — see
+ * 市区町村 / 独立行政法人) page whose search-result title explicitly names the
+ * species. This session's WebFetch tool cannot reach .go.jp/.lg.jp domains
+ * (blocked by this environment's outbound network policy — see
  * docs/DATA_SOURCES_AND_LICENSES.md), so the verbatim page body was not
  * fetched and re-read; verification is at the title/snippet level returned
  * by the search itself, not a full-page confirmation. No claim in this
  * app's own plant descriptions is copied from these pages — they are
  * attached purely as "see the official source" references for the reader.
+ *
+ * PR30 coverage note: all 14 RED species have a citation. Of the 27 YELLOW
+ * species, only the 5 below turned up a sufficiently specific, authoritative
+ * .go.jp/.lg.jp match — the rest are left without one rather than attach a
+ * hobbyist site or a same-topic-but-not-species-specific page.
  */
 const SOURCE_REFS_OVERRIDE: Record<string, string[]> = {
   p024: ['https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/0000082112.html'], // トリカブト（厚生労働省 自然毒のリスクプロファイル）
@@ -205,6 +211,11 @@ const SOURCE_REFS_OVERRIDE: Record<string, string[]> = {
   p066: ['https://www.nihs.go.jp/dsi/section_s3/toxins/toxicplantsA4.pdf'], // タケニグサ他（国立医薬品食品衛生研究所）
   p071: ['https://www.hokeniryo1.metro.tokyo.lg.jp/shokuhin/dokusou/07.html'], // ドクウツギ（東京都保健医療局「食品衛生の窓」）
   p072: ['https://www.city.inzai.lg.jp/0000010057.html'], // キョウチクトウ（印西市公式ホームページ）
+  p012: ['https://www.fsc.go.jp/fsciis/foodSafetyMaterial/show/syu04100490482'], // ワラビ（食品安全委員会「ワラビと発がん物質」リスク情報）
+  h016: ['https://www.tmiph.metro.tokyo.lg.jp/lb_iyaku/plant/yudoku-top/sikimi/'], // スターアニス／シキミ混同（東京都健康安全研究センター）
+  h034: ['https://www.jstage.jst.go.jp/article/jaamkanto/39/2/39_285/_pdf/-char/ja'], // ナツメグ中毒（日本救急医学会関東地方会雑誌、J-STAGE）
+  h041: ['https://www.maff.go.jp/j/heya/sodan/2004/01.html'], // モロヘイヤの種の毒性Q&A（農林水産省）
+  h068: ['https://www.info.pmda.go.jp/downfiles/otc/PDF/J0601003254_01_A.pdf'], // センナ添付文書（医薬品医療機器総合機構）
 };
 
 function toSafetyLevel(danger: DangerLevel): SafetyLevel {
