@@ -69,6 +69,13 @@ interface GameState {
   startSession: () => void;
   discoverPlant: (plantId: string) => void;
   addScan: (plantId: string, imageUri?: string) => void;
+  /**
+   * Atomically record a confirmed observation: adds to the collection, records
+   * scan history, awards XP and updates daily counters in a single state
+   * update. Use this for real (production) identifications; demo results must
+   * NOT call this (see src/utils/appMode.ts).
+   */
+  recordObservation: (plantId: string, imageUri?: string) => void;
   setPlayerName: (name: string) => void;
   claimChallenge: (challengeId: string, xpReward: number) => void;
   claimSeasonalChallenge: (challengeId: string, xpReward: number) => void;
@@ -191,6 +198,43 @@ export const useGameStore = create<GameState>()(
             ? state.todayScanCount + 1
             : state.todayScanCount,
         }));
+      },
+
+      // ── Atomic observation record (discovery + history + XP in one update) ─
+      recordObservation: (plantId: string, imageUri?: string) => {
+        const isToday = get().todayDate === todayStr();
+        const plant = PLANTS.find((p) => p.id === plantId);
+        const rarity = plant?.rarity ?? 1;
+        const record: ScanRecord = {
+          id: `scan_${Date.now()}`,
+          plantId,
+          scannedAt: new Date().toISOString(),
+          imageUri,
+        };
+        set((state) => {
+          const isNew = !state.discoveredPlantIds.includes(plantId);
+          const gainedXp = isNew ? (RARITY_XP[rarity] ?? 100) : XP_PER_RESCAN;
+          return {
+            discoveredPlantIds: isNew
+              ? [...state.discoveredPlantIds, plantId]
+              : state.discoveredPlantIds,
+            xp: state.xp + gainedXp,
+            scanHistory: [record, ...state.scanHistory].slice(0, 100),
+            todayScanCount: isToday ? state.todayScanCount + 1 : state.todayScanCount,
+            todayNewCount: isNew && isToday ? state.todayNewCount + 1 : state.todayNewCount,
+            todayMaxRarity: isToday
+              ? Math.max(state.todayMaxRarity, rarity)
+              : state.todayMaxRarity,
+            todayDangers:
+              isToday && plant?.danger && !state.todayDangers.includes(plant.danger)
+                ? [...state.todayDangers, plant.danger]
+                : state.todayDangers,
+            todayCategories:
+              isToday && plant?.category && !state.todayCategories.includes(plant.category)
+                ? [...state.todayCategories, plant.category]
+                : state.todayCategories,
+          };
+        });
       },
 
       setHasOnboarded: () => set({ hasOnboarded: true }),

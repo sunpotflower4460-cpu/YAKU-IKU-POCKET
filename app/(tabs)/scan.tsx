@@ -19,14 +19,13 @@ import { useGameStore } from '../../src/store/useGameStore';
 import { ScanResultModal } from '../../src/components/ScanResultModal';
 import { Plant } from '../../src/types';
 import { Colors } from '../../src/constants/colors';
+import { IS_DEMO_MODE } from '../../src/utils/appMode';
 
 type ScanState = 'idle' | 'scanning' | 'done';
 
-const CLAUDE_API_KEY = process.env.EXPO_PUBLIC_CLAUDE_API_KEY ?? '';
-
 export default function ScanScreen() {
   const router = useRouter();
-  const { discoveredPlantIds, discoverPlant, addScan } = useGameStore();
+  const { discoveredPlantIds, recordObservation } = useGameStore();
 
   // Camera permissions
   const [permission, requestPermission] = useCameraPermissions();
@@ -191,8 +190,11 @@ export default function ScanScreen() {
 
   function handleAddToZukan() {
     if (!result) return;
-    discoverPlant(result.plant.id);
-    addScan(result.plant.id, photoUri ?? undefined);
+    // Safety: demo (mock) results are view-only and must never be persisted as
+    // real observations, grant XP, or register plants. Only real identifications
+    // reach this save path.
+    if (IS_DEMO_MODE) return;
+    recordObservation(result.plant.id, photoUri ?? undefined);
     setModalVisible(false);
     setResult(null);
     setScanState('idle');
@@ -275,7 +277,7 @@ export default function ScanScreen() {
             />
           </Pressable>
 
-          {CLAUDE_API_KEY ? (
+          {!IS_DEMO_MODE ? (
             <View style={styles.aiModeBadge}>
               <Ionicons name="hardware-chip-outline" size={12} color="#FFFFFF" />
               <Text style={styles.aiModeText}>Claude AI</Text>
@@ -283,7 +285,7 @@ export default function ScanScreen() {
           ) : (
             <View style={[styles.aiModeBadge, styles.aiModeMock]}>
               <Ionicons name="dice-outline" size={12} color="#FFFFFF" />
-              <Text style={styles.aiModeText}>モックAI</Text>
+              <Text style={styles.aiModeText}>デモ（体験モード）</Text>
             </View>
           )}
 
@@ -323,7 +325,7 @@ export default function ScanScreen() {
               <Ionicons
                 name={
                   scanState === 'idle' ? 'leaf-outline' :
-                  scanState === 'scanning' ? (CLAUDE_API_KEY ? 'hardware-chip-outline' : 'dice-outline') :
+                  scanState === 'scanning' ? (!IS_DEMO_MODE ? 'hardware-chip-outline' : 'dice-outline') :
                   'checkmark-circle-outline'
                 }
                 size={14}
@@ -333,9 +335,9 @@ export default function ScanScreen() {
                 {scanState === 'idle'
                   ? '植物にカメラをかざしてください'
                   : scanState === 'scanning'
-                  ? (CLAUDE_API_KEY
+                  ? (!IS_DEMO_MODE
                       ? 'Claude Vision AI が解析しています...'
-                      : 'モックAIで植物を識別中...')
+                      : 'デモモードで候補を表示します...')
                   : 'スキャン完了'}
               </Text>
             </View>
@@ -349,7 +351,7 @@ export default function ScanScreen() {
           )}
           <Text style={styles.hintText}>
             {scanState === 'scanning'
-              ? `${CLAUDE_API_KEY ? 'Claude Vision AI' : 'モックAI'}で植物を解析中...`
+              ? `${!IS_DEMO_MODE ? 'Claude Vision AI' : 'デモモード'}で候補を表示します...`
               : 'AI判定は参考情報です。自己判断での採取・摂取は危険です'}
           </Text>
         </View>
@@ -417,6 +419,7 @@ export default function ScanScreen() {
         confidence={result?.confidence ?? 0}
         isNewDiscovery={result?.isNewDiscovery ?? false}
         usedRealAI={usedRealAI}
+        isDemo={IS_DEMO_MODE}
         reason={result?.reason}
         imageUri={photoUri ?? undefined}
         onAddToZukan={handleAddToZukan}

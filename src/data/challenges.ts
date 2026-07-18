@@ -24,52 +24,52 @@ export interface Challenge {
 export const CHALLENGES: Challenge[] = [
   {
     id: 'q1', icon: 'camera-outline', title: '今日の採集家',
-    desc: '植物を2種スキャンする', xpReward: 30,
+    desc: '植物を2種観察する', xpReward: 30,
     type: 'scan_count', target: 2,
   },
   {
-    id: 'q2', icon: 'flash-outline', title: '新発見！',
-    desc: '新しい植物を1種発見する', xpReward: 80,
+    id: 'q2', icon: 'flash-outline', title: '新しい観察',
+    desc: '新しい植物を1種観察する', xpReward: 80,
     type: 'discover_new', target: 1,
   },
   {
     id: 'q3', icon: 'search-outline', title: '熱心な調査',
-    desc: '植物を5種スキャンする', xpReward: 80,
+    desc: '植物を5種観察する', xpReward: 80,
     type: 'scan_count', target: 5,
   },
   {
     id: 'q4', icon: 'star-outline', title: 'レアハンター',
-    desc: '★4以上の植物を発見する', xpReward: 150,
+    desc: '★4以上の植物を観察する', xpReward: 150,
     type: 'find_rarity_4', target: 1,
   },
   {
     id: 'q5', icon: 'trophy-outline', title: '伝説の探索者',
-    desc: '★5の伝説植物を発見する', xpReward: 300,
+    desc: '★5の伝説植物を観察する', xpReward: 300,
     type: 'find_rarity_5', target: 1,
   },
   {
     id: 'q6', icon: 'leaf-outline', title: 'みどりの観察',
-    desc: '「一般に食用とされる」植物を発見する', xpReward: 40,
+    desc: '「一般に食用とされる」植物を観察する', xpReward: 40,
     type: 'find_green', target: 1,
   },
   {
     id: 'q7', icon: 'skull-outline', title: '危険植物調査',
-    desc: '有毒植物（RED）を発見する', xpReward: 100,
+    desc: '有毒植物（接触・採取を避ける種）を観察する', xpReward: 100,
     type: 'find_red', target: 1,
   },
   {
     id: 'q8', icon: 'leaf', title: 'ハーブ探し',
-    desc: 'スパイス・ハーブを発見する', xpReward: 60,
+    desc: 'スパイス・ハーブを観察する', xpReward: 60,
     type: 'find_herb', target: 1,
   },
   {
     id: 'q9', icon: 'albums-outline', title: 'コレクター',
-    desc: '今日3種の新植物を発見する', xpReward: 200,
+    desc: '今日3種の新植物を観察する', xpReward: 200,
     type: 'discover_new', target: 3,
   },
   {
     id: 'q10', icon: 'medical-outline', title: '養生マスター',
-    desc: '植物を10種スキャンする', xpReward: 150,
+    desc: '植物を10種観察する', xpReward: 150,
     type: 'scan_count', target: 10,
   },
 ];

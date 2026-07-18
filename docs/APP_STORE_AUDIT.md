@@ -10,8 +10,35 @@
 アプリ本体は完成度が高く（免責バナー全画面表示、危険植物の警告、50種の完全なデータ、正常なカメラ実装）、致命的な設計上の欠陥はありません。本監査では、**提出をブロックする項目**、**実害のあるバグ**、**安全性・法的リスクの高い表現**を洗い出し、コードで安全に直せるものは修正済みです。アイコン画像・プライバシーポリシーURL・Apple 認証情報など、**開発者ご本人にしか用意できない項目**は「残タスク」に整理しました。
 
 - ✅ 第1次で修正済み: バグ C1〜C8、安全表現 S1〜S3、App Store 設定の一部
-- ✅ 第2次で修正済み（外部レビュー反映, 下記「第2次対応」）: R1〜R4
+- ✅ 第2次で修正済み（外部レビュー反映）: R1〜R4
+- ✅ 第3次 = PR6（統合仕様書対応, 下記「PR6対応」）: 安全性・コピー・状態モデル・テスト
 - ⏳ ご本人対応が必要: アイコン差し替え、プライバシーポリシー、EAS 認証情報、年齢レーティング、**実AI用バックエンド**、**植物データの専門家監修**等
+
+> 統合仕様書（`docs/PRODUCT_VISION_V2.md` 他）を今後の統合仕様として採用。PR計画は `docs/IMPLEMENTATION_ROADMAP.md`、安全方針は `docs/SAFETY_POLICY.md`、移行は `docs/MIGRATION_PLAN.md` 参照。
+
+---
+
+## 追記: PR6 対応（統合仕様書 — Safety & Product Repositioning）
+
+### ✅ 本PRで実装
+| 項目 | 対応 |
+|---|---|
+| 本番でランダムを返さない | R1で実装済（維持）。ユニットテストで固定 |
+| 判定不能を正式に実装 | `IdentificationState`/`SafetyProfile` 型を `src/types/observation.ts` に新設 |
+| 禁止表現の全撤去 | `食用可/食用可能/食用植物/安全な収穫/AI認識精度` = 0件（CIで回帰検査）。`AI認識精度→候補一致度`、`図鑑に登録→観察記録として保存`、`発見→観察`（スキャン結果・クエスト） |
+| **デモ/本番の完全分離** | `src/utils/appMode.ts` の `IS_DEMO_MODE` を単一ソース化 |
+| **デモ結果でXP/履歴/図鑑を更新しない** | デモは閲覧のみ。保存ボタンを「閉じる（記録されません）」に。実AIのみ保存可 |
+| 危険類似種の警告構造 | `src/data/safety.ts`（ノビル/セリ/ヨモギ⇔有毒種）＋ `getSafetyWarnings` ＋ `SafetyBanner`（色以外でも伝わる）を結果・詳細に表示 |
+| アトミック保存 | store `recordObservation`（発見+履歴+XP+当日集計を1操作） |
+| AsyncStorage を壊さない | 追加のみ・version据え置き。`MIGRATION_PLAN.md` を新設 |
+| Unit Test 追加 | jest-expo 導入。日付/モック排除/二重報酬/安全ルール/recordObservation の15テスト。CI(`.github/workflows/ci.yml`)に typecheck+test+禁止語grep+web export |
+| docs | `PRODUCT_VISION_V2 / UX_IA / DESIGN_SYSTEM / IDENTIFICATION_PIPELINE / KNOWLEDGE_SCHEMA / SAFETY_POLICY / DATA_SOURCES_AND_LICENSES / APP_STORE_RELEASE_CHECKLIST / MIGRATION_PLAN / IMPLEMENTATION_ROADMAP` を追加 |
+
+### ⚠️ 重要な帰結
+仕様書どおり「デモ結果は記録しない」を実装したため、**実AI（PR14）導入まで、デモモードでは図鑑コレクション・XPが増えません**（既存の収集済みデータは保持）。デモはフロー体験と学習用の閲覧に限定。審査説明用に `APP_STORE_RELEASE_CHECKLIST.md` / `SAFETY_POLICY.md` へ明記。
+
+### ⏳ 後続PR（デザイン全面導入はPR7へ分離）
+PR7デザイン基盤 / PR8タブ・Today / PR9複数写真撮影 / PR10候補比較 / PR11知識スキーマ / PR12 Explore / PR13 Fieldbook / PR14バックエンド・実AI / PR15 A11y・QA・提出物。詳細は `docs/IMPLEMENTATION_ROADMAP.md`。
 
 ---
 
