@@ -20,6 +20,7 @@ beforeEach(() => {
     viewedSafetyCardPlantIds: [],
     hasComparedCandidates: false,
     unidentifiedObservations: [],
+    practiceRecords: [],
   });
 });
 
@@ -139,11 +140,38 @@ describe('setScanRevisit (PR17)', () => {
   });
 });
 
+describe('暮らし: setScanOrigin / practiceRecords (PR22)', () => {
+  it('setScanOrigin tags the matching scan history entry only', () => {
+    const { recordObservation, setScanOrigin } = useGameStore.getState();
+    const [a, b] = PLANTS;
+    recordObservation(a.id);
+    recordObservation(b.id);
+    const [recentRecord, olderRecord] = useGameStore.getState().scanHistory;
+    setScanOrigin(recentRecord.id, 'store_bought_food');
+    const s = useGameStore.getState();
+    expect(s.scanHistory.find((r) => r.id === recentRecord.id)?.sourceOrigin).toBe('store_bought_food');
+    expect(s.scanHistory.find((r) => r.id === olderRecord.id)?.sourceOrigin).toBeUndefined();
+  });
+
+  it('addPracticeRecord / deletePracticeRecord manage the personal journal', () => {
+    const { addPracticeRecord, deletePracticeRecord } = useGameStore.getState();
+    const plant = PLANTS[0];
+    addPracticeRecord(plant.id, 'general', '押し花にしました');
+    const s1 = useGameStore.getState();
+    expect(s1.practiceRecords).toHaveLength(1);
+    expect(s1.practiceRecords[0].plantId).toBe(plant.id);
+    expect(s1.practiceRecords[0].note).toBe('押し花にしました');
+
+    deletePracticeRecord(s1.practiceRecords[0].id);
+    expect(useGameStore.getState().practiceRecords).toHaveLength(0);
+  });
+});
+
 describe('resetAllData (§17 data deletion)', () => {
   it('erases collection, XP, notes, favorites, and settings back to defaults', () => {
     const {
       recordObservation, setPlayerName, setPlantNote, toggleFavorite, setAiConsentGiven,
-      markCandidatesCompared, recordUnidentifiedObservation,
+      markCandidatesCompared, recordUnidentifiedObservation, addPracticeRecord,
     } = useGameStore.getState();
     const plant = PLANTS[0];
     recordObservation(plant.id);
@@ -153,6 +181,7 @@ describe('resetAllData (§17 data deletion)', () => {
     setAiConsentGiven(true);
     markCandidatesCompared();
     recordUnidentifiedObservation('file://a.jpg');
+    addPracticeRecord(plant.id, 'general', 'メモ');
 
     useGameStore.getState().resetAllData();
 
@@ -166,6 +195,7 @@ describe('resetAllData (§17 data deletion)', () => {
     expect(s.aiConsentGiven).toBe(false);
     expect(s.hasComparedCandidates).toBe(false);
     expect(s.unidentifiedObservations).toEqual([]);
+    expect(s.practiceRecords).toEqual([]);
   });
 
   it('does not clear the transient hydration flag', () => {

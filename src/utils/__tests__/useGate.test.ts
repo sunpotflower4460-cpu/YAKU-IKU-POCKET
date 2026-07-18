@@ -37,6 +37,17 @@ describe('determineMaxGate (v3 §10.3)', () => {
       determineMaxGate({ origin: 'unknown', identificationState: 'expert_verified', hasDangerousLookalike: false })
     ).toBe('gate0');
   });
+
+  it('caps a RED (inherently dangerous) plant at gate0 even for store-bought origin — belt-and-suspenders', () => {
+    expect(
+      determineMaxGate({
+        origin: 'store_bought_food',
+        identificationState: 'expert_verified',
+        hasDangerousLookalike: false,
+        plantDanger: 'RED',
+      })
+    ).toBe('gate0');
+  });
 });
 
 describe('requiredGateForCategory / isCategoryUnlocked', () => {

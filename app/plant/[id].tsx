@@ -26,6 +26,19 @@ import { SafetyBanner } from '../../src/components/SafetyBanner';
 import { getSafetyWarnings } from '../../src/data/safety';
 import { localDateStrOffset } from '../../src/utils/date';
 import { getPlantDefinitionById } from '../../src/data/plantDefinitions';
+import { getPlantUses } from '../../src/data/plantUses';
+import { determineMaxGate, isCategoryUnlocked, requiredGateForCategory } from '../../src/utils/useGate';
+import { SourceOrigin, USE_GATE_LABEL, UseGate } from '../../src/types/plantUse';
+
+const ORIGIN_LABEL: Record<SourceOrigin, string> = {
+  wild_observed: '野生で観察した',
+  wild_collected: '野生で採取した',
+  home_grown_verified: '自宅で栽培（確認済み）',
+  nursery_plant: '苗・種から購入',
+  store_bought_food: '購入した食材',
+  store_bought_herb: '購入したハーブ',
+  unknown: 'わからない',
+};
 
 export default function PlantDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -33,12 +46,14 @@ export default function PlantDetailScreen() {
   const router = useRouter();
   const {
     scanHistory, favoritePlantIds, toggleFavorite, plantNotes, setPlantNote,
-    discoveredPlantIds, markSafetyCardViewed, setScanRevisit,
+    discoveredPlantIds, markSafetyCardViewed, setScanRevisit, setScanOrigin,
+    practiceRecords, addPracticeRecord, deletePracticeRecord,
   } = useGameStore();
 
   const plant = getPlantById(id ?? '');
   const def = plant ? getPlantDefinitionById(plant.id) : undefined;
   const lookalikes = plant ? getSafetyWarnings(plant.id) : [];
+  const hasDangerousLookalike = lookalikes.some((r) => r.severity === 'high_risk');
 
   // Fieldbook learning achievement (§7.8): record that the user opened a
   // dangerous plant's detail page (i.e. read its safety information).
@@ -51,7 +66,8 @@ export default function PlantDetailScreen() {
   const savedNote = plantNotes[id ?? ''] ?? '';
   const [noteText, setNoteText] = useState(savedNote);
   // 3段階学習（v3 §8.2）: 「30秒で知る」は常時表示、残り2段階は開閉式。
-  const [expandedTier, setExpandedTier] = useState<'compare' | 'deep' | null>(null);
+  const [expandedTier, setExpandedTier] = useState<'compare' | 'deep' | 'living' | null>(null);
+  const [practiceNoteText, setPracticeNoteText] = useState('');
   const [noteSaved, setNoteSaved] = useState(false);
   // Persisted photo URIs point at the cache dir, which the OS may purge.
   // If the image fails to load, fall back to the solid gradient hero.
@@ -124,6 +140,39 @@ export default function PlantDetailScreen() {
   function handleClearRevisit() {
     if (!latestScan) return;
     setScanRevisit(latestScan.id, undefined);
+  }
+
+  // ── 暮らし（v3 §10-§11, PR22） ──────────────────────────────────────
+  // 入手経路は最新の観察記録に紐づける。観察が無ければ暮らしタブは
+  // 「まず観察してください」の案内のみを表示する。
+  const bestOrigin: SourceOrigin | undefined = latestScan?.sourceOrigin;
+  const achievedGate: UseGate = plant
+    ? determineMaxGate({
+        origin: bestOrigin ?? 'unknown',
+        identificationState: latestScan ? 'user_selected' : 'unidentified',
+        hasDangerousLookalike,
+        plantDanger: plant.danger,
+      })
+    : 'gate0';
+  const plantUses = plant ? getPlantUses(plant) : [];
+  const plantPracticeRecords = practiceRecords.filter((r) => r.plantId === (id ?? ''));
+
+  function handleSetOrigin() {
+    if (!latestScan) return;
+    Alert.alert('入手経路を教えてください', 'この植物でできることの案内に使います。', [
+      { text: 'キャンセル', style: 'cancel' },
+      ...(Object.keys(ORIGIN_LABEL) as SourceOrigin[]).map((o) => ({
+        text: ORIGIN_LABEL[o],
+        onPress: () => setScanOrigin(latestScan.id, o),
+      })),
+    ]);
+  }
+
+  function handleSavePracticeRecord() {
+    if (!plant || practiceNoteText.trim().length === 0) return;
+    addPracticeRecord(plant.id, 'general', practiceNoteText.trim());
+    setPracticeNoteText('');
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   }
 
   // 関連植物（同カテゴリ & 現季節 & 発見済み & 自分以外）— plant が undefined の場合は空配列
@@ -427,6 +476,85 @@ export default function PlantDetailScreen() {
               ? '専門家によるレビュー済みの情報です。'
               : '編集部が一般的な植物学の知見をもとに作成した情報です（専門データベースとの連携・専門家レビューは今後の対応予定）。'}
           </Text>
+        </ExpandableTier>
+
+        {/* ── 暮らし（v3 §10-§11, PR22） ── */}
+        <ExpandableTier
+          icon="home-outline"
+          title="暮らしに活かす"
+          expanded={expandedTier === 'living'}
+          onToggle={() => setExpandedTier((t) => (t === 'living' ? null : 'living'))}
+        >
+          {!latestScan ? (
+            <Text style={styles.tierEmptyText}>
+              観察するとこの植物でできることが分かります。まずは観察タブから記録しましょう。
+            </Text>
+          ) : (
+            <>
+              <View style={styles.originRow}>
+                <Text style={styles.tierSubLabel}>入手経路</Text>
+                <Pressable style={styles.originBtn} onPress={handleSetOrigin}>
+                  <Text style={styles.originBtnText}>
+                    {bestOrigin ? ORIGIN_LABEL[bestOrigin] : '入手経路を選ぶ'}
+                  </Text>
+                  <Ionicons name="chevron-forward" size={14} color={Colors.primaryDark} />
+                </Pressable>
+                <Text style={styles.tierEmptyText}>現在の確認レベル: {USE_GATE_LABEL[achievedGate]}</Text>
+              </View>
+
+              {plantUses.map((use) => {
+                const unlocked = isCategoryUnlocked(use.category, achievedGate);
+                return (
+                  <View key={use.id} style={[styles.useCard, !unlocked && styles.useCardLocked]}>
+                    <View style={styles.useCardHeaderRow}>
+                      <Ionicons
+                        name={unlocked ? 'checkmark-circle-outline' : 'lock-closed-outline'}
+                        size={15}
+                        color={unlocked ? Colors.primary : Colors.textMuted}
+                      />
+                      <Text style={styles.useCardTitle}>{use.title}</Text>
+                    </View>
+                    {unlocked ? (
+                      <Text style={styles.useCardSummary}>{use.summary}</Text>
+                    ) : (
+                      <Text style={styles.tierEmptyText}>
+                        この用途を見るには「{USE_GATE_LABEL[requiredGateForCategory(use.category)]}」以上の確認レベルが必要です。
+                      </Text>
+                    )}
+                    {unlocked && use.warnings.map((w) => (
+                      <Text key={w} style={styles.useCardWarning}>⚠ {w}</Text>
+                    ))}
+                  </View>
+                );
+              })}
+            </>
+          )}
+
+          <Text style={styles.tierSubLabel}>実践記録</Text>
+          {plantPracticeRecords.length === 0 ? (
+            <Text style={styles.tierEmptyText}>まだ記録がありません。</Text>
+          ) : (
+            plantPracticeRecords.map((r) => (
+              <View key={r.id} style={styles.practiceRow}>
+                <Text style={styles.practiceNote} numberOfLines={2}>{r.note}</Text>
+                <Pressable hitSlop={8} onPress={() => deletePracticeRecord(r.id)}>
+                  <Ionicons name="trash-outline" size={16} color={Colors.textMuted} />
+                </Pressable>
+              </View>
+            ))
+          )}
+          <View style={styles.practiceAddRow}>
+            <TextInput
+              style={styles.practiceInput}
+              value={practiceNoteText}
+              onChangeText={setPracticeNoteText}
+              placeholder="何をしたか記録する（例: 押し花にしました）"
+              placeholderTextColor={Colors.textMuted}
+            />
+            <Pressable style={styles.practiceAddBtn} onPress={handleSavePracticeRecord}>
+              <Ionicons name="add" size={18} color="#FFFFFF" />
+            </Pressable>
+          </View>
         </ExpandableTier>
 
         {/* 養生メモ */}
@@ -812,6 +940,61 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   compareCtaText: { color: '#FFFFFF', fontWeight: '800', fontSize: 13 },
+
+  originRow: { marginBottom: 14 },
+  originBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: Colors.primaryPale,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginTop: 6,
+    marginBottom: 6,
+  },
+  originBtnText: { fontSize: 13, fontWeight: '700', color: Colors.primaryDark },
+  useCard: {
+    backgroundColor: Colors.bgCard,
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: Colors.cardBorder,
+  },
+  useCardLocked: { opacity: 0.7 },
+  useCardHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
+  useCardTitle: { fontSize: 13, fontWeight: '800', color: Colors.text },
+  useCardSummary: { fontSize: 12, color: Colors.textSecondary, lineHeight: 18 },
+  useCardWarning: { fontSize: 11, color: Colors.dangerRed, marginTop: 4, lineHeight: 16 },
+  practiceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  practiceNote: { flex: 1, fontSize: 13, color: Colors.text },
+  practiceAddRow: { flexDirection: 'row', gap: 8, marginTop: 10 },
+  practiceInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: Colors.cardBorder,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    fontSize: 13,
+    color: Colors.text,
+  },
+  practiceAddBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    backgroundColor: Colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 
   rarityDetail: {
     flexDirection: 'row',

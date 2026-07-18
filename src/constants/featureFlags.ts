@@ -20,11 +20,10 @@ export const FEATURE_FLAGS = {
   fieldbookV2: true,
   /**
    * PR21+PR22: PlantUse gates and the 暮らし (cooking/living) hub.
-   * PR21 ships the type model and gate logic only (no UI to gate yet);
-   * PR22 builds the actual 暮らしタブ that will check this flag / the gate
-   * helpers directly.
+   * Shipped complete in PR22 (植物詳細の「暮らしに活かす」section); not
+   * gated at runtime — the useGate helpers themselves are the real gate.
    */
-  usesSafetyArchitecture: false,
+  usesSafetyArchitecture: true,
   /** PR23: non-plant subject classification ahead of species identification. */
   subjectRouter: false,
 } as const;
