@@ -2,10 +2,12 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StyleSheet } from 'react-native';
+import { ErrorBoundary } from '../src/components/ErrorBoundary';
 
 export default function RootLayout() {
   return (
     <GestureHandlerRootView style={styles.root}>
+      <ErrorBoundary>
       <StatusBar style="light" />
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
@@ -20,6 +22,7 @@ export default function RootLayout() {
           }}
         />
       </Stack>
+      </ErrorBoundary>
     </GestureHandlerRootView>
   );
 }

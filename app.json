@@ -17,7 +17,8 @@
       "bundleIdentifier": "com.ueki.yakuiku-pocket",
       "buildNumber": "1",
       "infoPlist": {
-        "NSCameraUsageDescription": "植物をスキャンして図鑑に収録するためにカメラを使用します。"
+        "NSCameraUsageDescription": "植物をスキャンして図鑑に収録するためにカメラを使用します。",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {

@@ -125,15 +125,15 @@ export function ScanResultModal({
     if (!plant) return;
     const rarityStars = '★'.repeat(plant.rarity) + '☆'.repeat(5 - plant.rarity);
     const dangerLabel =
-      plant.danger === 'GREEN' ? '食用可' :
-      plant.danger === 'YELLOW' ? '注意' : '危険';
+      plant.danger === 'GREEN' ? '一般に食用とされる' :
+      plant.danger === 'YELLOW' ? '要注意' : '危険・有毒';
     const msg =
       `新しい植物を発見！\n\n` +
       `${plant.emoji} ${plant.name} (${plant.nameEn})\n` +
       `レアリティ: ${rarityStars}\n` +
-      `安全性: ${dangerLabel}\n` +
-      `AI認識精度: ${confidence}%\n\n` +
+      `分類: ${dangerLabel}\n\n` +
       `薬育ポケットで野草・ハーブを収集中！\n` +
+      `※採取・摂取は必ず専門家にご確認ください。\n` +
       `#薬育ポケット #野草図鑑 #${plant.name}`;
     try {
       await Share.share({ message: msg });
@@ -164,6 +164,7 @@ export function ScanResultModal({
       transparent
       animationType="fade"
       statusBarTranslucent
+      onRequestClose={onScanAgain}
     >
       <View style={styles.overlay}>
         <Animated.View style={[styles.card, { transform: [{ scale: scaleAnim }] }]}>
@@ -279,9 +280,12 @@ export function ScanResultModal({
               <DangerBadge danger={plant.danger} />
             </View>
 
-            {/* Confidence */}
+            {/* Confidence — with the mock engine this is a demo score, not a
+                real recognition result, so label it honestly. */}
             <View style={styles.confidenceContainer}>
-              <Text style={styles.confidenceLabel}>AI認識精度</Text>
+              <Text style={styles.confidenceLabel}>
+                {usedRealAI ? 'AI認識精度' : '一致スコア（デモ）'}
+              </Text>
               <View style={styles.confidenceBar}>
                 <View style={[styles.confidenceFill, { width: `${confidence}%` }]} />
               </View>
@@ -292,9 +296,19 @@ export function ScanResultModal({
             <View style={[styles.aiBadge, usedRealAI ? styles.aiBadgeReal : styles.aiBadgeMock]}>
               <Ionicons name={usedRealAI ? 'hardware-chip-outline' : 'dice-outline'} size={13} color={usedRealAI ? '#1565C0' : '#6D4C41'} />
               <Text style={[styles.aiBadgeText, usedRealAI ? styles.aiBadgeTextReal : styles.aiBadgeTextMock]}>
-                {usedRealAI ? 'Claude AI' : 'モックAI'}
+                {usedRealAI ? 'Claude AI' : 'デモ判定（ランダム）'}
               </Text>
             </View>
+
+            {/* Mock-mode notice: be explicit that this is not real recognition */}
+            {!usedRealAI && (
+              <View style={styles.fallbackNotice}>
+                <Ionicons name="information-circle-outline" size={13} color="#B45309" />
+                <Text style={styles.fallbackText}>
+                  現在はデモ判定です。写真の内容に関わらずランダムに植物を表示しています。
+                </Text>
+              </View>
+            )}
 
             {/* Claude AI reason */}
             {usedRealAI && reason && (
@@ -310,12 +324,12 @@ export function ScanResultModal({
             {/* Description */}
             <Text style={styles.description}>{plant.description}</Text>
 
-            {/* Effects */}
+            {/* Effects — framed as traditional lore, not medical advice */}
             {plant.effects.length > 0 && (
               <View style={styles.effectsContainer}>
                 <View style={styles.effectsTitleRow}>
-                  <Ionicons name="medical-outline" size={14} color={Colors.text} />
-                  <Text style={styles.sectionTitle}>養生効果</Text>
+                  <Ionicons name="leaf-outline" size={14} color={Colors.text} />
+                  <Text style={styles.sectionTitle}>伝統的な用途・言い伝え</Text>
                 </View>
                 <View style={styles.effectTags}>
                   {plant.effects.map((effect) => (
@@ -324,6 +338,9 @@ export function ScanResultModal({
                     </View>
                   ))}
                 </View>
+                <Text style={styles.effectsCaveat}>
+                  ※ 伝統的な言い伝えであり、効果・効能を保証するものではありません。
+                </Text>
               </View>
             )}
 
@@ -665,6 +682,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   effectText: { fontSize: 12, color: Colors.primaryDark, fontWeight: '600' },
+  effectsCaveat: { marginTop: 8, fontSize: 10, lineHeight: 14, color: Colors.textMuted },
   warningBox: {
     backgroundColor: Colors.dangerYellowBg,
     borderColor: '#FFD54F',

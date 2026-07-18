@@ -8,6 +8,7 @@ import {
   Easing,
   Alert,
   Dimensions,
+  Linking,
 } from 'react-native';
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import { Ionicons } from '@expo/vector-icons';
@@ -182,15 +183,25 @@ export default function ScanScreen() {
 
   // ── Permission denied ──
   if (!permission.granted) {
+    // On iOS the system prompt appears only once. Once the user has denied and
+    // can no longer be asked, send them to the Settings app instead.
+    const mustUseSettings = !permission.canAskAgain;
     return (
       <View style={[styles.container, styles.permissionContainer]}>
         <Ionicons name="camera-outline" size={64} color={Colors.textMuted} />
         <Text style={styles.permissionTitle}>カメラへのアクセスが必要です</Text>
         <Text style={styles.permissionDesc}>
-          植物をスキャンして図鑑に収録するためにカメラを使用します。
+          {mustUseSettings
+            ? '設定アプリからカメラへのアクセスを許可してください。'
+            : '植物をスキャンして図鑑に収録するためにカメラを使用します。'}
         </Text>
-        <Pressable style={styles.permissionBtn} onPress={requestPermission}>
-          <Text style={styles.permissionBtnText}>カメラを許可する</Text>
+        <Pressable
+          style={styles.permissionBtn}
+          onPress={mustUseSettings ? () => Linking.openSettings() : requestPermission}
+        >
+          <Text style={styles.permissionBtnText}>
+            {mustUseSettings ? '設定を開く' : 'カメラを許可する'}
+          </Text>
         </Pressable>
         <View style={styles.permissionDisclaimerRow}>
           <Ionicons name="warning-outline" size={12} color={Colors.textMuted} />

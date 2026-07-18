@@ -34,6 +34,9 @@ export default function PlantDetailScreen() {
   const savedNote = plantNotes[id ?? ''] ?? '';
   const [noteText, setNoteText] = useState(savedNote);
   const [noteSaved, setNoteSaved] = useState(false);
+  // Persisted photo URIs point at the cache dir, which the OS may purge.
+  // If the image fails to load, fall back to the solid gradient hero.
+  const [heroImgError, setHeroImgError] = useState(false);
 
   // savedNote が外から変わった場合（例: 別画面でリセット）に同期し、noteSaved もリセット
   useEffect(() => {
@@ -112,8 +115,11 @@ export default function PlantDetailScreen() {
     ? ['#5D1A00', '#E65100', '#F57F17']
     : ['#1B5E20', '#2E7D32', '#43A047'];
 
+  // 写真が有効に読み込める場合のみ背景に使う（キャッシュ削除で壊れた URI は無視）
+  const showHeroImage = !!plantImageUri && !heroImgError;
+
   // 写真がある場合はグラジエントを半透明にする
-  const gradientWithAlpha: [string, string, string] = plantImageUri
+  const gradientWithAlpha: [string, string, string] = showHeroImage
     ? [heroGradient[0] + 'CC', heroGradient[1] + 'BB', heroGradient[2] + 'AA']
     : heroGradient;
 
@@ -122,12 +128,13 @@ export default function PlantDetailScreen() {
       {/* Hero */}
       <View style={styles.heroWrapper}>
         {/* ユーザーの撮影写真を背景に表示 */}
-        {plantImageUri && (
+        {showHeroImage && (
           <Image
             source={{ uri: plantImageUri }}
             style={StyleSheet.absoluteFill}
             resizeMode="cover"
             blurRadius={Platform.OS === 'ios' ? 6 : 2}
+            onError={() => setHeroImgError(true)}
           />
         )}
         <LinearGradient colors={gradientWithAlpha} style={styles.hero}>
@@ -226,9 +233,9 @@ export default function PlantDetailScreen() {
           <Text style={styles.bodyText}>{plant.description}</Text>
         </Section>
 
-        {/* Effects */}
+        {/* Effects — framed as traditional lore, not medical advice */}
         {plant.effects.length > 0 && (
-          <Section icon="medical-outline" title="養生効果・期待される作用">
+          <Section icon="leaf-outline" title="伝統的な用途・言い伝え">
             <View style={styles.effectTags}>
               {plant.effects.map((effect) => (
                 <Pressable
@@ -247,6 +254,9 @@ export default function PlantDetailScreen() {
                 </Pressable>
               ))}
             </View>
+            <Text style={styles.effectsCaveat}>
+              ※ 伝統的な言い伝えであり、効果・効能を保証するものではありません。医療目的での使用はしないでください。
+            </Text>
           </Section>
         )}
 
@@ -585,6 +595,7 @@ const styles = StyleSheet.create({
   effectTagPressed: { opacity: 0.7 },
   effectTagArrow: { fontSize: 13, color: Colors.primaryDark, marginLeft: 2, fontWeight: '700' },
   effectText: { fontSize: 13, color: Colors.primaryDark, fontWeight: '700' },
+  effectsCaveat: { marginTop: 10, fontSize: 11, lineHeight: 16, color: Colors.textMuted },
 
   infoRow: {
     flexDirection: 'row',

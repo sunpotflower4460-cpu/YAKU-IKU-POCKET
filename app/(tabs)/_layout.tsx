@@ -10,6 +10,7 @@ import { getPlayerTitle } from '../../src/utils/playerTitle';
 
 export default function TabLayout() {
   const startSession = useGameStore((s) => s.startSession);
+  const hasHydrated = useGameStore((s) => s._hasHydrated);
   const xp = useGameStore((s) => s.xp);
 
   const currentLevel = Math.floor(xp / XP_PER_LEVEL) + 1;
@@ -18,8 +19,11 @@ export default function TabLayout() {
   const [levelUpVisible, setLevelUpVisible] = useState(false);
   const [levelUpData, setLevelUpData] = useState({ level: 1, title: '' });
 
-  // One-time session init
-  useEffect(() => { startSession(); }, []);
+  // One-time session init — wait until persisted state has loaded so streak /
+  // daily-quest resets never run against default (empty) state.
+  useEffect(() => {
+    if (hasHydrated) startSession();
+  }, [hasHydrated]);
 
   // Detect level-up whenever xp changes
   useEffect(() => {

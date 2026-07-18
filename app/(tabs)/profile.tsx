@@ -8,6 +8,7 @@ import {
   TextInput,
   Modal,
   Image,
+  Linking,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -21,6 +22,8 @@ import { Colors } from '../../src/constants/colors';
 import { getPlayerTitle } from '../../src/utils/playerTitle';
 import { XP_PER_LEVEL } from '../../src/store/useGameStore';
 import { getCurrentSeason, SEASON_CONFIG } from '../../src/utils/season';
+import { todayLocalStr, localDayFromISO } from '../../src/utils/date';
+import { PRIVACY_POLICY_URL, TERMS_URL, APP_VERSION } from '../../src/constants/app';
 
 // Prebuilt plantId → rarity lookup (O(1) access, static data)
 const PLANT_RARITY: Record<string, number> = Object.fromEntries(
@@ -176,7 +179,7 @@ export default function ProfileScreen() {
   const dayMaxRarity = useMemo(() => {
     const map: Record<string, number> = {};
     for (const record of scanHistory) {
-      const day = record.scannedAt.slice(0, 10);
+      const day = localDayFromISO(record.scannedAt);
       const rarity = PLANT_RARITY[record.plantId] ?? 1;
       if (!map[day] || rarity > map[day]) {
         map[day] = rarity;
@@ -190,7 +193,7 @@ export default function ProfileScreen() {
     const now = new Date();
     const year = now.getFullYear();
     const month = now.getMonth();
-    const todayStr = now.toISOString().slice(0, 10);
+    const todayStr = todayLocalStr();
     const firstDow = new Date(year, month, 1).getDay();
     const startOffset = (firstDow + 6) % 7; // Mon-start
     const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -406,6 +409,27 @@ export default function ProfileScreen() {
         <DisclaimerBanner />
       </View>
 
+      {/* Legal / about */}
+      <View style={styles.section}>
+        <Pressable
+          style={styles.legalRow}
+          onPress={() => Linking.openURL(PRIVACY_POLICY_URL).catch(() => {})}
+        >
+          <Ionicons name="shield-checkmark-outline" size={16} color={Colors.textSecondary} />
+          <Text style={styles.legalRowText}>プライバシーポリシー</Text>
+          <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
+        </Pressable>
+        <Pressable
+          style={styles.legalRow}
+          onPress={() => Linking.openURL(TERMS_URL).catch(() => {})}
+        >
+          <Ionicons name="document-text-outline" size={16} color={Colors.textSecondary} />
+          <Text style={styles.legalRowText}>利用規約</Text>
+          <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
+        </Pressable>
+        <Text style={styles.versionText}>バージョン {APP_VERSION}</Text>
+      </View>
+
       <View style={{ height: 32 }} />
 
       {/* Share Card Modal */}
@@ -564,6 +588,16 @@ const styles = StyleSheet.create({
   xpLabel: { fontSize: 11, color: '#C8E6C9', textAlign: 'center' },
 
   section: { paddingHorizontal: 16, paddingTop: 20 },
+  legalRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.cardBorder,
+  },
+  legalRowText: { flex: 1, fontSize: 14, color: Colors.textSecondary, fontWeight: '600' },
+  versionText: { marginTop: 12, fontSize: 12, color: Colors.textMuted, textAlign: 'center' },
   sectionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 },
   sectionTitle: { fontSize: 16, fontWeight: '800', color: Colors.text },
 

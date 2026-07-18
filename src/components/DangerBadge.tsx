@@ -14,14 +14,16 @@ const DANGER_CONFIG: Record<
 > = {
   GREEN: {
     dotColor: '#43A047',
-    label: '食用可能',
+    // Describe the species generally — never assert the *scanned* specimen is
+    // safe to eat (identification is not guaranteed reliable).
+    label: '一般に食用とされる',
     bg: Colors.dangerGreenBg,
     text: Colors.dangerGreen,
     border: '#A5D6A7',
   },
   YELLOW: {
     dotColor: '#F9A825',
-    label: '注意が必要',
+    label: '要注意',
     bg: Colors.dangerYellowBg,
     text: Colors.dangerYellow,
     border: '#FFE082',
