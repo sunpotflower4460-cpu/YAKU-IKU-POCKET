@@ -12,6 +12,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from '../utils/haptics';
 import { Colors } from '../constants/colors';
+import { TOTAL_PLANTS } from '../data/plants';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const CARD_WIDTH = SCREEN_WIDTH - 40;
@@ -36,7 +37,7 @@ const SLIDES: {
     icon: 'camera-outline',
     subIcon: 'leaf-outline',
     title: '野草・ハーブをスキャン',
-    body: 'カメラで植物を撮影するとAIが自動識別。50種類の野草・ハーブを集めよう！',
+    body: `カメラで植物を撮影するとAIが自動識別。${TOTAL_PLANTS}種類の野草・ハーブを集めよう！`,
     gradient: ['#1B5E20', '#2E7D32', '#43A047'],
     label: 'スキャン',
   },

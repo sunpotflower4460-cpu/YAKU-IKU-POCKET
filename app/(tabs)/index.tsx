@@ -27,12 +27,13 @@ import {
   ChallengeSnap,
 } from '../../src/data/challenges';
 
-// Milestones: [ threshold, iconName, title, desc ]
+// Milestones: [ threshold, iconName, title, desc ]. The final milestone
+// always tracks TOTAL_PLANTS so it doesn't go stale as the catalog grows.
 const MILESTONES: [number, string, string, string][] = [
   [1,  'leaf-outline',   '初めての発見！',   '図鑑の旅が始まりました！'],
   [10, 'book-outline',   '10種類発見！',    '図鑑収録が進んできました！'],
-  [25, 'ribbon-outline', '25種類発見！',    '半分制覇しました！'],
-  [50, 'trophy-outline', '図鑑完成！',      '全50種類を発見しました！'],
+  [25, 'ribbon-outline', '25種類発見！',    '折り返し地点です！'],
+  [TOTAL_PLANTS, 'trophy-outline', '図鑑完成！', `全${TOTAL_PLANTS}種類を発見しました！`],
 ];
 
 export default function HomeScreen() {

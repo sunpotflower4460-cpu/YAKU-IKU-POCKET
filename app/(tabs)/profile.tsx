@@ -16,7 +16,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { PLANTS } from '../../src/data/plants';
+import { PLANTS, TOTAL_PLANTS } from '../../src/data/plants';
 import { getPlantDefinitionById } from '../../src/data/plantDefinitions';
 import { useGameStore } from '../../src/store/useGameStore';
 import { DisclaimerBanner } from '../../src/components/DisclaimerBanner';
@@ -76,8 +76,8 @@ const ACHIEVEMENTS: AchievementDef[] = [
     id: 'all_fifty',
     icon: 'trophy-outline',
     label: '図鑑完成',
-    desc: '全50種類の植物を発見した',
-    check: (ctx) => ctx.discoveredPlantIds.length >= 50,
+    desc: `全${TOTAL_PLANTS}種類の植物を発見した`,
+    check: (ctx) => ctx.discoveredPlantIds.length >= TOTAL_PLANTS,
   },
   {
     id: 'danger_master',
