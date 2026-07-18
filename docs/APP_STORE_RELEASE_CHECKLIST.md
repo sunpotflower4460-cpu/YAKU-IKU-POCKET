@@ -24,15 +24,16 @@
 
 ## エンジニアリング（§20 Engineering）
 - [x] typecheck pass
-- [x] unit test pass（jest, 69件）
+- [x] unit test pass（jest, 107件）
 - [x] lint（PR15で eslint-config-expo 導入、CIに追加。0 errors）
 - [ ] expo-doctor / web export / preview build / secret scan（web exportはCIに導入済み。expo-doctor/preview build/secret scanは残り）
 
-## アクセシビリティ（§20 A11y, PR15で対応したコード範囲）
-- [x] アイコンのみのボタンにaccessibilityLabel付与（フラッシュ/カメラ切替/検索クリア/お気に入り等の監査・修正）
-- [x] Reduce Motion対応（`useReduceMotion`フック新設。スキャン中の演出・レア発見時のシマー/スパークル・Skeletonの点滅ループを、OS設定がオンの間は無効化）
-- [x] 色だけに依存しない情報伝達（カレンダーの観察数セルにaccessibilityLabelで件数を明示。危険度バッジは既存から色+テキストラベル）
+## アクセシビリティ（§20 A11y, PR15＋PR25で対応したコード範囲）
+- [x] アイコンのみのボタンにaccessibilityLabel付与（フラッシュ/カメラ切替/検索クリア/お気に入り等の監査・修正。PR25でv3追加分の再訪チップ/実践記録追加・削除/未同定観察削除/部位タグ・写真削除/入手経路選択/関連植物カードにも拡張）
+- [x] Reduce Motion対応（`useReduceMotion`フック新設。スキャン中の演出・レア発見時のシマー/スパークル・Skeletonの点滅ループを、OS設定がオンの間は無効化。PR25でv3追加分の新規ループアニメーションにも同じフックが適用済みであることを確認）
+- [x] 色だけに依存しない情報伝達（カレンダーの観察数セルにaccessibilityLabelで件数を明示。危険度バッジは既存から色+テキストラベル。PR25で植物詳細の「関連植物」カードの危険度ドット色のみの表現にも日本語ラベルを追加）
 - [x] Dynamic Type: `DynamicText`（PR7）で`allowFontScaling`を明示的に有効化
+- [x] 入れ子Pressableの解消（PR25でFieldbook v2の再訪予定リストの行内Pressable入れ子を解消し、フォーカス順序を正常化）
 - [ ] 🔒 VoiceOver実機での通し確認、Dynamic Type最大時のレイアウト崩れ目視確認（TestFlightでの実機テストに委譲）
 
 ## App Store 説明（§17 禁止/推奨）

@@ -29,6 +29,7 @@ import { getPlantDefinitionById } from '../../src/data/plantDefinitions';
 import { getPlantUses } from '../../src/data/plantUses';
 import { determineMaxGate, isCategoryUnlocked, requiredGateForCategory } from '../../src/utils/useGate';
 import { SourceOrigin, USE_GATE_LABEL, UseGate } from '../../src/types/plantUse';
+import { DangerLevel } from '../../src/types';
 
 const ORIGIN_LABEL: Record<SourceOrigin, string> = {
   wild_observed: '野生で観察した',
@@ -38,6 +39,12 @@ const ORIGIN_LABEL: Record<SourceOrigin, string> = {
   store_bought_food: '購入した食材',
   store_bought_herb: '購入したハーブ',
   unknown: 'わからない',
+};
+
+const RELATED_DANGER_LABEL: Record<DangerLevel, string> = {
+  GREEN: '一般に食用とされる',
+  YELLOW: '要注意',
+  RED: '危険・有毒',
 };
 
 export default function PlantDetailScreen() {
@@ -289,6 +296,8 @@ export default function PlantDetailScreen() {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
               toggleFavorite(id ?? '');
             }}
+            accessibilityRole="button"
+            accessibilityState={{ selected: isFavorite }}
           >
             <Ionicons
               name={isFavorite ? 'heart' : 'heart-outline'}
@@ -316,12 +325,12 @@ export default function PlantDetailScreen() {
             <Text style={styles.discoveryChipText}>{scanCount}回スキャン済み</Text>
           </View>
           {revisitLabel ? (
-            <Pressable style={styles.discoveryChip} onPress={handleClearRevisit}>
+            <Pressable style={styles.discoveryChip} onPress={handleClearRevisit} accessibilityRole="button">
               <Ionicons name="alarm-outline" size={12} color={Colors.primaryDark} />
               <Text style={styles.discoveryChipText}>再訪予定: {revisitLabel}（タップで取消）</Text>
             </Pressable>
           ) : (
-            <Pressable style={styles.discoveryChip} onPress={handleSetRevisit}>
+            <Pressable style={styles.discoveryChip} onPress={handleSetRevisit} accessibilityRole="button">
               <Ionicons name="alarm-outline" size={12} color={Colors.textSecondary} />
               <Text style={styles.discoveryChipText}>再訪を記録する</Text>
             </Pressable>
@@ -493,7 +502,7 @@ export default function PlantDetailScreen() {
             <>
               <View style={styles.originRow}>
                 <Text style={styles.tierSubLabel}>入手経路</Text>
-                <Pressable style={styles.originBtn} onPress={handleSetOrigin}>
+                <Pressable style={styles.originBtn} onPress={handleSetOrigin} accessibilityRole="button">
                   <Text style={styles.originBtnText}>
                     {bestOrigin ? ORIGIN_LABEL[bestOrigin] : '入手経路を選ぶ'}
                   </Text>
@@ -537,7 +546,12 @@ export default function PlantDetailScreen() {
             plantPracticeRecords.map((r) => (
               <View key={r.id} style={styles.practiceRow}>
                 <Text style={styles.practiceNote} numberOfLines={2}>{r.note}</Text>
-                <Pressable hitSlop={8} onPress={() => deletePracticeRecord(r.id)}>
+                <Pressable
+                  hitSlop={8}
+                  onPress={() => deletePracticeRecord(r.id)}
+                  accessibilityRole="button"
+                  accessibilityLabel="この実践記録を削除"
+                >
                   <Ionicons name="trash-outline" size={16} color={Colors.textMuted} />
                 </Pressable>
               </View>
@@ -551,7 +565,12 @@ export default function PlantDetailScreen() {
               placeholder="何をしたか記録する（例: 押し花にしました）"
               placeholderTextColor={Colors.textMuted}
             />
-            <Pressable style={styles.practiceAddBtn} onPress={handleSavePracticeRecord}>
+            <Pressable
+              style={styles.practiceAddBtn}
+              onPress={handleSavePracticeRecord}
+              accessibilityRole="button"
+              accessibilityLabel="実践記録を追加"
+            >
               <Ionicons name="add" size={18} color="#FFFFFF" />
             </Pressable>
           </View>
@@ -563,7 +582,11 @@ export default function PlantDetailScreen() {
             <Ionicons name="create-outline" size={15} color={Colors.primary} />
             <Text style={styles.noteSectionTitle}>養生メモ</Text>
             {savedNote.length > 0 && (
-              <Pressable onPress={handleDeleteNote} hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}>
+              <Pressable
+                onPress={handleDeleteNote}
+                hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
+                accessibilityRole="button"
+              >
                 <Text style={styles.noteDeleteText}>削除</Text>
               </Pressable>
             )}
@@ -617,6 +640,8 @@ export default function PlantDetailScreen() {
                     },
                   ]}
                   onPress={() => router.push(`/plant/${rp.id}`)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${rp.name}、${RELATED_DANGER_LABEL[rp.danger]}`}
                 >
                   <Text style={styles.relatedEmoji}>{rp.emoji}</Text>
                   <Text style={styles.relatedName} numberOfLines={1}>{rp.name}</Text>
