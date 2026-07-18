@@ -80,6 +80,58 @@ export const DANGEROUS_LOOKALIKES: Record<string, LookalikeRisk[]> = {
       note: '春先の若芽がよく似ています。トロパンアルカロイドによる中毒死亡事故が報告されています。',
     },
   ],
+  // ギョウジャニンニク — young leaves resemble the deadly バイケイソウ.
+  p040: [
+    {
+      name: 'バイケイソウ',
+      inDbId: 'p042', // catalogued PR26
+      severity: 'high_risk',
+      note: '春の若葉が非常によく似ています。ギョウジャニンニクには強いニンニク臭がありますが、バイケイソウには臭いがありません。誤食による中毒死亡事故が報告されています。',
+    },
+  ],
+  // オオバギボウシ（ウルイ） — young leaves resemble the deadly バイケイソウ.
+  p041: [
+    {
+      name: 'バイケイソウ',
+      inDbId: 'p042', // catalogued PR26
+      severity: 'high_risk',
+      note: '春の若葉が非常によく似ています。葉脈の走り方や毛の有無を慎重に確認し、不安があれば採らないでください。',
+    },
+  ],
+  // ミョウガ — young leaves resemble the deadly イヌサフラン.
+  h037: [
+    {
+      name: 'イヌサフラン',
+      inDbId: 'p039',
+      severity: 'high_risk',
+      note: '春に出る若葉が似ていることがあります。栽培品以外の見慣れない葉を食用にする際は注意してください。',
+    },
+  ],
+  // ゴボウ — the root is confused with the deadly チョウセンアサガオ, and with a
+  // toxic look-alike weed sharing part of its Japanese name.
+  h040: [
+    {
+      name: 'チョウセンアサガオ',
+      inDbId: 'p043', // catalogued PR26
+      severity: 'high_risk',
+      note: '根がゴボウと似ており、家庭菜園での混同誤食事故が報告されています。',
+    },
+    {
+      name: 'ヨウシュヤマゴボウ',
+      inDbId: 'p050', // catalogued PR26
+      severity: 'high_risk',
+      note: '名前が紛らわしいだけで別種ですが、市販の「山ごぼう漬け」はモリアザミ等の別植物であり、野生のヨウシュヤマゴボウの根とは無関係です。全草有毒のため誤って採取しないでください。',
+    },
+  ],
+  // モロヘイヤ — leaves are confused with the deadly チョウセンアサガオ.
+  h041: [
+    {
+      name: 'チョウセンアサガオ',
+      inDbId: 'p043', // catalogued PR26
+      severity: 'high_risk',
+      note: '葉の形がモロヘイヤと似ており、家庭菜園での混同誤食事故が報告されています。',
+    },
+  ],
 };
 
 /** Return the dangerous look-alikes for a plant (empty if none catalogued). */

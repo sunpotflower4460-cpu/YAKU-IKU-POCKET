@@ -27,7 +27,7 @@ app/
 src/
   types/index.ts       # 型定義
   constants/colors.ts  # カラーパレット
-  data/plants.ts       # 植物データ75種
+  data/plants.ts       # 植物データ102種
   store/useGameStore.ts# Zustand ストア
   utils/mockAI.ts      # モックAI認識
   components/
@@ -46,9 +46,9 @@ src/
 - **レアリティ**: ★1（灰）〜★5（金）
 
 ## 図鑑データ
-- 日本の野草: 39種
-- スパイス・ハーブ: 36種
-- 合計: 75種（150種を目標に順次拡充中）
+- 日本の野草: 54種
+- スパイス・ハーブ: 48種
+- 合計: 102種（150種を目標に順次拡充中）
 
 ## AI認識
 - Phase 1: モック（ランダム判定、レアリティ加重）
