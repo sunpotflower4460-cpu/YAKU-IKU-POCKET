@@ -22,6 +22,7 @@ import { ScanResultModal } from '../../src/components/ScanResultModal';
 import { Plant } from '../../src/types';
 import { IdentificationCandidate } from '../../src/types/observation';
 import { TraitCheck } from '../../src/types/traitCheck';
+import { SUBJECT_CATEGORY_LABEL } from '../../src/types/subject';
 import { Colors } from '../../src/constants/colors';
 import { isDemoMode } from '../../src/utils/appMode';
 import { useReduceMotion } from '../../src/utils/reduceMotion';
@@ -226,6 +227,24 @@ export default function ScanScreen() {
             { text: '写真を撮り直す', style: 'cancel', onPress: () => setPhotos([]) },
             { text: '別の写真を追加する' },
             { text: '未特定のまま記録する', onPress: handleSaveUnidentified },
+          ]
+        );
+        return;
+      }
+
+      // Subject Router (v3 §12): the photo isn't a vascular plant. Never
+      // force it through species identification — give an honest,
+      // category-specific answer instead of a dead end.
+      if (outcome.status === 'out_of_scope') {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+        setScanState('idle');
+        Alert.alert(
+          `${SUBJECT_CATEGORY_LABEL[outcome.category]}の可能性があります`,
+          outcome.guidance,
+          [
+            { text: '写真を撮り直す', style: 'cancel', onPress: () => setPhotos([]) },
+            { text: '別の写真を追加する' },
+            { text: '判定せず記録する', onPress: handleSaveUnidentified },
           ]
         );
         return;

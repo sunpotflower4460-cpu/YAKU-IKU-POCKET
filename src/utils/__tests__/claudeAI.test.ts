@@ -16,7 +16,7 @@ function mockFetchOnce(responseText: string, ok = true, status = 200) {
 }
 
 function candidateBody(candidates: { plantName?: string; confidence?: unknown; reason?: string }[]) {
-  return JSON.stringify({ identified: true, candidates });
+  return JSON.stringify({ subjectCategory: 'vascular_plant', identified: true, candidates });
 }
 
 describe('recognizePlantWithClaude', () => {
@@ -108,7 +108,9 @@ describe('recognizePlantWithClaude', () => {
   });
 
   it('returns unidentified when Claude reports identified: false', async () => {
-    mockFetchOnce(JSON.stringify({ identified: false, reason: '不明瞭', candidates: [] }));
+    mockFetchOnce(
+      JSON.stringify({ subjectCategory: 'vascular_plant', identified: false, reason: '不明瞭', candidates: [] })
+    );
     const outcome = await recognizePlantWithClaude([photo('a')], 'test-key');
     expect(outcome.status).toBe('unidentified');
   });
@@ -134,5 +136,57 @@ describe('recognizePlantWithClaude', () => {
   it('throws on a malformed (non-JSON) response body', async () => {
     mockFetchOnce('this is not json at all');
     await expect(recognizePlantWithClaude([photo('a')], 'test-key')).rejects.toThrow();
+  });
+});
+
+describe('Subject Router (v3 §12, PR23)', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('returns out_of_scope with the classified category and never attempts species matching', async () => {
+    const target = PLANTS[0];
+    mockFetchOnce(
+      JSON.stringify({
+        subjectCategory: 'mushroom',
+        identified: true, // even if Claude ignores instructions and fills this in...
+        candidates: [{ plantName: target.name, confidence: 90 }], // ...and this, it must be ignored.
+      })
+    );
+    const outcome = await recognizePlantWithClaude([photo('a')], 'test-key');
+    expect(outcome.status).toBe('out_of_scope');
+    if (outcome.status === 'out_of_scope') {
+      expect(outcome.category).toBe('mushroom');
+      expect(outcome.guidance.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('routes every non-plant category to out_of_scope, not unidentified', async () => {
+    const nonPlantCategories = [
+      'moss_or_lichen', 'algae', 'dead_or_processed_plant', 'mushroom',
+      'insect', 'animal', 'food_or_processed', 'artificial_object',
+      'multiple_subjects', 'unclear',
+    ];
+    for (const category of nonPlantCategories) {
+      mockFetchOnce(JSON.stringify({ subjectCategory: category, identified: false, candidates: [] }));
+      const outcome = await recognizePlantWithClaude([photo('a')], 'test-key');
+      expect(outcome.status).toBe('out_of_scope');
+    }
+  });
+
+  it('falls back to "unclear" (never silently defaults to vascular_plant) when subjectCategory is missing or unrecognised', async () => {
+    mockFetchOnce(JSON.stringify({ identified: false, candidates: [] })); // no subjectCategory at all
+    const outcome = await recognizePlantWithClaude([photo('a')], 'test-key');
+    expect(outcome.status).toBe('out_of_scope');
+    if (outcome.status === 'out_of_scope') {
+      expect(outcome.category).toBe('unclear');
+    }
+  });
+
+  it('proceeds to normal species identification only for vascular_plant', async () => {
+    const target = PLANTS[0];
+    mockFetchOnce(candidateBody([{ plantName: target.name, confidence: 90 }]));
+    const outcome = await recognizePlantWithClaude([photo('a')], 'test-key');
+    expect(outcome.status).toBe('identified');
   });
 });

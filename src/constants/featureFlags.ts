@@ -24,8 +24,13 @@ export const FEATURE_FLAGS = {
    * gated at runtime — the useGate helpers themselves are the real gate.
    */
   usesSafetyArchitecture: true,
-  /** PR23: non-plant subject classification ahead of species identification. */
-  subjectRouter: false,
+  /**
+   * PR23: non-plant subject classification ahead of species identification.
+   * Shipped complete in PR23 — the classification happens inside the same
+   * Claude Vision call as identification, so there is no separate runtime
+   * toggle; kept `true` for the record.
+   */
+  subjectRouter: true,
 } as const;
 
 export type FeatureFlagKey = keyof typeof FEATURE_FLAGS;
