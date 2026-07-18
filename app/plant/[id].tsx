@@ -28,7 +28,7 @@ import { getSafetyWarnings } from '../../src/data/safety';
 import { localDateStrOffset } from '../../src/utils/date';
 import { getPlantDefinitionById } from '../../src/data/plantDefinitions';
 import { getPlantUses } from '../../src/data/plantUses';
-import { determineMaxGate, isUseUnlocked, requiredGateForCategory } from '../../src/utils/useGate';
+import { determineMaxGate, isCategoryUnlocked, isUseUnlocked, requiredGateForCategory } from '../../src/utils/useGate';
 import { SourceOrigin, USE_GATE_LABEL, UseGate } from '../../src/types/plantUse';
 
 const ORIGIN_LABEL: Record<SourceOrigin, string> = {
@@ -549,6 +549,13 @@ export default function PlantDetailScreen() {
                     </View>
                     {unlocked ? (
                       <Text style={styles.useCardSummary}>{use.summary}</Text>
+                    ) : isCategoryUnlocked(use.category, achievedGate) ? (
+                      // Gate is already reached — it's allowedOrigins that's blocking this
+                      // specific card, so telling the user to "reach a higher level" would
+                      // be both wrong and unsatisfiable.
+                      <Text style={styles.tierEmptyText}>
+                        この用途は、選択中の入手経路「{bestOrigin ? ORIGIN_LABEL[bestOrigin] : '未選択'}」では表示できません。
+                      </Text>
                     ) : (
                       <Text style={styles.tierEmptyText}>
                         この用途を見るには「{USE_GATE_LABEL[requiredGateForCategory(use.category)]}」以上の確認レベルが必要です。
