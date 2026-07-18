@@ -1,5 +1,6 @@
 import { PLANTS } from '../data/plants';
 import { Plant } from '../types';
+import { CapturedPhoto, ORGAN_LABEL } from '../types/capture';
 
 const CLAUDE_API_URL = 'https://api.anthropic.com/v1/messages';
 
@@ -28,9 +29,22 @@ interface ClaudeIdentifyResult {
 }
 
 async function callClaudeVision(
-  base64Image: string,
+  photos: CapturedPhoto[],
   apiKey: string
 ): Promise<ClaudeIdentifyResult> {
+  // Multiple photos (e.g. whole plant + leaf close-up) are sent in a single
+  // message so Claude can cross-reference organs, per §9.2A "複数画像".
+  const imageBlocks = photos.map((p) => ({
+    type: 'image' as const,
+    source: { type: 'base64' as const, media_type: 'image/jpeg' as const, data: p.base64 },
+  }));
+  const organNote =
+    photos.length > 1
+      ? `\n\n提供された${photos.length}枚の写真は、それぞれ次の部位です（順番通り）: ${photos
+          .map((p) => ORGAN_LABEL[p.organ])
+          .join('、')}`
+      : '';
+
   const body = {
     model: 'claude-haiku-4-5-20251001',
     max_tokens: 512,
@@ -38,17 +52,10 @@ async function callClaudeVision(
       {
         role: 'user',
         content: [
-          {
-            type: 'image',
-            source: {
-              type: 'base64',
-              media_type: 'image/jpeg',
-              data: base64Image,
-            },
-          },
+          ...imageBlocks,
           {
             type: 'text',
-            text: `あなたは植物同定の専門家です。この画像を解析して、以下のリストの中から最も一致する植物を特定してください。
+            text: `あなたは植物同定の専門家です。この画像を解析して、以下のリストの中から最も一致する植物を特定してください。${organNote}
 
 【データベースの植物リスト】
 ${PLANT_NAMES_LIST}
@@ -134,17 +141,17 @@ function findPlantByName(name: string): Plant | undefined {
 }
 
 /**
- * Identify a plant from a base64-encoded JPEG image using Claude Vision API.
+ * Identify a plant from one or more captured photos using Claude Vision API.
  *
  * Returns `unidentified` (never a random guess) when Claude is not confident,
  * when the returned name is not in the database, or when the confidence value
  * is missing/invalid.
  */
 export async function recognizePlantWithClaude(
-  base64Image: string,
+  photos: CapturedPhoto[],
   apiKey: string
 ): Promise<ClaudeScanOutcome> {
-  const result = await callClaudeVision(base64Image, apiKey);
+  const result = await callClaudeVision(photos, apiKey);
 
   if (!result.identified || !result.plantName) {
     return { status: 'unidentified', reason: result.reason };

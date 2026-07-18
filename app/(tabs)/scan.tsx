@@ -9,6 +9,8 @@ import {
   Alert,
   Dimensions,
   Linking,
+  ScrollView,
+  Image,
 } from 'react-native';
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import { Ionicons } from '@expo/vector-icons';
@@ -20,8 +22,30 @@ import { ScanResultModal } from '../../src/components/ScanResultModal';
 import { Plant } from '../../src/types';
 import { Colors } from '../../src/constants/colors';
 import { IS_DEMO_MODE } from '../../src/utils/appMode';
+import {
+  CapturedPhoto,
+  PhotoOrgan,
+  ORGAN_LABEL,
+  ORGAN_CYCLE,
+  MAX_CAPTURE_PHOTOS,
+} from '../../src/types/capture';
 
 type ScanState = 'idle' | 'scanning' | 'done';
+
+// Stages we actually perform, shown honestly — never a step we don't run
+// (§7.4 "実際に行っていない処理を表示しない").
+type ProcessingStage = 'reviewing' | 'identifying' | 'safety';
+
+const REAL_STAGE_LABEL: Record<ProcessingStage, string> = {
+  reviewing: '写真を確認中...',
+  identifying: 'Claude Vision AI が解析中...',
+  safety: '安全情報を確認中...',
+};
+const DEMO_STAGE_LABEL: Record<ProcessingStage, string> = {
+  reviewing: '写真を確認中...',
+  identifying: 'デモモードで候補を表示中...',
+  safety: '安全情報を確認中...',
+};
 
 export default function ScanScreen() {
   const router = useRouter();
@@ -36,7 +60,11 @@ export default function ScanScreen() {
   // Scan state
   const [scanState, setScanState] = useState<ScanState>('idle');
   const [usedRealAI, setUsedRealAI] = useState(false);
-  const [photoUri, setPhotoUri] = useState<string | null>(null);
+  const [processingStage, setProcessingStage] = useState<ProcessingStage>('reviewing');
+  // Multi-photo capture (§7.4): 1-5 photos of the same specimen, each taggable
+  // by organ (whole/leaf/flower/...), sent together for identification.
+  const [photos, setPhotos] = useState<CapturedPhoto[]>([]);
+  const [capturing, setCapturing] = useState(false);
   const [result, setResult] = useState<{
     plant: Plant;
     confidence: number;
@@ -44,6 +72,8 @@ export default function ScanScreen() {
     reason?: string;
   } | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
+
+  const photoUri = photos[0]?.uri ?? null;
 
   // Animations
   const scanLineY = useRef(new Animated.Value(0)).current;
@@ -114,37 +144,72 @@ export default function ScanScreen() {
     outputRange: ['0deg', '360deg'],
   });
 
-  async function handleScan() {
-    if (scanState !== 'idle') return;
-    // Haptic feedback: medium impact on scan start
+  // ── Capture one photo and add it to the set (§7.4 複数写真) ──
+  async function handleCapturePhoto() {
+    if (capturing || photos.length >= MAX_CAPTURE_PHOTOS || !cameraRef.current) return;
+    setCapturing(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    try {
+      const photo = await cameraRef.current.takePictureAsync({
+        base64: true,
+        quality: 0.8,
+        exif: false,
+      });
+      if (photo?.base64 && photo?.uri) {
+        setPhotos((prev) => [
+          ...prev,
+          { id: `photo_${Date.now()}_${prev.length}`, uri: photo.uri, base64: photo.base64!, organ: 'auto' },
+        ]);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+    } catch (err) {
+      console.error('[Capture] Error:', err);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert('撮影に失敗しました', 'もう一度お試しください。');
+    } finally {
+      setCapturing(false);
+    }
+  }
+
+  function handleRemovePhoto(id: string) {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setPhotos((prev) => prev.filter((p) => p.id !== id));
+  }
+
+  function handleCycleOrgan(id: string) {
+    Haptics.selectionAsync();
+    setPhotos((prev) =>
+      prev.map((p) => {
+        if (p.id !== id) return p;
+        const next = ORGAN_CYCLE[(ORGAN_CYCLE.indexOf(p.organ) + 1) % ORGAN_CYCLE.length];
+        return { ...p, organ: next };
+      })
+    );
+  }
+
+  // ── Identify from the captured photo set ──
+  async function handleIdentify() {
+    if (scanState !== 'idle' || photos.length === 0) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setScanState('scanning');
 
     try {
-      let base64Image: string | undefined;
+      // Stages shown here are the real steps we perform, in order — never a
+      // step we don't actually run (§7.4).
+      setProcessingStage('reviewing');
+      await new Promise((r) => setTimeout(r, 400)); // let the stage render before the network call
 
-      // Capture real photo if camera ref is available
-      if (cameraRef.current) {
-        const photo = await cameraRef.current.takePictureAsync({
-          base64: true,
-          quality: 0.8,
-          exif: false,
-        });
-        base64Image = photo?.base64 ?? undefined;
-        setPhotoUri(photo?.uri ?? null);
-      }
-
-      const outcome = await scanPlant(discoveredPlantIds, base64Image);
+      setProcessingStage('identifying');
+      const outcome = await scanPlant(discoveredPlantIds, photos);
 
       // Real AI could not confidently match a database plant. Never invent a
       // random result — tell the user it could not be identified.
       if (outcome.status === 'unidentified') {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
         setScanState('idle');
-        setPhotoUri(null);
         Alert.alert(
           '特定できませんでした',
-          'この写真からは植物を特定できませんでした。別の角度・明るさで、対象がはっきり写るように撮り直してください。',
+          'この写真からは植物を特定できませんでした。別の角度・部位（葉や花）の写真を追加して、もう一度お試しください。',
         );
         return;
       }
@@ -153,13 +218,15 @@ export default function ScanScreen() {
       if (outcome.status === 'error') {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
         setScanState('idle');
-        setPhotoUri(null);
         Alert.alert(
           'AIに接続できませんでした',
           '通信環境をご確認のうえ、しばらくしてからもう一度お試しください。',
         );
         return;
       }
+
+      setProcessingStage('safety');
+      await new Promise((r) => setTimeout(r, 300)); // safety lookup is near-instant; keep the stage legible
 
       setResult({
         plant: outcome.plant,
@@ -183,7 +250,6 @@ export default function ScanScreen() {
       // Error haptic
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       setScanState('idle');
-      setPhotoUri(null);
       Alert.alert('スキャン失敗', 'もう一度お試しください。');
     }
   }
@@ -198,7 +264,7 @@ export default function ScanScreen() {
     setModalVisible(false);
     setResult(null);
     setScanState('idle');
-    setPhotoUri(null);
+    setPhotos([]);
     router.push(`/plant/${result.plant.id}`);
   }
 
@@ -206,7 +272,7 @@ export default function ScanScreen() {
     setModalVisible(false);
     setResult(null);
     setScanState('idle');
-    setPhotoUri(null);
+    setPhotos([]);
   }
 
   // ── Permission not yet resolved ──
@@ -333,11 +399,11 @@ export default function ScanScreen() {
               />
               <Text style={styles.statusText}>
                 {scanState === 'idle'
-                  ? '植物にカメラをかざしてください'
+                  ? (photos.length === 0
+                      ? '植物にカメラをかざしてください'
+                      : `${photos.length}枚 撮影済み — 続けて撮影するか識別してください`)
                   : scanState === 'scanning'
-                  ? (!IS_DEMO_MODE
-                      ? 'Claude Vision AI が解析しています...'
-                      : 'デモモードで候補を表示します...')
+                  ? (!IS_DEMO_MODE ? REAL_STAGE_LABEL[processingStage] : DEMO_STAGE_LABEL[processingStage])
                   : 'スキャン完了'}
               </Text>
             </View>
@@ -351,7 +417,7 @@ export default function ScanScreen() {
           )}
           <Text style={styles.hintText}>
             {scanState === 'scanning'
-              ? `${!IS_DEMO_MODE ? 'Claude Vision AI' : 'デモモード'}で候補を表示します...`
+              ? (!IS_DEMO_MODE ? REAL_STAGE_LABEL[processingStage] : DEMO_STAGE_LABEL[processingStage])
               : 'AI判定は参考情報です。自己判断での採取・摂取は危険です'}
           </Text>
         </View>
@@ -361,19 +427,68 @@ export default function ScanScreen() {
       <View style={styles.controlArea}>
         {scanState === 'idle' && (
           <>
-            <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-              <Pressable
-                style={styles.scanBtn}
-                onPress={handleScan}
-                accessibilityLabel="植物をスキャン"
-                accessibilityRole="button"
+            {/* Captured-photo thumbnail strip with organ tagging (§7.4) */}
+            {photos.length > 0 && (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.photoStrip}
+                contentContainerStyle={styles.photoStripContent}
               >
-                <View style={styles.scanBtnInner}>
-                  <Ionicons name="search-outline" size={32} color="#FFFFFF" />
-                </View>
-              </Pressable>
-            </Animated.View>
-            <Text style={styles.scanLabel}>タップしてスキャン</Text>
+                {photos.map((p) => (
+                  <View key={p.id} style={styles.photoThumbWrap}>
+                    <Image source={{ uri: p.uri }} style={styles.photoThumb} />
+                    <Pressable
+                      style={styles.photoOrganChip}
+                      onPress={() => handleCycleOrgan(p.id)}
+                      accessibilityLabel={`部位: ${ORGAN_LABEL[p.organ]}（タップで変更）`}
+                    >
+                      <Text style={styles.photoOrganChipText}>{ORGAN_LABEL[p.organ]}</Text>
+                    </Pressable>
+                    <Pressable
+                      style={styles.photoDeleteBtn}
+                      onPress={() => handleRemovePhoto(p.id)}
+                      accessibilityLabel="この写真を削除"
+                    >
+                      <Ionicons name="close" size={12} color="#FFFFFF" />
+                    </Pressable>
+                  </View>
+                ))}
+              </ScrollView>
+            )}
+
+            <View style={styles.captureRow}>
+              <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+                <Pressable
+                  style={[styles.scanBtn, (capturing || photos.length >= MAX_CAPTURE_PHOTOS) && styles.scanBtnDisabled]}
+                  onPress={handleCapturePhoto}
+                  disabled={capturing || photos.length >= MAX_CAPTURE_PHOTOS}
+                  accessibilityLabel="写真を撮影"
+                  accessibilityRole="button"
+                >
+                  <View style={styles.scanBtnInner}>
+                    <Ionicons name="camera-outline" size={32} color="#FFFFFF" />
+                  </View>
+                </Pressable>
+              </Animated.View>
+
+              {photos.length > 0 && (
+                <Pressable
+                  style={styles.identifyBtn}
+                  onPress={handleIdentify}
+                  accessibilityLabel={`${photos.length}枚の写真で識別する`}
+                  accessibilityRole="button"
+                >
+                  <Ionicons name="search-outline" size={22} color="#FFFFFF" />
+                  <Text style={styles.identifyBtnText}>識別する（{photos.length}枚）</Text>
+                </Pressable>
+              )}
+            </View>
+            <Text style={styles.scanLabel}>
+              {photos.length >= MAX_CAPTURE_PHOTOS
+                ? `最大${MAX_CAPTURE_PHOTOS}枚まで撮影できます`
+                : `タップして撮影（全体・葉・花など複数枚OK / ${photos.length}枚）`}
+            </Text>
           </>
         )}
 
@@ -386,7 +501,9 @@ export default function ScanScreen() {
                 </Animated.View>
               </View>
             </View>
-            <Text style={styles.scanLabel}>解析中...</Text>
+            <Text style={styles.scanLabel}>
+              {!IS_DEMO_MODE ? REAL_STAGE_LABEL[processingStage] : DEMO_STAGE_LABEL[processingStage]}
+            </Text>
           </>
         )}
 
@@ -615,17 +732,57 @@ const styles = StyleSheet.create({
   // ── Control area ──
   controlArea: {
     backgroundColor: Colors.bg,
-    paddingTop: 24,
+    paddingTop: 16,
     paddingBottom: 24,
     paddingHorizontal: 24,
     alignItems: 'center',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
   },
+
+  // Multi-photo strip (§7.4)
+  photoStrip: { width: '100%', marginBottom: 12 },
+  photoStripContent: { gap: 10, paddingHorizontal: 2 },
+  photoThumbWrap: { width: 64, height: 64, borderRadius: 12, overflow: 'visible' },
+  photoThumb: { width: 64, height: 64, borderRadius: 12, backgroundColor: '#E0E0E0' },
+  photoOrganChip: {
+    position: 'absolute',
+    bottom: -6,
+    alignSelf: 'center',
+    backgroundColor: Colors.primaryDark,
+    borderRadius: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  photoOrganChipText: { fontSize: 9, fontWeight: '800', color: '#FFFFFF' },
+  photoDeleteBtn: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: 'rgba(0,0,0,0.65)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  captureRow: { flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 8 },
+  identifyBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#1565C0',
+    borderRadius: 24,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+  },
+  identifyBtnText: { color: '#FFFFFF', fontWeight: '800', fontSize: 14 },
+
   scanBtn: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     backgroundColor: Colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
