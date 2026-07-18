@@ -13,6 +13,8 @@ interface Props {
   imageUri?: string;
   isFavorite?: boolean;
   hasNote?: boolean;
+  /** Family name shown on undiscovered cards as a non-spoiler learning hint (§7.6). */
+  familyHint?: string;
   onPress: () => void;
   onFavorite?: () => void;
 }
@@ -33,7 +35,7 @@ const RARITY_BG: Record<number, string> = {
   5: '#FFF8E1',
 };
 
-export function PlantCard({ plant, discovered, imageUri, isFavorite, hasNote, onPress, onFavorite }: Props) {
+export function PlantCard({ plant, discovered, imageUri, isFavorite, hasNote, familyHint, onPress, onFavorite }: Props) {
   const rarityColor = RARITY_COLOR[plant.rarity];
   const rarityBg = RARITY_BG[plant.rarity];
   const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -126,10 +128,12 @@ export function PlantCard({ plant, discovered, imageUri, isFavorite, hasNote, on
         {/* Danger badge (discovered only) */}
         {discovered && <DangerBadge danger={plant.danger} size="sm" />}
 
-        {/* Hint indicator for undiscovered */}
+        {/* Hint indicator for undiscovered — shows the family as a non-spoiler clue when known */}
         {!discovered && (
           <View style={styles.hintChip}>
-            <Text style={styles.hintChipText}>ヒント</Text>
+            <Text style={styles.hintChipText} numberOfLines={1}>
+              {familyHint ?? 'ヒント'}
+            </Text>
           </View>
         )}
 
