@@ -175,5 +175,23 @@
 - `npm run check`（typecheck + lint + jest 79件、observationPhotoStorage/id/store新規テストを追加）green
 - Expo web + Playwright: 植物詳細画面にスキャン履歴を注入し、「再訪を記録する」チップの表示・タップ動作を確認（`Alert.alert`がWebで発火しないため選択肢の見た目はネイティブ実機でのみ最終確認可能、上記の既知の発見として記録）
 
+## PR18 スコープ（本PR、Compare in the Field）
+含む:
+- **`TraitCheck`型と現物確認チェックリスト**（v3 §7.1/§7.3）: `src/types/traitCheck.ts`に`TraitCheck`（traitId/state/userNote）と、UI用の`TraitDefinition`（id/label/referenceHint）・`summarizeTraitChecks()`を新設
+- **チェック項目の生成**（`src/utils/traitChecklist.ts`）: `PlantDefinition.morphology`が意図的にスパース（PR11の判断を継続）なため、葉の形・花弁数のような構造化された形態属性を捏造しない。代わりに、既に画面表示している実データ（`plant.habitat`/`plant.season`/`plant.description`、および`safety.ts`の危険類似種`note`）だけから確認項目を組み立てる。危険類似種を持つ植物には「{類似種名}との違い」という項目が自動追加される
+- **`ScanResultModal`への統合**: 実AI・非デモ結果のときのみ（`FEATURE_FLAGS.compareInField`）「目の前の植物と見比べる」セクションを表示。各項目に一致/違う/分からないの3ボタンと「一致 X　不一致 Y　未確認 Z」の集計を表示。候補を切り替えると（`plant.id`変化）チェックはリセットされる
+- **保存時の連携**: `onAddToZukan`のシグネチャを`(traitChecks: TraitCheck[]) => void`に変更し、`ScanRecord.traitChecks`（追加のみ・version引き上げ不要）へ保存。`recordObservation(plantId, imageUri?, traitChecks?)`
+
+含まない（後続へ委譲、意図的にスコープ外）:
+- **保存済みチェック結果のFieldbook表示**: 記録タブでの一覧・振り返り表示はPR20（Fieldbook v2）
+- **チェック結果に基づく候補再ランキング**: AIの候補スコアをユーザーのチェック結果で再計算する機能は、実装するとチェック自体の意味（人間による独立した確認）が薄れるため見送り。v3もそこまでは要求していない
+
+## 検証中に発見・修正したテスト基盤の問題（PR18）
+`ScanResultModal`のマウント時`useEffect`（チェックリストのリセット）が、`TestRenderer.create()`を`act()`で包まずに呼ぶテストでは次の`act()`呼び出しまで遅延され、ユーザー操作後のstate更新をその場で打ち消してしまうことをテスト作成中に発見（本番では、マウントのeffectは常にユーザー操作より先に完了するため実害はない）。新規テストはすべて`act()`でラップして解消。
+
+## 検証（PR18）
+- `npm run check`（typecheck + lint + jest 86件、traitChecklistテスト4件・ScanResultModalの現物確認チェックリストテスト3件を追加）green
+- Expo web + Playwrightでデモモード（観察タブ）に回帰が無いことを確認。現物確認チェックリストは実AI限定のためAPIキーの無いこの環境ではUIを直接操作できず、コンポーネントテストで一致/不一致/未確認の集計・保存時の受け渡し・候補切替時のリセットを検証
+
 ## 既存改善の回帰防止（§1）
 ハイドレーション後セッション開始 / ローカル日付 / カメラ拒否→設定誘導 / ErrorBoundary / モーダル戻る / 画像フォールバック / モック明示 / 危険警告 / TS strict / プライバシー導線枠 / typecheck。CIで typecheck+test＋禁止語grepにより後退を検知。

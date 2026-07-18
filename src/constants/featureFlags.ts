@@ -5,7 +5,7 @@
 // corresponding feature — never enable ahead of the implementing PR.
 export const FEATURE_FLAGS = {
   /** PR18: per-trait match/mismatch/unknown checklist in candidate compare. */
-  compareInField: false,
+  compareInField: true,
   /** PR19: 30秒/3分/深く学ぶ structured learning on the plant detail screen. */
   learningExperience: false,
   /** PR20: timeline/revisit/natural-language search Fieldbook rebuild. */

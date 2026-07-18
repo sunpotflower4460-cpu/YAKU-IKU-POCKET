@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { RARITY_XP, XP_PER_RESCAN } from '../store/useGameStore';
 import {
   View,
@@ -23,6 +23,10 @@ import { SafetyBanner } from './SafetyBanner';
 import { getSafetyWarnings } from '../data/safety';
 import { assessCandidateSafety } from '../utils/candidateSafety';
 import { useReduceMotion } from '../utils/reduceMotion';
+import { buildTraitChecklist } from '../utils/traitChecklist';
+import { TraitCheck, TraitCheckState, summarizeTraitChecks } from '../types/traitCheck';
+import { FEATURE_FLAGS } from '../constants/featureFlags';
+import * as Haptics from '../utils/haptics';
 
 // Gradient header color per rarity
 const RARITY_GRADIENT: Record<number, [string, string, string]> = {
@@ -50,6 +54,12 @@ const RARITY_LABEL: Record<number, string> = {
   5: 'レジェンダリー',
 };
 
+const TRAIT_STATE_COLOR: Record<TraitCheckState, string> = {
+  match: Colors.dangerGreen,
+  mismatch: Colors.dangerRed,
+  unknown: '#9E9E9E',
+};
+
 interface Props {
   visible: boolean;
   plant: Plant | null;
@@ -69,7 +79,8 @@ interface Props {
   selectedPlantId?: string;
   onSelectCandidate?: (candidate: IdentificationCandidate) => void;
   imageUri?: string;
-  onAddToZukan: () => void;
+  /** Receives the user's completed 現物確認 checklist (empty if unused/skipped). */
+  onAddToZukan: (traitChecks: TraitCheck[]) => void;
   onScanAgain: () => void;
 }
 
@@ -94,6 +105,26 @@ export function ScanResultModal({
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const shimmerAnim = useRef(new Animated.Value(0)).current;
   const sparkleAnim = useRef(new Animated.Value(0)).current;
+
+  // ── 現物確認チェックリスト（v3 §7.3, PR18） ──────────────────────────
+  // Real-AI results only: comparing traits against a demo (random) result
+  // would be comparing the specimen against a guess with no basis.
+  const [traitStates, setTraitStates] = useState<Record<string, TraitCheckState>>({});
+  const traitItems = useMemo(
+    () => (FEATURE_FLAGS.compareInField && plant && usedRealAI && !isDemo ? buildTraitChecklist(plant) : []),
+    [plant, usedRealAI, isDemo]
+  );
+  // Reset the checklist whenever the selected candidate changes — a trait
+  // check is only meaningful against the specimen *and* the plant it's being
+  // checked against.
+  useEffect(() => {
+    setTraitStates({});
+  }, [plant?.id]);
+  const traitChecks: TraitCheck[] = traitItems.map((item) => ({
+    traitId: item.id,
+    state: traitStates[item.id] ?? 'unknown',
+  }));
+  const traitSummary = summarizeTraitChecks(traitChecks);
 
   useEffect(() => {
     if (visible && plant) {
@@ -335,6 +366,65 @@ export function ScanResultModal({
               </View>
             )}
 
+            {/* ── 現物確認チェックリスト（v3 §7.1/§7.3, PR18） ── */}
+            {traitItems.length > 0 && (
+              <View style={styles.traitCheckContainer}>
+                <Text style={styles.traitCheckHeadline}>目の前の植物と見比べる</Text>
+                <Text style={styles.traitCheckSubtext}>
+                  AIの候補を受け取って終わりにせず、実際の特徴と一つずつ照合してください。
+                </Text>
+                <View style={styles.traitCheckSummaryRow}>
+                  <Text style={styles.traitCheckSummaryText}>
+                    一致 {traitSummary.match}　不一致 {traitSummary.mismatch}　未確認 {traitSummary.unknown}
+                  </Text>
+                </View>
+                {traitItems.map((item) => {
+                  const state = traitStates[item.id] ?? 'unknown';
+                  return (
+                    <View key={item.id} style={styles.traitItemCard}>
+                      <Text style={styles.traitItemLabel}>{item.label}</Text>
+                      <Text style={styles.traitItemHint}>{item.referenceHint}</Text>
+                      <View style={styles.traitItemBtnRow}>
+                        {(
+                          [
+                            { key: 'match', label: '一致' },
+                            { key: 'mismatch', label: '違う' },
+                            { key: 'unknown', label: '分からない' },
+                          ] as { key: TraitCheckState; label: string }[]
+                        ).map((opt) => (
+                          <Pressable
+                            key={opt.key}
+                            style={[
+                              styles.traitItemBtn,
+                              state === opt.key && {
+                                backgroundColor: TRAIT_STATE_COLOR[opt.key],
+                                borderColor: TRAIT_STATE_COLOR[opt.key],
+                              },
+                            ]}
+                            onPress={() => {
+                              Haptics.selectionAsync();
+                              setTraitStates((prev) => ({ ...prev, [item.id]: opt.key }));
+                            }}
+                            accessibilityRole="button"
+                            accessibilityLabel={`${item.label}: ${opt.label}${state === opt.key ? '（選択中）' : ''}`}
+                          >
+                            <Text
+                              style={[
+                                styles.traitItemBtnText,
+                                state === opt.key && styles.traitItemBtnTextActive,
+                              ]}
+                            >
+                              {opt.label}
+                            </Text>
+                          </Pressable>
+                        ))}
+                      </View>
+                    </View>
+                  );
+                })}
+              </View>
+            )}
+
             {/* Danger alerts */}
             {isDangerous && (
               <View style={styles.alertRed}>
@@ -466,7 +556,7 @@ export function ScanResultModal({
                   <Pressable style={[styles.btn, styles.btnSecondary]} onPress={onScanAgain}>
                     <Text style={styles.btnSecondaryText}>もう一度観察</Text>
                   </Pressable>
-                  <Pressable style={[styles.btn, styles.btnPrimary]} onPress={onAddToZukan}>
+                  <Pressable style={[styles.btn, styles.btnPrimary]} onPress={() => onAddToZukan(traitChecks)}>
                     <Text style={styles.btnPrimaryText}>
                       観察記録として保存{isNewDiscovery
                         ? ` +${RARITY_XP[plant.rarity] ?? 100}XP`
@@ -711,6 +801,36 @@ const styles = StyleSheet.create({
   },
   candidateSeasonChipText: { fontSize: 10, fontWeight: '700', color: Colors.primaryDark },
   compareBelowNote: { fontSize: 11, color: Colors.textMuted, textAlign: 'center', marginTop: 12 },
+  traitCheckContainer: {
+    width: '100%',
+    backgroundColor: Colors.bg,
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 16,
+  },
+  traitCheckHeadline: { fontSize: 15, fontWeight: '800', color: Colors.text },
+  traitCheckSubtext: { fontSize: 12, color: Colors.textSecondary, marginTop: 4, marginBottom: 10 },
+  traitCheckSummaryRow: { marginBottom: 10 },
+  traitCheckSummaryText: { fontSize: 12, fontWeight: '700', color: Colors.textSecondary },
+  traitItemCard: {
+    backgroundColor: Colors.bgCard,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 10,
+  },
+  traitItemLabel: { fontSize: 13, fontWeight: '800', color: Colors.text },
+  traitItemHint: { fontSize: 12, color: Colors.textSecondary, marginTop: 4, marginBottom: 10, lineHeight: 17 },
+  traitItemBtnRow: { flexDirection: 'row', gap: 8 },
+  traitItemBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: Colors.cardBorder,
+    alignItems: 'center',
+  },
+  traitItemBtnText: { fontSize: 12, fontWeight: '700', color: Colors.textSecondary },
+  traitItemBtnTextActive: { color: '#FFFFFF' },
   confidenceContainer: {
     flexDirection: 'row',
     alignItems: 'center',

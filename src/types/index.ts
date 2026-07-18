@@ -1,3 +1,5 @@
+import { TraitCheck } from './traitCheck';
+
 export type DangerLevel = 'GREEN' | 'YELLOW' | 'RED';
 export type Rarity = 1 | 2 | 3 | 4 | 5;
 export type PlantCategory = '野草' | 'スパイス・ハーブ';
@@ -25,6 +27,8 @@ export interface ScanRecord {
   imageUri?: string; // user's captured photo URI
   /** Optional self-set reminder to come back and re-observe this plant (e.g. when it flowers). PR17. */
   revisitAt?: string; // ISO date string
+  /** The user's 現物確認 checklist against this candidate, if they used it (v3 §7.3, PR18). */
+  traitChecks?: TraitCheck[];
 }
 
 /**
