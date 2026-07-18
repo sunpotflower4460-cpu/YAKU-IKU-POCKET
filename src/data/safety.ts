@@ -27,6 +27,7 @@ export const DANGEROUS_LOOKALIKES: Record<string, LookalikeRisk[]> = {
   p007: [
     {
       name: 'スイセン',
+      inDbId: 'p038', // catalogued PR24
       severity: 'high_risk',
       note: '葉がよく似ています。ノビル特有のネギ臭が無ければ口にしないでください。スイセンは嘔吐・けいれん等を起こします。',
     },
@@ -36,11 +37,18 @@ export const DANGEROUS_LOOKALIKES: Record<string, LookalikeRisk[]> = {
       severity: 'high_risk',
       note: '葉が似ており、強心配糖体による死亡事故例があります。',
     },
+    {
+      name: 'イヌサフラン',
+      inDbId: 'p039', // catalogued PR24
+      severity: 'high_risk',
+      note: 'ヒガンバナ科の細長い葉と混同されることがあります。コルヒチンによる死亡事故例があります。',
+    },
   ],
   // セリ — resembles the deadly ドクゼリ.
   p008: [
     {
       name: 'ドクゼリ',
+      inDbId: 'p037', // catalogued PR24
       severity: 'high_risk',
       note: '猛毒のドクゼリと外見が非常に似ています。水辺では専門家の確認なしに採取・摂取しないでください。',
     },
@@ -52,6 +60,24 @@ export const DANGEROUS_LOOKALIKES: Record<string, LookalikeRisk[]> = {
       inDbId: 'p024',
       severity: 'high_risk',
       note: '猛毒のトリカブトやニリンソウと若葉が似ており、混同による死亡事故が報告されています。',
+    },
+  ],
+  // ウド — young shoots resemble the deadly ハシリドコロ in early spring.
+  p010: [
+    {
+      name: 'ハシリドコロ',
+      inDbId: 'p036', // catalogued PR24
+      severity: 'high_risk',
+      note: '春先の若芽がよく似ています。トロパンアルカロイドによる中毒死亡事故が報告されています。',
+    },
+  ],
+  // フキ — young shoots (フキノトウ以前の若芽) resemble the deadly ハシリドコロ.
+  p011: [
+    {
+      name: 'ハシリドコロ',
+      inDbId: 'p036', // catalogued PR24
+      severity: 'high_risk',
+      note: '春先の若芽がよく似ています。トロパンアルカロイドによる中毒死亡事故が報告されています。',
     },
   ],
 };
