@@ -21,14 +21,15 @@ describe('PLANT_DEFINITIONS (§10.1 knowledge schema derivation)', () => {
     }
   });
 
-  it('never fabricates source citations (empty, or a real gov/public-body URL for RED species)', () => {
-    // PR29 attaches real citations only to the 14 RED (high_risk) species, found via
-    // WebSearch against government/municipal sources. Every other species must stay
+  it('never fabricates source citations (empty, or a real gov/public-body URL for RED/YELLOW species)', () => {
+    // PR29 attaches real citations to RED (high_risk) species and PR30 extends this to
+    // a handful of YELLOW (caution) species, all found via WebSearch against
+    // government/municipal sources. GREEN (general_observation) species must stay
     // empty rather than have a citation invented for it.
     const AUTHORITATIVE_HOST_PATTERN = /\.(go\.jp|lg\.jp|nihs\.go\.jp)$/;
     for (const def of PLANT_DEFINITIONS) {
       expect(def.sourceRefs).toEqual(def.safety.sourceRefs);
-      if (def.safety.level !== 'high_risk') {
+      if (def.safety.level === 'general_observation') {
         expect(def.sourceRefs).toEqual([]);
         continue;
       }

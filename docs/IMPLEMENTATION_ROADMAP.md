@@ -22,6 +22,7 @@
 | PR27 | Core Guide Content継続拡充（102→127種、150種目標への3回目のバッチ） | ✅ merged |
 | PR28 | Core Guide Content最終拡充（127→150種、150種目標を達成） | ✅ merged |
 | PR29 | 危険植物14種に実在する公的機関の出典を紐付け（WebSearch活用） | ✅ merged |
+| PR30 | YELLOW（要注意）植物への出典拡大（27種中5種、正直なカバレッジ） | ✅ merged |
 
 ## PR8 スコープ（完了）
 含む: タブ再構成（今日/観察/探す/記録）、Today画面の情報階層再設計（Hero=「観察を始める」1CTA→最近の観察→季節→観察チャレンジ→1分で学ぶ→コレクション進捗→安全情報）、「1分で学ぶ」学習カード新設（危険類似種の見分け方を優先表示）。
@@ -397,6 +398,21 @@ PR24から続く4回目・最終バッチ。**127→150種**まで拡大し、v3
 ## 検証（PR29）
 - `npm run check`（typecheck + lint + jest 107件）green。`plantDefinitions.test.ts`に追加した新テストが、RED14種の`sourceRefs`が`.go.jp`/`.lg.jp`のHTTPS URLのみであること、RED以外の種は空のままであることを検証
 - Expo web + Playwright: トリカブト（p024）の「深く学ぶ」タブを展開し、「参考: mhlw.go.jp」のリンクが表示されること、`page.accessibility.snapshot()`で「参考資料を開く: mhlw.go.jp」という読み上げラベルが正しく設定されていることを確認
+
+## PR30 スコープ（本PR、YELLOW植物への出典拡大）
+PR29のRED14種に続き、YELLOW（`caution`）27種にも同じ手法（`WebSearch`で植物名＋中毒／注意＋公的機関名を検索し、`.go.jp`/`.lg.jp`ドメインで種名を明示するページのみ採用）を適用。詳細な内訳・見送り理由は`docs/DATA_SOURCES_AND_LICENSES.md`の「PR30」節に記載。
+
+含む:
+- **`SOURCE_REFS_OVERRIDE`にYELLOW5種を追加**: ワラビ（p012、食品安全委員会）、スターアニス（h016、東京都健康安全研究センター——シキミとの混同注意）、ナツメグ（h034、J-STAGE掲載の中毒症例論文）、モロヘイヤ（h041、農林水産省Q&A）、センナ（h068、PMDA添付文書）
+- **`plantDefinitions.test.ts`の検証条件を拡張**: 「非空の`sourceRefs`は`.go.jp`/`.lg.jp`のHTTPS URLのみ」という制約を`high_risk`限定から`caution`にも拡大し、`general_observation`（GREEN）のみ常に空であることを検証する形に一般化
+
+含まない（意図的にスコープ外、正直な記載）:
+- **残り22種のYELLOW植物**（スギナ・ニワトコ・ホトケノザ・ギシギシ・スイバ・ムラサキケマン・キツネノボタン・カラスビシャク・ヤマウルシ・フジ・セージ・シナモン・クローブ・サフラン・エルダーフラワー・ネトル・ボリジ・ヒソップ・ジュニパーベリー・ウッドラフ）: `WebSearch`は実施したが、種名を明示する`.go.jp`/`.lg.jp`ページが見つからなかった（個人ブログ・アロマテラピーサイト・一般論的な政府ページはヒットしたが、種固有の公的出典としては採用しなかった）。根拠の弱い出典を無理に追加するくらいなら空のままにするという、PR6以来一貫した「捏造しない」方針をここでも適用した
+- **GREEN種への出典拡大**: 安全上の緊急度が最も低いカテゴリのため今回は対象外
+
+## 検証（PR30）
+- `npm run check`（typecheck + lint + jest 107件）green。`plantDefinitions.test.ts`の拡張テストが、YELLOW5種の`sourceRefs`が`.go.jp`/`.lg.jp`のHTTPS URLのみであること、GREEN種は引き続き空であることを検証
+- Expo web + Playwright: ナツメグ（h034）の「深く学ぶ」タブで出典リンクが表示されること、`page.accessibility.snapshot()`で「参考資料を開く: jstage.jst.go.jp」という読み上げラベルが正しく設定されていることを確認
 
 ## 既存改善の回帰防止（§1）
 ハイドレーション後セッション開始 / ローカル日付 / カメラ拒否→設定誘導 / ErrorBoundary / モーダル戻る / 画像フォールバック / モック明示 / 危険警告 / TS strict / プライバシー導線枠 / typecheck。CIで typecheck+test＋禁止語grepにより後退を検知。
