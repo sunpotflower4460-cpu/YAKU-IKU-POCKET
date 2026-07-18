@@ -18,7 +18,7 @@ import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { useLayoutEffect } from 'react';
 import { getPlantById, PLANTS } from '../../src/data/plants';
 import { RarityStars } from '../../src/components/RarityStars';
-import { DangerBadge, DANGER_LABEL } from '../../src/components/DangerBadge';
+import { DangerBadge, DANGER_LABEL, DANGER_DOT_COLOR } from '../../src/components/DangerBadge';
 import { DisclaimerBanner } from '../../src/components/DisclaimerBanner';
 import { Colors } from '../../src/constants/colors';
 import { RARITY_XP, useGameStore } from '../../src/store/useGameStore';
@@ -679,11 +679,7 @@ export default function PlantDetailScreen() {
                   <View
                     style={[
                       styles.relatedDangerDot,
-                      {
-                        backgroundColor:
-                          rp.danger === 'GREEN' ? '#43A047' :
-                          rp.danger === 'YELLOW' ? '#F9A825' : '#E53935',
-                      },
+                      { backgroundColor: DANGER_DOT_COLOR[rp.danger] },
                     ]}
                   />
                 </Pressable>

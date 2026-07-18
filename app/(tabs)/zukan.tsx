@@ -18,7 +18,7 @@ import { hasDangerousLookalike } from '../../src/data/safety';
 import { useGameStore } from '../../src/store/useGameStore';
 import { PlantCard } from '../../src/components/PlantCard';
 import { RarityStars } from '../../src/components/RarityStars';
-import { DangerBadge, DANGER_LABEL } from '../../src/components/DangerBadge';
+import { DangerBadge, DANGER_LABEL, DANGER_DOT_COLOR } from '../../src/components/DangerBadge';
 import { DisclaimerBanner } from '../../src/components/DisclaimerBanner';
 import { Colors } from '../../src/constants/colors';
 import { DangerLevel, Plant, PlantCategory } from '../../src/types';
@@ -306,9 +306,9 @@ export default function ZukanScreen() {
         </Pressable>
         {statsOpen && (
           <View style={styles.statsGrid}>
-            <StatMini label="一般食用" value={`${statsGreen}`} color={Colors.dangerGreen} dotColor="#43A047" />
-            <StatMini label="要注意" value={`${statsYellow}`} color={Colors.dangerYellow} dotColor="#F9A825" />
-            <StatMini label="危険"   value={`${statsRed}`}    color={Colors.dangerRed} dotColor="#E53935" />
+            <StatMini label="一般食用" value={`${statsGreen}`} color={Colors.dangerGreen} dotColor={DANGER_DOT_COLOR.GREEN} />
+            <StatMini label="要注意" value={`${statsYellow}`} color={Colors.dangerYellow} dotColor={DANGER_DOT_COLOR.YELLOW} />
+            <StatMini label="危険"   value={`${statsRed}`}    color={Colors.dangerRed} dotColor={DANGER_DOT_COLOR.RED} />
             <StatMini label="野草"     value={`${statsWild}/${PLANTS.filter(p => p.category === '野草').length}`} color={Colors.primary} />
             <StatMini label="ハーブ"   value={`${statsHerb}/${PLANTS.filter(p => p.category === 'スパイス・ハーブ').length}`} color="#FF8F00" />
             {([1,2,3,4,5] as const).map(r => {

@@ -15,7 +15,7 @@ import { useGameStore, XP_PER_LEVEL } from '../../src/store/useGameStore';
 import { PLANTS, TOTAL_PLANTS } from '../../src/data/plants';
 import { DisclaimerBanner } from '../../src/components/DisclaimerBanner';
 import { OnboardingModal } from '../../src/components/OnboardingModal';
-import { DANGER_LABEL } from '../../src/components/DangerBadge';
+import { DANGER_LABEL, DANGER_DOT_COLOR } from '../../src/components/DangerBadge';
 import { Colors } from '../../src/constants/colors';
 import { getCurrentSeason, SEASON_CONFIG, getSeasonalPlants } from '../../src/utils/season';
 import { todayLocalStr, localDayFromISO } from '../../src/utils/date';
@@ -238,11 +238,7 @@ export default function HomeScreen() {
                 <View
                   style={[
                     styles.recentDangerDot,
-                    {
-                      backgroundColor:
-                        plant.danger === 'GREEN' ? '#43A047' :
-                        plant.danger === 'YELLOW' ? '#F9A825' : '#E53935',
-                    },
+                    { backgroundColor: DANGER_DOT_COLOR[plant.danger] },
                   ]}
                 />
               </Pressable>
@@ -327,14 +323,10 @@ export default function HomeScreen() {
                       <View
                         style={[
                           styles.spotlightDangerDot,
-                          {
-                            backgroundColor:
-                              plant.danger === 'RED' ? '#E53935' :
-                              plant.danger === 'YELLOW' ? '#F9A825' : '#43A047',
-                          },
+                          { backgroundColor: DANGER_DOT_COLOR[plant.danger] },
                         ]}
                       />
-                      <Text style={styles.spotlightDangerText} numberOfLines={1}>
+                      <Text style={styles.spotlightDangerText} numberOfLines={1} ellipsizeMode="tail">
                         {DANGER_LABEL[plant.danger]}
                       </Text>
                     </View>
@@ -768,7 +760,6 @@ const styles = StyleSheet.create({
     marginRight: 10,
     alignItems: 'center',
     width: 116,
-    overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
@@ -791,7 +782,12 @@ const styles = StyleSheet.create({
   spotlightNameUnfound: { color: '#9E9E9E' },
   spotlightDangerBadge: { borderRadius: 8, paddingHorizontal: 6, paddingVertical: 3, flexDirection: 'row', alignItems: 'center', gap: 3 },
   spotlightDangerDot: { width: 6, height: 6, borderRadius: 3 },
-  spotlightDangerText: { fontSize: 11, fontWeight: '700' },
+  // maxWidth caps the text at spotlightCard's available content width (116 -
+  // 2*12 padding - 2*6 badge padding - 3 gap - 6 dot ≈ 71px) so numberOfLines
+  // + ellipsizeMode can actually truncate long labels (e.g. GREEN's 9-char
+  // "一般に食用とされる") instead of doing nothing, which previously let the
+  // badge overflow spotlightCard's fixed width into the neighboring card.
+  spotlightDangerText: { fontSize: 11, fontWeight: '700', maxWidth: 68 },
   spotlightUnfoundBadge: {
     borderRadius: 8,
     paddingHorizontal: 7,
