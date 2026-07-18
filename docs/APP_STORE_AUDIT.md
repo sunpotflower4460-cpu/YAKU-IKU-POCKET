@@ -40,6 +40,13 @@
 ### ⏳ 後続PR（デザイン全面導入はPR7へ分離）
 PR7デザイン基盤 / PR8タブ・Today / PR9複数写真撮影 / PR10候補比較 / PR11知識スキーマ / PR12 Explore / PR13 Fieldbook / PR14バックエンド・実AI / PR15 A11y・QA・提出物。詳細は `docs/IMPLEMENTATION_ROADMAP.md`。
 
+### 追記: PR7〜PR13 完了、PR14 判断保留
+
+PR7（デザイン基盤）〜PR13（Fieldbook: 観察数カレンダー・学習系実績・外観/AI同意/エクスポート/削除の設定セクション）まで実装・テスト・マージ済み。
+
+**PR14（バックエンド・実AI連携）は本開発環境では実装せず、判断保留とした。** 理由: `docs/IDENTIFICATION_PIPELINE.md` の「B. Regional Service」「C. Taxonomy Resolver」「E. Knowledge Aggregator」やAPIキー非公開化プロキシは、実際に稼働するサーバー・外部API契約・秘密情報の管理を要し、コードのみのサンドボックスでは「動いているように見えて実際は繋がっていない」ものを作り込むリスクが高い。捏造しない方針を優先し、必要要件を`docs/IDENTIFICATION_PIPELINE.md`に整理するに留めた。ご本人がバックエンド環境・APIキーを用意でき次第、着手可能。
+現状の `EXPO_PUBLIC_CLAUDE_API_KEY` 直呼び出し構成は、PR13で「ユーザーが明示的に同意した場合のみ」呼ばれるようゲート済み（`isDemoMode(aiConsentGiven)`）だが、キー自体がバンドルに含まれる問題（P0-2）は未解消のまま。App Store提出前に必ずバックエンドプロキシへ移行すること。
+
 ---
 
 ## 追記: 第2次対応（外部レビュー反映）
