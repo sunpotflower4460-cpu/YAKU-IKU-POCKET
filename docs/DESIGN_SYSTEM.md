@@ -1,6 +1,14 @@
 # デザインシステム（DESIGN_SYSTEM）
 
-> 統合仕様書 §3〜§5, §13, §14 準拠。**実装は PR7（Design Foundation）**。本書はアウトライン。
+> 統合仕様書 §3〜§5, §13, §14 準拠。**基盤は PR7 で実装済み**。個別画面への適用は各PR（PR8 Today, PR9 Observe, PR10 Compare, PR12 Explore, PR13 Fieldbook）で順次。
+
+## PR7 実装済み
+- `src/theme/tokens.ts`（space/radius/type/weight/motion/minTapTarget）
+- `src/theme/colors.ts`（`AppColors` light/dark 各24キー）
+- `src/theme/ThemeProvider.tsx`（`useColorScheme()` 追従、`useTheme()` フック）
+- `src/ui/`: AppScreen, Surface, ElevatedCard, PrimaryButton, SecondaryButton, IconButton, SectionHeader, StatusPill, EmptyState, Skeleton, DynamicText
+- `app/_layout.tsx` に `ThemeProvider`＋`SafeAreaProvider` を接続、StatusBarをテーマ追従に
+- 既存 `src/constants/colors.ts`（`Colors`）は後方互換のため維持。各画面は自身のPRで新トークンへ移行
 
 ## コンセプト
 **Living Field Guide** = Forest Field Guide × Natural History Museum × Apple Native。
