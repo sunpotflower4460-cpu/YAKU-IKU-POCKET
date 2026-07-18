@@ -11,8 +11,8 @@
 | PR7 | Design Foundation（トークン/ダーク/タイポ/コンポーネント基盤） | ✅ merged |
 | PR8 | Navigation & Today（タブ再設計/Today Hero） | ✅ merged |
 | PR9 | Observe Capture Flow（複数写真/部位/処理段階） | ✅ merged |
-| **PR10** | **Candidate Results & Compare（複数候補/スコア/比較/安全ブロック）** | 🟡 本PR |
-| PR11 | Knowledge Schema（PlantDefinition/taxonomy/migration/50種変換） | ⬜ |
+| PR10 | Candidate Results & Compare（複数候補/スコア/比較/安全ブロック） | ✅ merged |
+| **PR11** | **Knowledge Schema（PlantDefinition/taxonomy/50種変換）** | 🟡 本PR |
 | PR12 | Explore（検索/高度フィルター/分類/地域/表示切替） | ⬜ |
 | PR13 | Fieldbook（Observation中心/タイムライン/地図/再解析/export・delete） | ⬜ |
 | PR14 | Backend & Real Identification（proxy/Pl@ntNet等/taxonomy/rate limit/consent） | ⬜ |
@@ -54,6 +54,22 @@
 ## 検証（PR10）
 - `npm run check`（typecheck + jest 44件、claudeAI複数候補テスト・candidateSafetyテスト・ScanResultModalコンポーネントテストを追加）green
 - Expo web + Playwright でデモモードの単一結果ビューに回帰が無いことをスクリーンショットで確認（デモは候補配列を返さないため比較UIは実AI有効時のみ発火）
+
+## PR11 スコープ（本PR）
+含む:
+- **PlantDefinition型**（`src/types/plantDefinition.ts`）: taxonomy（scientificName/japaneseNames/englishNames/synonyms/family/genus/taxonIds）, classification, morphology, ecology, phenology, safety, culturalUses, lookalikeIds, sourceRefs, reviewStatus
+- **50種の派生データ**（`src/data/plantDefinitions.ts`）: 既存`Plant`から実行時に`PlantDefinition`を生成。family/genusは50種全件を確立した植物学的知識に基づき新規付与（`reviewStatus: 'editorial'`）。safety.levelはdanger(GREEN/YELLOW/RED)から機械的にマッピング、confusedWith/lookalikeIdsは既存`safety.ts`から双方向グラフとして導出、culturalUsesは既存`effects`をそのまま転記（医療的断定はしない方針を継続）
+- **正直な省略**: taxonIds（GBIF/POWO/iNaturalist/Pl@ntNet/YList）とsourceRefsは実API連携が無いため全件空。toxicPartsは既存warningNoteに明記されている場合のみ抽出（2件）、それ以外は空配列
+- **既存永続データへの影響なし**: `Plant`はコード同梱の静的データでAsyncStorageに永続化されていないため、persistのversion変更・migrate拡張は不要（`docs/MIGRATION_PLAN.md`に明記）
+
+含まない（後続へ委譲、意図的にスコープ外）:
+- **画面へのPlantDefinition適用**（見分けるポイント/類似種/出典の表示）: 「1PR=1目的」の原則により、既存screenのUIは本PRで変更していない。適用はPR12（Explore）/PR13（Fieldbook）
+- **morphology詳細**（葉の形/花弁数等の構造化データ）: 50種分を確度高く用意するには出典付き調査が必要なため、`notes`のみのスパースな型に留めた
+- **Observation型への移行**（複数写真/候補/位置情報を持つ観察記録）: `ScanRecord`からの移行はPR13（永続データ形状変更を伴うためversion 2への引き上げが必須）
+
+## 検証（PR11）
+- `npm run check`（typecheck + jest 54件、plantDefinitions派生ロジックのテスト10件を追加）green
+- テストで検証: 50種全件のfamily/genus充足、taxonIds/sourceRefsが空であること（捏造防止）、danger→safety.levelの正しさ、look-alikeグラフの双方向性、toxicPartsが原文の範囲を超えて記載されていないこと
 
 ## 既存改善の回帰防止（§1）
 ハイドレーション後セッション開始 / ローカル日付 / カメラ拒否→設定誘導 / ErrorBoundary / モーダル戻る / 画像フォールバック / モック明示 / 危険警告 / TS strict / プライバシー導線枠 / typecheck。CIで typecheck+test＋禁止語grepにより後退を検知。
