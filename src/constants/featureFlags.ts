@@ -12,8 +12,12 @@ export const FEATURE_FLAGS = {
    * gate on this — nothing to hide mid-rollout. Kept `true` for the record.
    */
   learningExperience: true,
-  /** PR20: timeline/revisit/natural-language search Fieldbook rebuild. */
-  fieldbookV2: false,
+  /**
+   * PR20: revisit/unidentified-observation/season-breakdown/search Fieldbook
+   * additions. Shipped complete in PR20 (see docs/BLUEPRINT_V3.md for the
+   * map/natural-language-search scope cuts); not gated at runtime.
+   */
+  fieldbookV2: true,
   /** PR21+PR22: PlantUse gates and the 暮らし (cooking/living) hub. */
   usesSafetyArchitecture: false,
   /** PR23: non-plant subject classification ahead of species identification. */
