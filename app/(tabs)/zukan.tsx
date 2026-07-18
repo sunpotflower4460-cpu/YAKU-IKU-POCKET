@@ -18,7 +18,7 @@ import { hasDangerousLookalike } from '../../src/data/safety';
 import { useGameStore } from '../../src/store/useGameStore';
 import { PlantCard } from '../../src/components/PlantCard';
 import { RarityStars } from '../../src/components/RarityStars';
-import { DangerBadge } from '../../src/components/DangerBadge';
+import { DangerBadge, DANGER_LABEL } from '../../src/components/DangerBadge';
 import { DisclaimerBanner } from '../../src/components/DisclaimerBanner';
 import { Colors } from '../../src/constants/colors';
 import { DangerLevel, Plant, PlantCategory } from '../../src/types';
@@ -574,13 +574,7 @@ export default function ZukanScreen() {
                   <HintRow
                     icon="warning-outline"
                     label="危険度"
-                    value={
-                      hintPlant.danger === 'GREEN'
-                        ? '一般に食用とされる'
-                        : hintPlant.danger === 'YELLOW'
-                        ? '要注意'
-                        : '危険（有毒）'
-                    }
+                    value={DANGER_LABEL[hintPlant.danger]}
                   />
                   <View style={styles.hintRowItem}>
                     <View style={styles.hintLabelRow}>

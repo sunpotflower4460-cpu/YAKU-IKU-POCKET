@@ -1,4 +1,22 @@
-import { determineMaxGate, isCategoryUnlocked, requiredGateForCategory, isGateAtLeast } from '../useGate';
+import { determineMaxGate, isCategoryUnlocked, isUseUnlocked, requiredGateForCategory, isGateAtLeast } from '../useGate';
+import { PlantUse } from '../../types/plantUse';
+
+function makeUse(overrides: Partial<PlantUse> = {}): PlantUse {
+  return {
+    id: 'p001_cook',
+    plantId: 'p001',
+    category: 'food',
+    title: '料理に使う',
+    summary: 'test',
+    partsUsed: [],
+    allowedOrigins: ['store_bought_food', 'home_grown_verified'],
+    evidenceLevel: 'official_guidance',
+    warnings: [],
+    contraindications: [],
+    sourceRefs: [],
+    ...overrides,
+  };
+}
 
 describe('determineMaxGate (v3 §10.3)', () => {
   it('caps at gate0 when identification is not user-confirmed', () => {
@@ -79,6 +97,35 @@ describe('requiredGateForCategory / isCategoryUnlocked', () => {
   it('requires at least gate1 for cultivation/garden/decoration', () => {
     expect(isCategoryUnlocked('cultivation', 'gate0')).toBe(false);
     expect(isCategoryUnlocked('cultivation', 'gate1')).toBe(true);
+  });
+});
+
+describe('isUseUnlocked (PR34 — enforces PlantUse.allowedOrigins, not just the category gate)', () => {
+  it('unlocks when the gate is reached AND the origin is in allowedOrigins', () => {
+    const use = makeUse({ allowedOrigins: ['store_bought_food', 'home_grown_verified'] });
+    expect(isUseUnlocked(use, 'gate2', 'store_bought_food')).toBe(true);
+    expect(isUseUnlocked(use, 'gate2', 'home_grown_verified')).toBe(true);
+  });
+
+  it('stays locked when the gate is reached but the origin is NOT in allowedOrigins — closes the nursery_plant/store_bought_herb gap', () => {
+    // A real, cited food card (e.g. ゴボウ's きんぴら) only names store_bought_food/
+    // home_grown_verified as its allowedOrigins. Before PR34, isCategoryUnlocked
+    // alone would have unlocked this for ANY origin reaching gate2, including
+    // nursery_plant — an origin this app has no more ability to verify than a
+    // wild find.
+    const use = makeUse({ allowedOrigins: ['store_bought_food', 'home_grown_verified'] });
+    expect(isUseUnlocked(use, 'gate2', 'nursery_plant')).toBe(false);
+    expect(isUseUnlocked(use, 'gate2', 'store_bought_herb')).toBe(false);
+  });
+
+  it('stays locked when the gate itself is not reached, regardless of origin', () => {
+    const use = makeUse({ allowedOrigins: ['store_bought_food'] });
+    expect(isUseUnlocked(use, 'gate1', 'store_bought_food')).toBe(false);
+  });
+
+  it('treats an empty allowedOrigins as unrestricted (unlocked whenever the gate is reached)', () => {
+    const use = makeUse({ category: 'ecology', allowedOrigins: [] });
+    expect(isUseUnlocked(use, 'gate0', 'unknown')).toBe(true);
   });
 });
 

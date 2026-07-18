@@ -18,7 +18,7 @@ import { Plant } from '../types';
 import { IdentificationCandidate } from '../types/observation';
 import { Colors } from '../constants/colors';
 import { RarityStars } from './RarityStars';
-import { DangerBadge } from './DangerBadge';
+import { DangerBadge, DANGER_LABEL } from './DangerBadge';
 import { SafetyBanner } from './SafetyBanner';
 import { getSafetyWarnings } from '../data/safety';
 import { assessCandidateSafety } from '../utils/candidateSafety';
@@ -176,9 +176,7 @@ export function ScanResultModal({
   async function handleShareDiscovery() {
     if (!plant) return;
     const rarityStars = '★'.repeat(plant.rarity) + '☆'.repeat(5 - plant.rarity);
-    const dangerLabel =
-      plant.danger === 'GREEN' ? '一般に食用とされる' :
-      plant.danger === 'YELLOW' ? '要注意' : '危険・有毒';
+    const dangerLabel = DANGER_LABEL[plant.danger];
     const msg =
       `植物を観察しました\n\n` +
       `${plant.emoji} ${plant.name} (${plant.nameEn})\n` +
