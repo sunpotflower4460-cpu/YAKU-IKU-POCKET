@@ -7,7 +7,7 @@ describe('theme tokens', () => {
   });
 
   it('every color is a non-empty string', () => {
-    for (const [k, v] of Object.entries(lightColors)) {
+    for (const [, v] of Object.entries(lightColors)) {
       expect(typeof v).toBe('string');
       expect((v as string).length).toBeGreaterThan(0);
     }

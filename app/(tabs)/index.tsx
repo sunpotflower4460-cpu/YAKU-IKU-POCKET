@@ -38,7 +38,7 @@ const MILESTONES: [number, string, string, string][] = [
 export default function HomeScreen() {
   const router = useRouter();
   const {
-    discoveredPlantIds, scanHistory, playerName, xp, getLevel, getXpForCurrentLevel,
+    discoveredPlantIds, scanHistory, playerName, getLevel, getXpForCurrentLevel,
     todayScanCount, todayNewCount, todayMaxRarity, todayDangers, todayCategories,
     claimedChallengeIds, claimChallenge,
     claimedSeasonalQuestIds, claimSeasonalChallenge,
@@ -196,6 +196,8 @@ export default function HomeScreen() {
           <Pressable
             style={styles.milestoneDismiss}
             onPress={() => setLastCelebrated(pendingMilestone[0])}
+            accessibilityRole="button"
+            accessibilityLabel="お知らせを閉じる"
           >
             <Ionicons name="checkmark" size={18} color="#FFFFFF" />
           </Pressable>

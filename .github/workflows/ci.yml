@@ -17,6 +17,8 @@ jobs:
       - run: npm ci
       - name: Typecheck
         run: npm run typecheck
+      - name: Lint
+        run: npm run lint
       - name: Unit tests
         run: npm test -- --ci
       - name: Forbidden safety copy must be absent

@@ -15,7 +15,7 @@ function mockFetchOnce(responseText: string, ok = true, status = 200) {
   });
 }
 
-function candidateBody(candidates: Array<{ plantName?: string; confidence?: unknown; reason?: string }>) {
+function candidateBody(candidates: { plantName?: string; confidence?: unknown; reason?: string }[]) {
   return JSON.stringify({ identified: true, candidates });
 }
 

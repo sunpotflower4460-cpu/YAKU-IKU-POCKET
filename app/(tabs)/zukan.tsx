@@ -261,6 +261,8 @@ export default function ZukanScreen() {
             <Pressable
               onPress={() => setSearch('')}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              accessibilityRole="button"
+              accessibilityLabel="検索文字をクリア"
             >
               <Ionicons name="close-circle" size={16} color={Colors.textMuted} />
             </Pressable>
@@ -523,6 +525,8 @@ export default function ZukanScreen() {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               }}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              accessibilityRole="button"
+              accessibilityLabel="効果フィルターを解除"
             >
               <Ionicons name="close-circle" size={14} color={Colors.primaryDark} />
             </Pressable>
