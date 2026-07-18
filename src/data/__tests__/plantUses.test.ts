@@ -1,5 +1,6 @@
-import { getPlantUses } from '../plantUses';
+import { getPlantUses, FOOD_USE_OVERRIDE } from '../plantUses';
 import { getPlantById } from '../plants';
+import { isAuthoritativeSourceUrl } from '../../utils/sourceRefValidation';
 
 describe('getPlantUses (PR22, honesty policy)', () => {
   it('includes the universal observe/press activities for every plant', () => {
@@ -41,15 +42,22 @@ describe('getPlantUses (PR22, honesty policy)', () => {
     expect(food!.allowedOrigins).not.toContain('wild_collected');
   });
 
-  it('surfaces a real, cited dish name for the small set of species with a verified source (PR32)', () => {
-    const yomogi = getPlantById('p002')!; // ヨモギ
-    const uses = getPlantUses(yomogi);
-    const food = uses.find((u) => u.category === 'food')!;
-    expect(food.summary).not.toContain('準備中');
-    expect(food.evidenceLevel).toBe('official_guidance');
-    expect(food.sourceRefs.length).toBeGreaterThan(0);
-    for (const ref of food.sourceRefs) {
-      expect(new URL(ref).hostname.endsWith('.go.jp')).toBe(true);
+  it('surfaces a real, cited dish name for every FOOD_USE_OVERRIDE entry, on an authoritative .go.jp/.lg.jp source (PR32/33)', () => {
+    // Iterates FOOD_USE_OVERRIDE's own keys (not one hardcoded plant) so a future
+    // entry with a weak or non-government citation fails this test automatically —
+    // uses the same isAuthoritativeSourceUrl policy as plantDefinitions.test.ts's
+    // SOURCE_REFS_OVERRIDE check, so the two never drift apart.
+    for (const [plantId, override] of Object.entries(FOOD_USE_OVERRIDE)) {
+      const plant = getPlantById(plantId)!;
+      const uses = getPlantUses(plant);
+      const food = uses.find((u) => u.category === 'food')!;
+      expect(food.summary).not.toContain('準備中');
+      expect(food.summary).toBe(override.summary);
+      expect(food.evidenceLevel).toBe('official_guidance');
+      expect(food.sourceRefs.length).toBeGreaterThan(0);
+      for (const ref of food.sourceRefs) {
+        expect(isAuthoritativeSourceUrl(ref)).toBe(true);
+      }
     }
   });
 

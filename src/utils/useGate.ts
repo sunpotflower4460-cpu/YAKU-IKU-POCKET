@@ -24,13 +24,22 @@ export function determineMaxGate(params: {
   const { origin, identificationState, hasDangerousLookalike, plantDanger } = params;
 
   // Species not confirmed by the user (still just AI candidates, or
-  // unidentified), or a dangerous look-alike exists: learning only.
+  // unidentified): learning only.
   if (!CONFIRMED_STATES.includes(identificationState)) return 'gate0';
-  if (hasDangerousLookalike) return 'gate0';
   // Belt-and-suspenders: even if content generation is careful never to
   // offer ingestion content for a RED plant, the gate itself should never
   // read as "unlocked for use" for something this app flags as dangerous.
   if (plantDanger === 'RED') return 'gate0';
+
+  // A dangerous look-alike caps the gate at gate0 ONLY when the origin is a
+  // field identification (wild/unknown) — that's exactly the scenario where
+  // "this species is often confused with X in the wild" is a real risk. A
+  // store-bought or home-grown-verified specimen's species identity was
+  // already established by a channel independent of the user's own field ID
+  // skill (a retailer, a nursery label), so the wild-confusion risk doesn't
+  // apply to it and must not block the gate2 content that origin earns.
+  const isFieldOrigin = origin === 'wild_observed' || origin === 'wild_collected' || origin === 'unknown';
+  if (isFieldOrigin && hasDangerousLookalike) return 'gate0';
 
   switch (origin) {
     case 'store_bought_food':

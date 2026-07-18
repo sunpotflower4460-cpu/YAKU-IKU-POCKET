@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -18,7 +18,7 @@ import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { useLayoutEffect } from 'react';
 import { getPlantById, PLANTS } from '../../src/data/plants';
 import { RarityStars } from '../../src/components/RarityStars';
-import { DangerBadge } from '../../src/components/DangerBadge';
+import { DangerBadge, DANGER_LABEL } from '../../src/components/DangerBadge';
 import { DisclaimerBanner } from '../../src/components/DisclaimerBanner';
 import { Colors } from '../../src/constants/colors';
 import { RARITY_XP, useGameStore } from '../../src/store/useGameStore';
@@ -30,7 +30,6 @@ import { getPlantDefinitionById } from '../../src/data/plantDefinitions';
 import { getPlantUses } from '../../src/data/plantUses';
 import { determineMaxGate, isCategoryUnlocked, requiredGateForCategory } from '../../src/utils/useGate';
 import { SourceOrigin, USE_GATE_LABEL, UseGate } from '../../src/types/plantUse';
-import { DangerLevel } from '../../src/types';
 
 const ORIGIN_LABEL: Record<SourceOrigin, string> = {
   wild_observed: '野生で観察した',
@@ -42,11 +41,6 @@ const ORIGIN_LABEL: Record<SourceOrigin, string> = {
   unknown: 'わからない',
 };
 
-const RELATED_DANGER_LABEL: Record<DangerLevel, string> = {
-  GREEN: '一般に食用とされる',
-  YELLOW: '要注意',
-  RED: '危険・有毒',
-};
 
 /** Short, readable label for a source URL (its hostname) — never the raw URL. */
 function sourceHostLabel(url: string): string {
@@ -194,15 +188,17 @@ export default function PlantDetailScreen() {
 
   // 関連植物（同カテゴリ & 現季節 & 発見済み & 自分以外）— plant が undefined の場合は空配列
   const currentSeason = getCurrentSeason();
-  const relatedPlants = plant
-    ? PLANTS.filter(
-        (p) =>
-          p.id !== plant.id &&
-          p.category === plant.category &&
-          isPlantInSeason(p.season, currentSeason) &&
-          discoveredPlantIds.includes(p.id)
-      ).slice(0, 6)
-    : [];
+  const relatedPlants = useMemo(() => {
+    if (!plant) return [];
+    const discoveredSet = new Set(discoveredPlantIds);
+    return PLANTS.filter(
+      (p) =>
+        p.id !== plant.id &&
+        p.category === plant.category &&
+        isPlantInSeason(p.season, currentSeason) &&
+        discoveredSet.has(p.id)
+    ).slice(0, 6);
+  }, [plant, discoveredPlantIds]);
 
   useLayoutEffect(() => {
     if (plant) {
@@ -669,7 +665,7 @@ export default function PlantDetailScreen() {
                   ]}
                   onPress={() => router.push(`/plant/${rp.id}`)}
                   accessibilityRole="button"
-                  accessibilityLabel={`${rp.name}、${RELATED_DANGER_LABEL[rp.danger]}`}
+                  accessibilityLabel={`${rp.name}、${DANGER_LABEL[rp.danger]}`}
                 >
                   <Text style={styles.relatedEmoji}>{rp.emoji}</Text>
                   <Text style={styles.relatedName} numberOfLines={1}>{rp.name}</Text>
