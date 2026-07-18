@@ -9,6 +9,7 @@ import {
   Platform,
   TextInput,
   Alert,
+  Linking,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -46,6 +47,15 @@ const RELATED_DANGER_LABEL: Record<DangerLevel, string> = {
   YELLOW: '要注意',
   RED: '危険・有毒',
 };
+
+/** Short, readable label for a source URL (its hostname) — never the raw URL. */
+function sourceHostLabel(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    return url;
+  }
+}
 
 export default function PlantDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -485,6 +495,24 @@ export default function PlantDetailScreen() {
               ? '専門家によるレビュー済みの情報です。'
               : '編集部が一般的な植物学の知見をもとに作成した情報です（専門データベースとの連携・専門家レビューは今後の対応予定）。'}
           </Text>
+          {def && def.sourceRefs.length > 0 && (
+            <View style={styles.sourceRefList}>
+              {def.sourceRefs.map((url) => (
+                <Pressable
+                  key={url}
+                  style={styles.sourceRefRow}
+                  onPress={() => Linking.openURL(url).catch(() => {})}
+                  accessibilityRole="button"
+                  accessibilityLabel={`参考資料を開く: ${sourceHostLabel(url)}`}
+                >
+                  <Ionicons name="open-outline" size={14} color={Colors.primaryDark} />
+                  <Text style={styles.sourceRefText} numberOfLines={1}>
+                    参考: {sourceHostLabel(url)}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          )}
         </ExpandableTier>
 
         {/* ── 暮らし（v3 §10-§11, PR22） ── */}
@@ -944,6 +972,9 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   tierEmptyText: { fontSize: 12, color: Colors.textMuted, lineHeight: 18 },
+  sourceRefList: { marginTop: 8, gap: 6 },
+  sourceRefRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  sourceRefText: { fontSize: 12, color: Colors.primaryDark, fontWeight: '600', flexShrink: 1 },
   identPointRow: { marginBottom: 4 },
   lookalikeCard: {
     backgroundColor: Colors.dangerRedBg,

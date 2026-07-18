@@ -21,10 +21,22 @@ describe('PLANT_DEFINITIONS (§10.1 knowledge schema derivation)', () => {
     }
   });
 
-  it('never fabricates source citations', () => {
+  it('never fabricates source citations (empty, or a real gov/public-body URL for RED species)', () => {
+    // PR29 attaches real citations only to the 14 RED (high_risk) species, found via
+    // WebSearch against government/municipal sources. Every other species must stay
+    // empty rather than have a citation invented for it.
+    const AUTHORITATIVE_HOST_PATTERN = /\.(go\.jp|lg\.jp|nihs\.go\.jp)$/;
     for (const def of PLANT_DEFINITIONS) {
-      expect(def.sourceRefs).toEqual([]);
-      expect(def.safety.sourceRefs).toEqual([]);
+      expect(def.sourceRefs).toEqual(def.safety.sourceRefs);
+      if (def.safety.level !== 'high_risk') {
+        expect(def.sourceRefs).toEqual([]);
+        continue;
+      }
+      for (const ref of def.sourceRefs) {
+        const url = new URL(ref);
+        expect(url.protocol).toBe('https:');
+        expect(AUTHORITATIVE_HOST_PATTERN.test(url.hostname)).toBe(true);
+      }
     }
   });
 

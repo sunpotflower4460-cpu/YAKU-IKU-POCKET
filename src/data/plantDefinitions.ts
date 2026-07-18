@@ -177,6 +177,36 @@ const TOXIC_PARTS_OVERRIDE: Record<string, string[]> = {
   p025: ['全草', '根', '花', '実', '（生けた）水'], // スズラン — stated in warningNote
 };
 
+/**
+ * Real citation URLs for every RED-danger (`high_risk`) species (PR29).
+ *
+ * Each URL was found via WebSearch and is a government (厚生労働省 / 都道府県 /
+ * 市区町村) or public-interest-body page whose search-result title explicitly
+ * names the species. This session's WebFetch tool cannot reach .go.jp/.lg.jp
+ * domains (blocked by this environment's outbound network policy — see
+ * docs/DATA_SOURCES_AND_LICENSES.md), so the verbatim page body was not
+ * fetched and re-read; verification is at the title/snippet level returned
+ * by the search itself, not a full-page confirmation. No claim in this
+ * app's own plant descriptions is copied from these pages — they are
+ * attached purely as "see the official source" references for the reader.
+ */
+const SOURCE_REFS_OVERRIDE: Record<string, string[]> = {
+  p024: ['https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/0000082112.html'], // トリカブト（厚生労働省 自然毒のリスクプロファイル）
+  p025: ['https://www.hokeniryo1.metro.tokyo.lg.jp/shokuhin/dokusou/19.html'], // スズラン（東京都保健医療局「食品衛生の窓」）
+  p036: ['https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/0000079832.html'], // ハシリドコロ（厚生労働省 自然毒のリスクプロファイル）
+  p037: ['https://www.mhlw.go.jp/topics/syokuchu/poison/higher_13.html'], // ドクゼリ（厚生労働省 自然毒のリスクプロファイル）
+  p038: ['https://www.city.niigata.lg.jp/iryo/shoku/syokuei/shokucyudokuinfo/yudokushokubutsu/suisen.html'], // スイセン（新潟市「スイセンによる食中毒に注意しましょう」）
+  p039: ['https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/0000058791.html'], // イヌサフラン（厚生労働省 自然毒のリスクプロファイル）
+  p042: ['https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/0000079821.html'], // バイケイソウ類（厚生労働省 自然毒のリスクプロファイル）
+  p043: ['https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/0000060246.html'], // チョウセンアサガオ（厚生労働省 自然毒のリスクプロファイル）
+  p050: ['https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/0000079871.html'], // ヨウシュヤマゴボウ（厚生労働省 自然毒のリスクプロファイル）
+  p051: ['https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/0000077665.html'], // テンナンショウ類・マムシグサ（厚生労働省 自然毒のリスクプロファイル）
+  p065: ['https://www.mhlw.go.jp/topics/syokuchu/poison/higher_14.html'], // ドクニンジン（厚生労働省 自然毒のリスクプロファイル）
+  p066: ['https://www.nihs.go.jp/dsi/section_s3/toxins/toxicplantsA4.pdf'], // タケニグサ他（国立医薬品食品衛生研究所）
+  p071: ['https://www.hokeniryo1.metro.tokyo.lg.jp/shokuhin/dokusou/07.html'], // ドクウツギ（東京都保健医療局「食品衛生の窓」）
+  p072: ['https://www.city.inzai.lg.jp/0000010057.html'], // キョウチクトウ（印西市公式ホームページ）
+};
+
 function toSafetyLevel(danger: DangerLevel): SafetyLevel {
   if (danger === 'RED') return 'high_risk';
   if (danger === 'YELLOW') return 'caution';
@@ -232,14 +262,14 @@ function toPlantDefinition(plant: Plant): PlantDefinition {
       handlingWarnings: warningNotes,
       ingestionWarnings: warningNotes,
       officialIncidentNotes: [], // no public-agency-sourced data attached yet
-      sourceRefs: [],
+      sourceRefs: SOURCE_REFS_OVERRIDE[plant.id] ?? [],
     },
     culturalUses: plant.effects.map((label) => ({
       label,
       evidenceStatus: 'traditional_folklore' as const,
     })),
     lookalikeIds: [...(LOOKALIKE_ID_MAP.get(plant.id) ?? [])],
-    sourceRefs: [],
+    sourceRefs: SOURCE_REFS_OVERRIDE[plant.id] ?? [],
     reviewStatus: 'editorial',
   };
 }
