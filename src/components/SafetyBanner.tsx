@@ -10,9 +10,9 @@ interface Props {
 
 /**
  * Surfaces dangerous look-alike warnings. Never relies on colour alone — it
- * pairs an icon, a heading and explicit text (accessibility + safety). Shown on
- * scan results and plant detail whenever a plant can be confused with a toxic
- * species, so a (mis)identification is never read as "safe to eat".
+ * pairs iconography, explicit labels and text. Each warning remains a separate
+ * accessibility stop so screen-reader users can inspect the same detail that
+ * sighted users see instead of hearing one oversized summary element.
  */
 export function SafetyBanner({ warnings }: Props) {
   const theme = useTheme();
@@ -27,62 +27,110 @@ export function SafetyBanner({ warnings }: Props) {
           borderColor: `${theme.colors.statusDanger}66`,
         },
       ]}
-      accessibilityRole="alert"
-      accessibilityLabel={
-        '危険情報。有毒の類似種があります。' +
-        warnings.map((w) => w.name).join('、') +
-        '。採取・摂取の判断には使用しないでください。'
-      }
+      accessibilityLiveRegion="polite"
     >
-      <View style={styles.headerRow}>
-        <View style={[styles.iconWrap, { backgroundColor: `${theme.colors.statusDanger}18` }]}>
+      <View
+        style={styles.headerRow}
+        accessible
+        accessibilityRole="text"
+        accessibilityLabel={`類似種に関する安全情報。有毒または危険な類似種が${warnings.length}件あります。`}
+      >
+        <View
+          style={[styles.iconWrap, { backgroundColor: `${theme.colors.statusDanger}18` }]}
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+        >
           <Ionicons name="warning" size={18} color={theme.colors.statusDanger} />
         </View>
-        <View style={styles.headerTextWrap}>
-          <Text style={[styles.eyebrow, { color: theme.colors.statusDanger }]}>LOOK-ALIKE RISK</Text>
-          <Text style={[styles.heading, { color: theme.colors.textPrimary }]}>有毒の類似種に注意</Text>
+        <View style={styles.headerTextWrap} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+          <Text style={[styles.eyebrow, { color: theme.colors.statusDanger }]}>類似種リスク</Text>
+          <Text style={[styles.heading, { color: theme.colors.textPrimary }]}>有毒・危険な類似種に注意</Text>
         </View>
       </View>
 
       <Text style={[styles.lead, { color: theme.colors.textSecondary }]}>
-        見た目が似ていても、安全性は同じとは限りません。次の候補を必ず見比べてください。
+        見た目が似ていても、安全性は同じとは限りません。特徴を一つずつ見比べてください。
       </Text>
 
       <View style={styles.list}>
-        {warnings.map((w) => (
-          <View
-            key={w.name}
-            style={[
-              styles.item,
-              {
-                backgroundColor: theme.colors.surfacePrimary,
-                borderColor: theme.colors.borderSubtle,
-              },
-            ]}
-          >
-            <View style={styles.itemTitleRow}>
-              <Ionicons
-                name={w.severity === 'high_risk' ? 'alert-circle' : 'information-circle-outline'}
-                size={16}
-                color={theme.colors.statusDanger}
-              />
-              <Text style={[styles.itemName, { color: theme.colors.textPrimary }]}>
-                {w.name}
-              </Text>
-              <View style={[styles.severityChip, { borderColor: `${theme.colors.statusDanger}55` }]}>
-                <Text style={[styles.severityText, { color: theme.colors.statusDanger }]}>
-                  {w.severity === 'high_risk' ? '重大な危険' : '注意'}
+        {warnings.map((warning) => {
+          const severityLabel = warning.severity === 'high_risk' ? '重大な危険' : '注意';
+          return (
+            <View
+              key={warning.name}
+              style={[
+                styles.item,
+                {
+                  backgroundColor: theme.colors.surfacePrimary,
+                  borderColor: theme.colors.borderSubtle,
+                },
+              ]}
+              accessible
+              accessibilityRole="text"
+              accessibilityLabel={`${warning.name}。${severityLabel}。${warning.note}`}
+            >
+              <View style={styles.itemTitleRow} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+                <Ionicons
+                  name={warning.severity === 'high_risk' ? 'alert-circle' : 'information-circle-outline'}
+                  size={16}
+                  color={warning.severity === 'high_risk' ? theme.colors.statusDanger : theme.colors.statusCaution}
+                />
+                <Text style={[styles.itemName, { color: theme.colors.textPrimary }]}>
+                  {warning.name}
                 </Text>
+                <View
+                  style={[
+                    styles.severityChip,
+                    {
+                      borderColor: warning.severity === 'high_risk'
+                        ? `${theme.colors.statusDanger}55`
+                        : `${theme.colors.statusCaution}55`,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.severityText,
+                      {
+                        color: warning.severity === 'high_risk'
+                          ? theme.colors.statusDanger
+                          : theme.colors.statusCaution,
+                      },
+                    ]}
+                  >
+                    {severityLabel}
+                  </Text>
+                </View>
               </View>
+              <Text
+                style={[styles.itemNote, { color: theme.colors.textSecondary }]}
+                accessibilityElementsHidden
+                importantForAccessibility="no-hide-descendants"
+              >
+                {warning.note}
+              </Text>
             </View>
-            <Text style={[styles.itemNote, { color: theme.colors.textSecondary }]}>{w.note}</Text>
-          </View>
-        ))}
+          );
+        })}
       </View>
 
-      <View style={[styles.footer, { borderTopColor: theme.colors.borderSubtle }]}>
-        <Ionicons name="shield-outline" size={16} color={theme.colors.statusDanger} />
-        <Text style={[styles.footerText, { color: theme.colors.statusDanger }]}>
+      <View
+        style={[styles.footer, { borderTopColor: theme.colors.borderSubtle }]}
+        accessible
+        accessibilityRole="alert"
+        accessibilityLabel="この観察結果を採取や摂取の判断に使用しないでください。"
+      >
+        <Ionicons
+          name="shield-outline"
+          size={16}
+          color={theme.colors.statusDanger}
+          accessibilityElementsHidden
+        />
+        <Text
+          style={[styles.footerText, { color: theme.colors.statusDanger }]}
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+        >
           この観察結果を採取・摂取の判断に使用しないでください。
         </Text>
       </View>
@@ -99,45 +147,42 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   headerRow: {
+    minHeight: 40,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
     marginBottom: 10,
   },
   iconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  headerTextWrap: {
-    flex: 1,
-  },
+  headerTextWrap: { flex: 1 },
   eyebrow: {
-    fontSize: 10,
-    lineHeight: 13,
+    fontSize: 11,
+    lineHeight: 15,
     fontWeight: '800',
-    letterSpacing: 1.1,
+    letterSpacing: 0.6,
     marginBottom: 1,
   },
   heading: {
     fontSize: 15,
-    lineHeight: 20,
+    lineHeight: 21,
     fontWeight: '800',
   },
   lead: {
     fontSize: 13,
-    lineHeight: 19,
+    lineHeight: 20,
     marginBottom: 11,
   },
-  list: {
-    gap: 8,
-  },
+  list: { gap: 8 },
   item: {
     borderWidth: StyleSheet.hairlineWidth,
     borderRadius: 14,
-    padding: 11,
+    padding: 12,
   },
   itemTitleRow: {
     flexDirection: 'row',
@@ -147,26 +192,27 @@ const styles = StyleSheet.create({
   },
   itemName: {
     flex: 1,
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: 14,
+    lineHeight: 20,
     fontWeight: '800',
   },
   severityChip: {
     borderWidth: StyleSheet.hairlineWidth,
     borderRadius: 999,
     paddingHorizontal: 7,
-    paddingVertical: 2,
+    paddingVertical: 3,
   },
   severityText: {
-    fontSize: 10,
-    lineHeight: 13,
+    fontSize: 11,
+    lineHeight: 15,
     fontWeight: '800',
   },
   itemNote: {
     fontSize: 13,
-    lineHeight: 19,
+    lineHeight: 20,
   },
   footer: {
+    minHeight: 44,
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 7,
@@ -176,8 +222,8 @@ const styles = StyleSheet.create({
   },
   footerText: {
     flex: 1,
-    fontSize: 12,
-    lineHeight: 18,
+    fontSize: 13,
+    lineHeight: 19,
     fontWeight: '700',
   },
 });
