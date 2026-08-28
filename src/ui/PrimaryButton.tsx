@@ -15,17 +15,19 @@ export function PrimaryButton({
   loading,
   fullWidth,
   disabled,
+  accessibilityLabel,
   accessibilityState,
   style,
   ...rest
 }: Props) {
   const theme = useTheme();
   const isDisabled = disabled || loading;
+  const spokenLabel = accessibilityLabel ?? label;
   return (
     <Pressable
       {...rest}
       accessibilityRole="button"
-      accessibilityLabel={loading ? `${label}、処理中` : label}
+      accessibilityLabel={loading ? `${spokenLabel}、処理中` : spokenLabel}
       accessibilityState={{ ...accessibilityState, disabled: !!isDisabled, busy: !!loading }}
       accessibilityLiveRegion={loading ? 'polite' : undefined}
       disabled={isDisabled}
@@ -43,7 +45,14 @@ export function PrimaryButton({
         typeof style === 'function' ? style(state) : style,
       ]}
     >
-      {loading && <ActivityIndicator size="small" color={theme.colors.textOnAccent} />}
+      {loading && (
+        <ActivityIndicator
+          size="small"
+          color={theme.colors.textOnAccent}
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+        />
+      )}
       <DynamicText
         variant="headline"
         weight="secondary"
