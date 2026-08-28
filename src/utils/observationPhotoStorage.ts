@@ -24,14 +24,30 @@ const inFlightCopies = new Map<string, Promise<string>>();
 const recentCopies = new Map<string, { uri: string; expiresAt: number }>();
 const RECENT_COPY_TTL_MS = 10_000;
 
+// Two different photos can be persisted concurrently on the very first save.
+// Share directory initialisation as well so both callers cannot race through
+// getInfo(false) and try to create the same directory simultaneously.
+let ensureDirPromise: Promise<void> | null = null;
+
 const SAFE_IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'heic', 'heif', 'webp']);
 const MANAGED_PHOTO_NAME = /^\d+_[a-z0-9]{1,16}\.(?:jpg|jpeg|png|heic|heif|webp)$/i;
 
 async function ensureObservationsDir(): Promise<void> {
   if (!OBSERVATIONS_DIR) return;
-  const info = await FileSystem.getInfoAsync(OBSERVATIONS_DIR);
-  if (!info.exists) {
-    await FileSystem.makeDirectoryAsync(OBSERVATIONS_DIR, { intermediates: true });
+  if (ensureDirPromise) return ensureDirPromise;
+
+  const operation = (async () => {
+    const info = await FileSystem.getInfoAsync(OBSERVATIONS_DIR);
+    if (!info.exists) {
+      await FileSystem.makeDirectoryAsync(OBSERVATIONS_DIR, { intermediates: true });
+    }
+  })();
+
+  ensureDirPromise = operation;
+  try {
+    await operation;
+  } finally {
+    if (ensureDirPromise === operation) ensureDirPromise = null;
   }
 }
 
@@ -62,7 +78,8 @@ async function copyToDurableStorage(cacheUri: string): Promise<string> {
   try {
     await ensureObservationsDir();
     const ext = imageExtension(cacheUri);
-    const destUri = `${OBSERVATIONS_DIR}${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
+    const randomPart = Math.random().toString(36).slice(2, 8).padEnd(6, '0');
+    const destUri = `${OBSERVATIONS_DIR}${Date.now()}_${randomPart}.${ext}`;
     await FileSystem.copyAsync({ from: cacheUri, to: destUri });
     return destUri;
   } catch (err) {
@@ -128,6 +145,7 @@ export async function deleteObservationPhoto(uri?: string): Promise<void> {
 export async function clearObservationPhotos(): Promise<void> {
   inFlightCopies.clear();
   recentCopies.clear();
+  ensureDirPromise = null;
   if (
     Platform.OS === 'web' ||
     !OBSERVATIONS_DIR ||
