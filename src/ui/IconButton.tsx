@@ -22,16 +22,16 @@ export function IconButton({ icon, accessibilityLabel, size = 20, variant = 'pla
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
       hitSlop={8}
-      style={({ pressed }) => [
+      style={(state) => [
         styles.base,
         {
           width: theme.minTapTarget,
           height: theme.minTapTarget,
           borderRadius: theme.radius.pill,
           backgroundColor:
-            variant === 'surface' ? (pressed ? theme.colors.surfaceTertiary : theme.colors.surfaceSecondary) : 'transparent',
+            variant === 'surface' ? (state.pressed ? theme.colors.surfaceTertiary : theme.colors.surfaceSecondary) : 'transparent',
         },
-        typeof style === 'function' ? undefined : style,
+        typeof style === 'function' ? style(state) : style,
       ]}
       {...rest}
     >
