@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { PLANTS, TOTAL_PLANTS } from '../../src/data/plants';
 import { getPlantDefinitionById } from '../../src/data/plantDefinitions';
@@ -22,17 +23,13 @@ import { useGameStore } from '../../src/store/useGameStore';
 import { DisclaimerBanner } from '../../src/components/DisclaimerBanner';
 import { DangerBadge } from '../../src/components/DangerBadge';
 import { ShareCard } from '../../src/components/ShareCard';
-import { Colors } from '../../src/constants/colors';
+import { useTheme } from '../../src/theme/ThemeProvider';
 import { getPlayerTitle } from '../../src/utils/playerTitle';
 import { XP_PER_LEVEL } from '../../src/store/useGameStore';
 import { getCurrentSeason, SEASON_CONFIG, seasonForDate } from '../../src/utils/season';
 import { todayLocalStr, localDayFromISO } from '../../src/utils/date';
 import { PRIVACY_POLICY_URL, TERMS_URL, SUPPORT_EMAIL, APP_VERSION } from '../../src/constants/app';
 import { ScanRecord } from '../../src/types';
-
-// Observation-count intensity tiers for the calendar (§7.8: "レアリティ色ではな
-// く観察数または多様性" — no longer keyed to rarity).
-const OBSERVATION_INTENSITY = [Colors.primaryLight, Colors.primary, Colors.primaryDark];
 
 interface AchievementContext {
   discoveredPlantIds: string[];
@@ -51,82 +48,34 @@ interface AchievementDef {
 }
 
 const ACHIEVEMENTS: AchievementDef[] = [
+  { id: 'first_discovery', icon: 'leaf-outline', label: '初めての発見', desc: '初めて植物を発見した', check: (ctx) => ctx.discoveredPlantIds.length >= 1 },
+  { id: 'ten_plants', icon: 'book-outline', label: '図鑑の始まり', desc: '10種類の植物を発見した', check: (ctx) => ctx.discoveredPlantIds.length >= 10 },
+  { id: 'twenty_five', icon: 'ribbon-outline', label: 'コレクター見習い', desc: '25種類の植物を発見した', check: (ctx) => ctx.discoveredPlantIds.length >= 25 },
+  { id: 'all_fifty', icon: 'trophy-outline', label: '図鑑完成', desc: `全${TOTAL_PLANTS}種類の植物を発見した`, check: (ctx) => ctx.discoveredPlantIds.length >= TOTAL_PLANTS },
   {
-    id: 'first_discovery',
-    icon: 'leaf-outline',
-    label: '初めての発見',
-    desc: '初めて植物を発見した',
-    check: (ctx) => ctx.discoveredPlantIds.length >= 1,
+    id: 'danger_master', icon: 'skull-outline', label: '毒草の知識', desc: '危険（RED）植物を発見した',
+    check: (ctx) => PLANTS.filter((p) => p.danger === 'RED').some((p) => ctx.discoveredPlantIds.includes(p.id)),
   },
   {
-    id: 'ten_plants',
-    icon: 'book-outline',
-    label: '図鑑の始まり',
-    desc: '10種類の植物を発見した',
-    check: (ctx) => ctx.discoveredPlantIds.length >= 10,
+    id: 'herb_collector', icon: 'leaf', label: 'ハーブ愛好家', desc: 'ハーブを10種類発見した',
+    check: (ctx) => PLANTS.filter((p) => p.category === 'スパイス・ハーブ' && ctx.discoveredPlantIds.includes(p.id)).length >= 10,
   },
   {
-    id: 'twenty_five',
-    icon: 'ribbon-outline',
-    label: 'コレクター見習い',
-    desc: '25種類の植物を発見した',
-    check: (ctx) => ctx.discoveredPlantIds.length >= 25,
+    id: 'wild_hunter', icon: 'compass-outline', label: '野草ハンター', desc: '野草を10種類発見した',
+    check: (ctx) => PLANTS.filter((p) => p.category === '野草' && ctx.discoveredPlantIds.includes(p.id)).length >= 10,
   },
   {
-    id: 'all_fifty',
-    icon: 'trophy-outline',
-    label: '図鑑完成',
-    desc: `全${TOTAL_PLANTS}種類の植物を発見した`,
-    check: (ctx) => ctx.discoveredPlantIds.length >= TOTAL_PLANTS,
+    id: 'rare_finder', icon: 'star-outline', label: 'レアハンター', desc: '★5レアを発見した',
+    check: (ctx) => PLANTS.filter((p) => p.rarity === 5).some((p) => ctx.discoveredPlantIds.includes(p.id)),
   },
   {
-    id: 'danger_master',
-    icon: 'skull-outline',
-    label: '毒草の知識',
-    desc: '危険（RED）植物を発見した',
-    check: (ctx) =>
-      PLANTS.filter((p) => p.danger === 'RED').some((p) => ctx.discoveredPlantIds.includes(p.id)),
-  },
-  {
-    id: 'herb_collector',
-    icon: 'leaf',
-    label: 'ハーブ愛好家',
-    desc: 'ハーブを10種類発見した',
-    check: (ctx) =>
-      PLANTS.filter((p) => p.category === 'スパイス・ハーブ' && ctx.discoveredPlantIds.includes(p.id))
-        .length >= 10,
-  },
-  {
-    id: 'wild_hunter',
-    icon: 'compass-outline',
-    label: '野草ハンター',
-    desc: '野草を10種類発見した',
-    check: (ctx) =>
-      PLANTS.filter((p) => p.category === '野草' && ctx.discoveredPlantIds.includes(p.id)).length >= 10,
-  },
-  {
-    id: 'rare_finder',
-    icon: 'star-outline',
-    label: 'レアハンター',
-    desc: '★5レアを発見した',
-    check: (ctx) =>
-      PLANTS.filter((p) => p.rarity === 5).some((p) => ctx.discoveredPlantIds.includes(p.id)),
-  },
-  {
-    id: 'all_categories',
-    icon: 'grid-outline',
-    label: 'バランス型',
-    desc: '野草とハーブ両方を発見した',
+    id: 'all_categories', icon: 'grid-outline', label: 'バランス型', desc: '野草とハーブ両方を発見した',
     check: (ctx) =>
       PLANTS.some((p) => p.category === '野草' && ctx.discoveredPlantIds.includes(p.id)) &&
       PLANTS.some((p) => p.category === 'スパイス・ハーブ' && ctx.discoveredPlantIds.includes(p.id)),
   },
-  // ── 学習系（統合仕様書§7.8: 収集数だけでなく学習系を増やす） ──
   {
-    id: 'family_diversity',
-    icon: 'git-branch-outline',
-    label: '科の探求者',
-    desc: '5つの科の植物を観察した',
+    id: 'family_diversity', icon: 'git-branch-outline', label: '科の探求者', desc: '5つの科の植物を観察した',
     check: (ctx) => {
       const families = new Set(
         ctx.discoveredPlantIds
@@ -136,18 +85,9 @@ const ACHIEVEMENTS: AchievementDef[] = [
       return families.size >= 5;
     },
   },
+  { id: 'note_taker', icon: 'create-outline', label: 'メモ魔', desc: '10件のメモを残した', check: (ctx) => Object.keys(ctx.plantNotes).length >= 10 },
   {
-    id: 'note_taker',
-    icon: 'create-outline',
-    label: 'メモ魔',
-    desc: '10件のメモを残した',
-    check: (ctx) => Object.keys(ctx.plantNotes).length >= 10,
-  },
-  {
-    id: 'cross_season',
-    icon: 'sync-outline',
-    label: '季節をまたぐ観察',
-    desc: '同じ植物を異なる季節に観察した',
+    id: 'cross_season', icon: 'sync-outline', label: '季節をまたぐ観察', desc: '同じ植物を異なる季節に観察した',
     check: (ctx) => {
       const seasonsByPlant = new Map<string, Set<string>>();
       for (const record of ctx.scanHistory) {
@@ -158,20 +98,8 @@ const ACHIEVEMENTS: AchievementDef[] = [
       return [...seasonsByPlant.values()].some((s) => s.size >= 2);
     },
   },
-  {
-    id: 'safety_reader',
-    icon: 'shield-checkmark-outline',
-    label: '危険植物を学ぶ',
-    desc: '危険植物の安全情報を確認した',
-    check: (ctx) => ctx.viewedSafetyCardPlantIds.length >= 1,
-  },
-  {
-    id: 'candidate_comparer',
-    icon: 'git-compare-outline',
-    label: '見比べ上手',
-    desc: '複数候補を見比べて選んだ',
-    check: (ctx) => ctx.hasComparedCandidates,
-  },
+  { id: 'safety_reader', icon: 'shield-checkmark-outline', label: '危険植物を学ぶ', desc: '危険植物の安全情報を確認した', check: (ctx) => ctx.viewedSafetyCardPlantIds.length >= 1 },
+  { id: 'candidate_comparer', icon: 'git-compare-outline', label: '見比べ上手', desc: '複数候補を見比べて選んだ', check: (ctx) => ctx.hasComparedCandidates },
 ];
 
 function formatScanDate(iso: string): string {
@@ -188,6 +116,8 @@ function formatScanDate(iso: string): string {
 
 export default function ProfileScreen() {
   const router = useRouter();
+  const theme = useTheme();
+  const insets = useSafeAreaInsets();
   const {
     playerName, xp, discoveredPlantIds, setPlayerName, streak, getLevel, getXpForCurrentLevel,
     getXpToNextLevel, scanHistory, plantNotes, viewedSafetyCardPlantIds, hasComparedCandidates,
@@ -203,45 +133,31 @@ export default function ProfileScreen() {
 
   const season = getCurrentSeason();
   const seasonCfg = SEASON_CONFIG[season];
-
   const level = getLevel();
   const xpCurrent = getXpForCurrentLevel();
   const xpToNext = getXpToNextLevel();
   const title = getPlayerTitle(level);
-
   const discoveredCount = discoveredPlantIds.length;
   const totalPlants = PLANTS.length;
+  const todayKey = todayLocalStr();
+  const observationIntensity = [theme.colors.accentSecondary, theme.colors.accentPrimary, theme.colors.accentPrimaryPressed];
 
   const achievementCtx: AchievementContext = useMemo(
     () => ({ discoveredPlantIds, plantNotes, scanHistory, viewedSafetyCardPlantIds, hasComparedCandidates }),
     [discoveredPlantIds, plantNotes, scanHistory, viewedSafetyCardPlantIds, hasComparedCandidates]
   );
-  const unlockedAchievements = ACHIEVEMENTS.filter((a) =>
-    a.check(achievementCtx)
-  ).map((a) => ({ icon: a.icon, label: a.label }));
-  const greenCount = PLANTS.filter(
-    (p) => p.danger === 'GREEN' && discoveredPlantIds.includes(p.id)
-  ).length;
-  const yellowCount = PLANTS.filter(
-    (p) => p.danger === 'YELLOW' && discoveredPlantIds.includes(p.id)
-  ).length;
-  const redCount = PLANTS.filter(
-    (p) => p.danger === 'RED' && discoveredPlantIds.includes(p.id)
-  ).length;
-  const rarity5Count = PLANTS.filter(
-    (p) => p.rarity === 5 && discoveredPlantIds.includes(p.id)
-  ).length;
+  const unlockedAchievements = ACHIEVEMENTS.filter((a) => a.check(achievementCtx)).map((a) => ({ icon: a.icon, label: a.label }));
+  const greenCount = PLANTS.filter((p) => p.danger === 'GREEN' && discoveredPlantIds.includes(p.id)).length;
+  const yellowCount = PLANTS.filter((p) => p.danger === 'YELLOW' && discoveredPlantIds.includes(p.id)).length;
+  const redCount = PLANTS.filter((p) => p.danger === 'RED' && discoveredPlantIds.includes(p.id)).length;
+  const rarity5Count = PLANTS.filter((p) => p.rarity === 5 && discoveredPlantIds.includes(p.id)).length;
 
-  // タイムライン検索（v3 §9.3）: 「去年の春に見た黄色い花」のような自然言語
-  // 解析は本環境のAIインフラでは誠実に実装できないため行わない。植物名・
-  // メモ本文に対する正直な部分一致検索として提供する（PR20）。
   const trimmedSearch = historySearch.trim();
   const allScansWithPlant = useMemo(
-    () =>
-      scanHistory.flatMap((record) => {
-        const plant = PLANTS.find((p) => p.id === record.plantId);
-        return plant ? [{ record, plant }] : [];
-      }),
+    () => scanHistory.flatMap((record) => {
+      const plant = PLANTS.find((p) => p.id === record.plantId);
+      return plant ? [{ record, plant }] : [];
+    }),
     [scanHistory]
   );
   const recentScans = useMemo(() => {
@@ -260,16 +176,12 @@ export default function ProfileScreen() {
     return unidentifiedObservations.filter((o) => (o.note ?? '').toLowerCase().includes(q));
   }, [unidentifiedObservations, trimmedSearch]);
 
-  // 季節別内訳（v3 §9.2「季節別」）
   const seasonCounts = useMemo(() => {
     const counts: Record<string, number> = { 春: 0, 夏: 0, 秋: 0, 冬: 0 };
-    for (const record of scanHistory) {
-      counts[seasonForDate(new Date(record.scannedAt))]++;
-    }
+    for (const record of scanHistory) counts[seasonForDate(new Date(record.scannedAt))]++;
     return counts;
   }, [scanHistory]);
 
-  // 再訪予定（v3 §9.2「再訪」）: 特定済み・未特定の両方から集約し、日付昇順。
   const upcomingRevisits = useMemo(() => {
     const fromScans = scanHistory
       .filter((r) => r.revisitAt)
@@ -292,7 +204,6 @@ export default function ProfileScreen() {
     return [...fromScans, ...fromUnidentified].sort((a, b) => a.revisitAt.localeCompare(b.revisitAt));
   }, [scanHistory, unidentifiedObservations]);
 
-  // Calendar: observation COUNT per day (§7.8 — not rarity-coded anymore).
   const dayObservationCount = useMemo(() => {
     const map: Record<string, number> = {};
     for (const record of scanHistory) {
@@ -302,27 +213,25 @@ export default function ProfileScreen() {
     return map;
   }, [scanHistory]);
 
-  // Calendar: current month grid cells (mm precomputed once)
+  // Recompute from the local day key instead of relying on the tab subtree to
+  // remount at midnight. This also makes date-bound UI easier to reuse later.
   const calendarData = useMemo(() => {
     const now = new Date();
     const year = now.getFullYear();
     const month = now.getMonth();
-    const todayStr = todayLocalStr();
     const firstDow = new Date(year, month, 1).getDay();
-    const startOffset = (firstDow + 6) % 7; // Mon-start
+    const startOffset = (firstDow + 6) % 7;
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     const mm = String(month + 1).padStart(2, '0');
     const cells: (number | null)[] = [
       ...Array(startOffset).fill(null),
       ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
     ];
-    return { cells, year, month, mm, todayStr };
-  }, []);
+    return { cells, year, month, mm, todayStr: todayKey };
+  }, [todayKey]);
 
   function handleSaveName() {
-    if (tempName.trim().length > 0) {
-      setPlayerName(tempName.trim());
-    }
+    if (tempName.trim().length > 0) setPlayerName(tempName.trim());
     setEditNameVisible(false);
   }
 
@@ -337,18 +246,11 @@ export default function ProfileScreen() {
       favoritePlantIds,
       plantNotes,
       scanHistory: scanHistory.map(({ id, plantId, scannedAt, revisitAt }) => ({ id, plantId, scannedAt, revisitAt })),
-      unidentifiedObservations: unidentifiedObservations.map(({ id, observedAt, note, revisitAt }) => ({
-        id,
-        observedAt,
-        note,
-        revisitAt,
-      })),
+      unidentifiedObservations: unidentifiedObservations.map(({ id, observedAt, note, revisitAt }) => ({ id, observedAt, note, revisitAt })),
     };
     try {
       await Share.share({ message: JSON.stringify(payload, null, 2) });
-    } catch {
-      // ユーザーによるキャンセル等。エラー表示は不要。
-    }
+    } catch { /* user cancellation */ }
   }
 
   function handleDeleteAllData() {
@@ -363,425 +265,331 @@ export default function ProfileScreen() {
   }
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      {/* Profile Hero */}
-      <LinearGradient
-        colors={['#1B5E20', '#2E7D32', '#43A047']}
-        style={styles.hero}
-      >
-        {/* Avatar */}
-        <View style={styles.avatar}>
-          <Ionicons name="person-circle-outline" size={64} color="rgba(255,255,255,0.9)" />
-        </View>
-
-        {/* Name */}
-        <Text style={styles.playerName} numberOfLines={1} adjustsFontSizeToFit>{playerName}</Text>
-        <Text style={styles.titleText}>{title}</Text>
-
-        {/* Edit name button */}
-        <Pressable
-          style={styles.editNameBtn}
-          onPress={() => {
-            setTempName(playerName);
-            setEditNameVisible(true);
-          }}
-        >
-          <Ionicons name="create-outline" size={14} color="#A5D6A7" />
-          <Text style={styles.editNameText}>名前を変更</Text>
-        </Pressable>
-
-        {/* Level */}
-        <View style={styles.levelBox}>
-          <Text style={styles.levelLabel}>Level {level}</Text>
-          <View style={styles.xpBarOuter}>
-            <View
-              style={[
-                styles.xpBarInner,
-                { width: `${(xpCurrent / XP_PER_LEVEL) * 100}%` },
-              ]}
-            />
+    <ScrollView
+      style={[styles.container, { backgroundColor: theme.colors.canvas }]}
+      contentContainerStyle={styles.scrollContent}
+      showsVerticalScrollIndicator={false}
+    >
+      {/* Field-note Hero */}
+      <LinearGradient colors={['#174F2A', '#226B35', '#348447']} style={[styles.hero, { paddingTop: insets.top + 18 }]}>
+        <Text style={styles.heroEyebrow}>YOUR FIELD NOTE</Text>
+        <View style={styles.identityRow}>
+          <View style={styles.avatar}>
+            <Ionicons name="person-outline" size={34} color="#FFFFFF" />
           </View>
-          <Text style={styles.xpLabel}>
-            {xpCurrent} / {XP_PER_LEVEL} XP（次のレベルまで{xpToNext}XP）
-          </Text>
+          <View style={styles.identityText}>
+            <Text style={styles.playerName} numberOfLines={1}>{playerName}</Text>
+            <Text style={styles.titleText}>{title}</Text>
+          </View>
+          <Pressable
+            style={({ pressed }) => [styles.editNameBtn, pressed && styles.glassPressed]}
+            onPress={() => {
+              setTempName(playerName);
+              setEditNameVisible(true);
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="名前を変更"
+          >
+            <Ionicons name="create-outline" size={18} color="#FFFFFF" />
+          </Pressable>
         </View>
 
-        {/* Streak + Share */}
+        <View style={styles.levelBox} accessible accessibilityRole="text" accessibilityLabel={`レベル${level}。次のレベルまで${xpToNext}XP`}>
+          <View style={styles.levelTitleRow}>
+            <Text style={styles.levelLabel}>Level {level}</Text>
+            <Text style={styles.xpLabel}>{xpCurrent} / {XP_PER_LEVEL} XP</Text>
+          </View>
+          <View style={styles.xpBarOuter} accessibilityElementsHidden>
+            <View style={[styles.xpBarInner, { width: `${Math.min((xpCurrent / XP_PER_LEVEL) * 100, 100)}%` }]} />
+          </View>
+        </View>
+
         <View style={styles.heroBottomRow}>
-          <View style={styles.streakBadge}>
-            <Ionicons name="flame-outline" size={16} color="#FF6F00" />
-            <Text style={styles.streakText}>
-              {streak > 0 ? `${streak}日連続` : '今日から開始'}
-            </Text>
+          <View style={styles.streakBadge} accessible accessibilityRole="text" accessibilityLabel={streak > 0 ? `${streak}日連続` : '今日から開始'}>
+            <Ionicons name="flame-outline" size={17} color="#FFD28B" />
+            <Text style={styles.streakText}>{streak > 0 ? `${streak}日連続` : '今日から開始'}</Text>
           </View>
-          <Pressable style={styles.shareBtn} onPress={() => setShareCardVisible(true)}>
-            <Ionicons name="ribbon-outline" size={14} color="#FFFFFF" />
+          <Pressable
+            style={({ pressed }) => [styles.shareBtn, pressed && styles.glassPressed]}
+            onPress={() => setShareCardVisible(true)}
+            accessibilityRole="button"
+            accessibilityLabel="実績カードを開く"
+          >
+            <Ionicons name="ribbon-outline" size={17} color="#FFFFFF" />
             <Text style={styles.shareBtnText}>実績カード</Text>
           </Pressable>
         </View>
       </LinearGradient>
 
-      {/* Stats */}
-      <View style={styles.section}>
-        <View style={styles.sectionTitleRow}>
-          <Ionicons name="stats-chart-outline" size={16} color={Colors.text} />
-          <Text style={styles.sectionTitle}>コレクション統計</Text>
-        </View>
+      <Section title="コレクション統計" icon="stats-chart-outline">
         <View style={styles.statsGrid}>
-          <StatBox label="発見数" value={`${discoveredCount}`} unit={`/ ${PLANTS.length}`} color={Colors.primary} />
-          <StatBox label="合計XP" value={String(xp)} unit="XP" color={Colors.rarity5} />
-          <StatBox label="一般食用" value={String(greenCount)} unit="種" color={Colors.dangerGreen} />
-          <StatBox label="要注意" value={String(yellowCount)} unit="種" color={Colors.dangerYellow} />
-          <StatBox label="危険植物" value={String(redCount)} unit="種" color={Colors.dangerRed} />
-          <StatBox label="★5レア" value={String(rarity5Count)} unit="種" color={Colors.rarity5} />
+          <StatBox label="発見数" value={`${discoveredCount}`} unit={`/ ${PLANTS.length}`} color={theme.colors.accentPrimary} />
+          <StatBox label="合計XP" value={String(xp)} unit="XP" color={theme.colors.rarityLegendary} />
+          <StatBox label="一般食用" value={String(greenCount)} unit="種" color={theme.colors.statusObserved} />
+          <StatBox label="要注意" value={String(yellowCount)} unit="種" color={theme.colors.statusCaution} />
+          <StatBox label="危険植物" value={String(redCount)} unit="種" color={theme.colors.statusDanger} />
+          <StatBox label="★5レア" value={String(rarity5Count)} unit="種" color={theme.colors.rarityLegendary} />
         </View>
-      </View>
+      </Section>
 
-      {/* Scan Calendar */}
-      <View style={styles.section}>
-        <View style={styles.sectionTitleRow}>
-          <Ionicons name="calendar-outline" size={16} color={Colors.text} />
-          <Text style={styles.sectionTitle}>スキャンカレンダー</Text>
-        </View>
-        <View style={styles.calendarCard}>
-          <Text style={styles.calendarMonth}>
-            {calendarData.year}年{calendarData.month + 1}月
-          </Text>
-          {/* Day of week header */}
+      <Section title="観察カレンダー" icon="calendar-outline">
+        <View style={[styles.calendarCard, { backgroundColor: theme.colors.surfacePrimary, borderColor: theme.colors.borderSubtle, shadowColor: theme.colors.shadow }]}>
+          <Text style={[styles.calendarMonth, { color: theme.colors.textPrimary }]}>{calendarData.year}年{calendarData.month + 1}月</Text>
           <View style={styles.calendarDowRow}>
             {['月', '火', '水', '木', '金', '土', '日'].map((d) => (
-              <Text key={d} style={styles.calendarDow}>{d}</Text>
+              <Text key={d} style={[styles.calendarDow, { color: theme.colors.textTertiary }]}>{d}</Text>
             ))}
           </View>
-          {/* Calendar cells */}
           <View style={styles.calendarGrid}>
             {calendarData.cells.map((day, idx) => {
-              if (day === null) {
-                return <View key={`pad-${idx}`} style={styles.calendarCell} />;
-              }
+              if (day === null) return <View key={`pad-${idx}`} style={styles.calendarCell} />;
               const dd = String(day).padStart(2, '0');
               const dateStr = `${calendarData.year}-${calendarData.mm}-${dd}`;
               const isToday = dateStr === calendarData.todayStr;
               const count = dayObservationCount[dateStr] ?? 0;
-              const intensityIdx = count <= 0 ? -1 : Math.min(count - 1, OBSERVATION_INTENSITY.length - 1);
-              const fillColor = intensityIdx >= 0 ? OBSERVATION_INTENSITY[intensityIdx] : undefined;
-              const a11yLabel = `${calendarData.month + 1}月${day}日${isToday ? '（今日）' : ''}、観察${count}件`;
+              const intensityIdx = count <= 0 ? -1 : Math.min(count - 1, observationIntensity.length - 1);
+              const fillColor = intensityIdx >= 0 ? observationIntensity[intensityIdx] : undefined;
               return (
                 <View
                   key={dateStr}
-                  accessibilityLabel={a11yLabel}
+                  accessible
+                  accessibilityRole="text"
+                  accessibilityLabel={`${calendarData.month + 1}月${day}日${isToday ? '、今日' : ''}。観察${count}件`}
                   style={[
                     styles.calendarCell,
                     styles.calendarDayCell,
-                    fillColor ? { backgroundColor: fillColor } : styles.calendarDayCellEmpty,
-                    isToday && !fillColor && styles.calendarDayCellToday,
-                    isToday && fillColor ? { borderWidth: 2, borderColor: '#FFFFFF' } : undefined,
+                    fillColor ? { backgroundColor: fillColor } : undefined,
+                    !fillColor && isToday ? { borderWidth: 2, borderColor: theme.colors.accentPrimary } : undefined,
+                    !fillColor && !isToday ? { backgroundColor: theme.colors.surfaceSecondary } : undefined,
+                    isToday && fillColor ? { borderWidth: 2, borderColor: theme.colors.textOnAccent } : undefined,
                   ]}
                 >
-                  <Text style={[
-                    styles.calendarDayNum,
-                    fillColor ? styles.calendarDayNumFilled : styles.calendarDayNumEmpty,
-                    isToday && !fillColor && styles.calendarDayNumToday,
-                  ]}>
-                    {day}
-                  </Text>
+                  <Text style={[styles.calendarDayNum, { color: fillColor ? theme.colors.textOnAccent : isToday ? theme.colors.accentPrimary : theme.colors.textSecondary }]}>{day}</Text>
                 </View>
               );
             })}
           </View>
-          {/* Legend */}
-          <View style={styles.calendarLegend}>
-            <Text style={styles.calendarLegendLabel}>観察数: 少</Text>
-            {OBSERVATION_INTENSITY.map((c, i) => (
-              <View key={i} style={[styles.calendarLegendDot, { backgroundColor: c }]} />
-            ))}
-            <Text style={styles.calendarLegendLabel}>多</Text>
+          <View style={styles.calendarLegend} accessibilityElementsHidden>
+            <Text style={[styles.calendarLegendLabel, { color: theme.colors.textTertiary }]}>観察数: 少</Text>
+            {observationIntensity.map((c, i) => <View key={i} style={[styles.calendarLegendDot, { backgroundColor: c }]} />)}
+            <Text style={[styles.calendarLegendLabel, { color: theme.colors.textTertiary }]}>多</Text>
           </View>
         </View>
-      </View>
+      </Section>
 
-      {/* Achievements */}
-      <View style={styles.section}>
-        <View style={styles.sectionTitleRow}>
-          <Ionicons name="ribbon-outline" size={16} color={Colors.text} />
-          <Text style={styles.sectionTitle}>実績バッジ</Text>
-        </View>
+      <Section title="実績バッジ" icon="ribbon-outline">
         <View style={styles.achievementsGrid}>
           {ACHIEVEMENTS.map((ach) => {
             const unlocked = ach.check(achievementCtx);
             return (
               <View
                 key={ach.id}
-                style={[styles.achCard, !unlocked && styles.achCardLocked]}
+                style={[
+                  styles.achCard,
+                  {
+                    backgroundColor: unlocked ? theme.colors.surfaceSecondary : theme.colors.surfacePrimary,
+                    borderColor: unlocked ? theme.colors.borderStrong : theme.colors.borderSubtle,
+                  },
+                ]}
+                accessible
+                accessibilityRole="text"
+                accessibilityLabel={`${ach.label}。${ach.desc}。${unlocked ? '達成済み' : '未達成'}`}
               >
-                {unlocked ? (
-                  <Ionicons name={ach.icon as React.ComponentProps<typeof Ionicons>['name']} size={28} color={Colors.primary} style={styles.achIconItem} />
-                ) : (
-                  <Ionicons name="lock-closed-outline" size={28} color="#BDBDBD" style={styles.achIconItem} />
-                )}
-                <Text
-                  style={[styles.achLabel, !unlocked && styles.achTextLocked]}
-                  numberOfLines={2}
-                >
-                  {ach.label}
-                </Text>
-                <Text style={styles.achDesc} numberOfLines={2}>
-                  {ach.desc}
-                </Text>
+                <View style={[styles.achIconWrap, { backgroundColor: unlocked ? `${theme.colors.accentPrimary}16` : theme.colors.surfaceSecondary }]}>
+                  <Ionicons
+                    name={(unlocked ? ach.icon : 'lock-closed-outline') as React.ComponentProps<typeof Ionicons>['name']}
+                    size={24}
+                    color={unlocked ? theme.colors.accentPrimary : theme.colors.textTertiary}
+                  />
+                </View>
+                <View style={styles.achTextWrap}>
+                  <Text style={[styles.achLabel, { color: unlocked ? theme.colors.textPrimary : theme.colors.textTertiary }]}>{ach.label}</Text>
+                  <Text style={[styles.achDesc, { color: theme.colors.textSecondary }]}>{ach.desc}</Text>
+                </View>
               </View>
             );
           })}
         </View>
-      </View>
+      </Section>
 
-      {/* 季節別内訳（v3 §9.2「季節別」） */}
       {scanHistory.length > 0 && (
-        <View style={styles.section}>
-          <View style={styles.sectionTitleRow}>
-            <Ionicons name="flower-outline" size={16} color={Colors.text} />
-            <Text style={styles.sectionTitle}>季節別の観察数</Text>
-          </View>
+        <Section title="季節別の観察数" icon="flower-outline">
           <View style={styles.seasonBreakdownRow}>
             {(['春', '夏', '秋', '冬'] as const).map((s) => (
-              <View key={s} style={styles.seasonBreakdownCell}>
-                <Text style={styles.seasonBreakdownLabel}>{s}</Text>
-                <Text style={styles.seasonBreakdownValue}>{seasonCounts[s]}</Text>
+              <View key={s} style={[styles.seasonBreakdownCell, { backgroundColor: theme.colors.surfacePrimary, borderColor: theme.colors.borderSubtle }]}>
+                <Text style={[styles.seasonBreakdownLabel, { color: theme.colors.textSecondary }]}>{s}</Text>
+                <Text style={[styles.seasonBreakdownValue, { color: theme.colors.accentPrimary }]}>{seasonCounts[s]}</Text>
               </View>
             ))}
           </View>
-        </View>
+        </Section>
       )}
 
-      {/* 再訪予定（v3 §9.2「再訪」） */}
       {upcomingRevisits.length > 0 && (
-        <View style={styles.section}>
-          <View style={styles.sectionTitleRow}>
-            <Ionicons name="alarm-outline" size={16} color={Colors.text} />
-            <Text style={styles.sectionTitle}>再訪予定</Text>
-          </View>
-          <View style={styles.historyList}>
+        <Section title="再訪予定" icon="alarm-outline">
+          <View style={[styles.historyList, { backgroundColor: theme.colors.surfacePrimary, borderColor: theme.colors.borderSubtle }]}>
             {upcomingRevisits.map((r) => (
-              <View key={`${r.kind}_${r.id}`} style={styles.revisitRow}>
-                <Ionicons name="alarm-outline" size={16} color={Colors.primaryDark} />
+              <View key={`${r.kind}_${r.id}`} style={[styles.revisitRow, { borderBottomColor: theme.colors.borderSubtle }]}>
+                <View style={[styles.rowIconWrap, { backgroundColor: theme.colors.surfaceSecondary }]}>
+                  <Ionicons name="alarm-outline" size={17} color={theme.colors.accentPrimary} />
+                </View>
                 {r.kind === 'scan' && r.plantId ? (
                   <Pressable
-                    style={{ flex: 1 }}
+                    style={styles.rowMainAction}
                     onPress={() => router.push(`/plant/${r.plantId}`)}
                     accessibilityRole="button"
-                    accessibilityLabel={`${r.label}の図鑑詳細を開く、再訪予定 ${r.revisitAt}`}
+                    accessibilityLabel={`${r.label}の図鑑詳細を開く。再訪予定 ${r.revisitAt}`}
                   >
-                    <Text style={styles.revisitLabel} numberOfLines={1}>{r.label}</Text>
-                    <Text style={styles.revisitDate}>{r.revisitAt}</Text>
+                    <Text style={[styles.revisitLabel, { color: theme.colors.textPrimary }]} numberOfLines={1}>{r.label}</Text>
+                    <Text style={[styles.revisitDate, { color: theme.colors.textTertiary }]}>{r.revisitAt}</Text>
                   </Pressable>
                 ) : (
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.revisitLabel} numberOfLines={1}>{r.label}</Text>
-                    <Text style={styles.revisitDate}>{r.revisitAt}</Text>
+                  <View style={styles.rowMainAction}>
+                    <Text style={[styles.revisitLabel, { color: theme.colors.textPrimary }]} numberOfLines={1}>{r.label}</Text>
+                    <Text style={[styles.revisitDate, { color: theme.colors.textTertiary }]}>{r.revisitAt}</Text>
                   </View>
                 )}
-                <Pressable
-                  hitSlop={8}
-                  onPress={() =>
-                    r.kind === 'scan' ? setScanRevisit(r.id, undefined) : setUnidentifiedRevisit(r.id, undefined)
-                  }
-                  accessibilityRole="button"
-                  accessibilityLabel="再訪予定を削除"
-                >
-                  <Ionicons name="close-circle-outline" size={18} color={Colors.textMuted} />
-                </Pressable>
+                <IconButton icon="close" label="再訪予定を削除" onPress={() => r.kind === 'scan' ? setScanRevisit(r.id, undefined) : setUnidentifiedRevisit(r.id, undefined)} />
               </View>
             ))}
           </View>
-        </View>
+        </Section>
       )}
 
-      {/* 未同定の観察（v3 §6.1「そのまま記録する」の一覧・PR17で保存導線のみ実装済み） */}
       {unidentifiedObservations.length > 0 && (
-        <View style={styles.section}>
-          <View style={styles.sectionTitleRow}>
-            <Ionicons name="help-circle-outline" size={16} color={Colors.text} />
-            <Text style={styles.sectionTitle}>未同定の観察</Text>
-          </View>
-          <View style={styles.historyList}>
+        <Section title="未同定の観察" icon="help-circle-outline">
+          <View style={[styles.historyList, { backgroundColor: theme.colors.surfacePrimary, borderColor: theme.colors.borderSubtle }]}>
             {unidentifiedObservations.slice(0, 20).map((o) => (
-              <View key={o.id} style={styles.historyItem}>
-                <Text style={styles.historyEmoji}>❔</Text>
-                <View style={styles.historyInfo}>
-                  <Text style={styles.historyName} numberOfLines={1}>{o.note || '未同定の植物'}</Text>
-                  <Text style={styles.historyTime}>{formatScanDate(o.observedAt)}</Text>
+              <View key={o.id} style={[styles.historyItem, { borderBottomColor: theme.colors.borderSubtle }]}>
+                <View style={[styles.historyEmojiWrap, { backgroundColor: theme.colors.surfaceSecondary }]}>
+                  <Text style={styles.historyEmoji}>❔</Text>
                 </View>
-                <Pressable
-                  hitSlop={8}
-                  onPress={() =>
-                    Alert.alert('観察記録を削除', 'この未同定の観察記録を削除してもよいですか？', [
-                      { text: 'キャンセル', style: 'cancel' },
-                      { text: '削除', style: 'destructive', onPress: () => deleteUnidentifiedObservation(o.id) },
-                    ])
-                  }
-                  accessibilityRole="button"
-                  accessibilityLabel="この未同定の観察記録を削除"
-                >
-                  <Ionicons name="trash-outline" size={18} color={Colors.textMuted} />
-                </Pressable>
+                <View style={styles.historyInfo}>
+                  <Text style={[styles.historyName, { color: theme.colors.textPrimary }]} numberOfLines={1}>{o.note || '未同定の植物'}</Text>
+                  <Text style={[styles.historyTime, { color: theme.colors.textTertiary }]}>{formatScanDate(o.observedAt)}</Text>
+                </View>
+                <IconButton
+                  icon="trash-outline"
+                  label="この未同定の観察記録を削除"
+                  danger
+                  onPress={() => Alert.alert('観察記録を削除', 'この未同定の観察記録を削除してもよいですか？', [
+                    { text: 'キャンセル', style: 'cancel' },
+                    { text: '削除', style: 'destructive', onPress: () => deleteUnidentifiedObservation(o.id) },
+                  ])}
+                />
               </View>
             ))}
           </View>
-        </View>
+        </Section>
       )}
 
-      {/* Scan History */}
-      <View style={styles.section}>
-        <View style={styles.sectionTitleRow}>
-          <Ionicons name="time-outline" size={16} color={Colors.text} />
-          <Text style={styles.sectionTitle}>スキャン履歴</Text>
-        </View>
+      <Section title="観察履歴" icon="time-outline">
         {scanHistory.length > 0 && (
-          <View style={styles.historySearchBox}>
-            <Ionicons name="search-outline" size={14} color={Colors.textMuted} />
+          <View style={[styles.historySearchBox, { backgroundColor: theme.colors.surfacePrimary, borderColor: theme.colors.borderSubtle }]}>
+            <Ionicons name="search-outline" size={18} color={theme.colors.textTertiary} />
             <TextInput
-              style={styles.historySearchInput}
+              style={[styles.historySearchInput, { color: theme.colors.textPrimary }]}
               value={historySearch}
               onChangeText={setHistorySearch}
-              placeholder="植物名やメモで検索..."
-              placeholderTextColor={Colors.textMuted}
+              placeholder="植物名やメモで検索"
+              placeholderTextColor={theme.colors.textTertiary}
+              accessibilityLabel="観察履歴を植物名やメモで検索"
             />
             {historySearch.length > 0 && (
-              <Pressable onPress={() => setHistorySearch('')} accessibilityRole="button" accessibilityLabel="検索をクリア">
-                <Ionicons name="close-circle" size={16} color={Colors.textMuted} />
-              </Pressable>
+              <IconButton icon="close" label="検索をクリア" onPress={() => setHistorySearch('')} compact />
             )}
           </View>
         )}
         {recentScans.length === 0 && matchingUnidentified.length === 0 ? (
-          <View style={styles.emptyHistory}>
-            <Text style={styles.emptyHistoryText}>
-              {trimmedSearch ? '一致する観察記録が見つかりませんでした' : 'まだスキャン履歴がありません'}
+          <View style={[styles.emptyHistory, { backgroundColor: theme.colors.surfacePrimary, borderColor: theme.colors.borderSubtle }]}>
+            <Ionicons name="leaf-outline" size={28} color={theme.colors.textTertiary} />
+            <Text style={[styles.emptyHistoryText, { color: theme.colors.textTertiary }]}>
+              {trimmedSearch ? '一致する観察記録が見つかりませんでした' : 'まだ観察履歴がありません'}
             </Text>
           </View>
         ) : (
-          <View style={styles.historyList}>
+          <View style={[styles.historyList, { backgroundColor: theme.colors.surfacePrimary, borderColor: theme.colors.borderSubtle }]}>
             {recentScans.map(({ record, plant }) => (
-              <HistoryRow
-                key={record.id}
-                record={record}
-                plant={plant}
-                onPress={() => router.push(`/plant/${plant.id}`)}
-              />
+              <HistoryRow key={record.id} record={record} plant={plant} onPress={() => router.push(`/plant/${plant.id}`)} />
             ))}
             {matchingUnidentified.map((o) => (
-              <View key={o.id} style={styles.historyItem}>
-                <Text style={styles.historyEmoji}>❔</Text>
+              <View key={o.id} style={[styles.historyItem, { borderBottomColor: theme.colors.borderSubtle }]}>
+                <View style={[styles.historyEmojiWrap, { backgroundColor: theme.colors.surfaceSecondary }]}>
+                  <Text style={styles.historyEmoji}>❔</Text>
+                </View>
                 <View style={styles.historyInfo}>
-                  <Text style={styles.historyName} numberOfLines={1}>{o.note}</Text>
-                  <Text style={styles.historyTime}>{formatScanDate(o.observedAt)}</Text>
+                  <Text style={[styles.historyName, { color: theme.colors.textPrimary }]} numberOfLines={1}>{o.note}</Text>
+                  <Text style={[styles.historyTime, { color: theme.colors.textTertiary }]}>{formatScanDate(o.observedAt)}</Text>
                 </View>
               </View>
             ))}
           </View>
         )}
-      </View>
+      </Section>
 
-      {/* Disclaimer */}
-      <View style={styles.section}>
-        <DisclaimerBanner />
-      </View>
+      <View style={styles.disclaimerSection}><DisclaimerBanner /></View>
 
-      {/* Settings */}
-      <View style={styles.section}>
-        <View style={styles.sectionTitleRow}>
-          <Ionicons name="settings-outline" size={16} color={Colors.text} />
-          <Text style={styles.sectionTitle}>設定</Text>
-        </View>
-
-        {/* Appearance */}
-        <View style={styles.settingsCard}>
-          <Text style={styles.settingsGroupLabel}>外観</Text>
-          <View style={styles.segmentedRow}>
-            {(['system', 'light', 'dark'] as const).map((mode) => (
-              <Pressable
-                key={mode}
-                onPress={() => setThemeOverride(mode)}
-                style={[styles.segmentBtn, themeOverride === mode && styles.segmentBtnActive]}
-                accessibilityRole="button"
-                accessibilityState={{ selected: themeOverride === mode }}
-              >
-                <Text style={[styles.segmentBtnText, themeOverride === mode && styles.segmentBtnTextActive]}>
-                  {mode === 'system' ? '自動' : mode === 'light' ? 'ライト' : 'ダーク'}
-                </Text>
-              </Pressable>
-            ))}
+      <Section title="設定" icon="settings-outline">
+        <View style={[styles.settingsCard, { backgroundColor: theme.colors.surfacePrimary, borderColor: theme.colors.borderSubtle }]}>
+          <Text style={[styles.settingsGroupLabel, { color: theme.colors.textPrimary }]}>外観</Text>
+          <View style={[styles.segmentedRow, { backgroundColor: theme.colors.surfaceSecondary }]} accessibilityRole="radiogroup">
+            {(['system', 'light', 'dark'] as const).map((mode) => {
+              const selected = themeOverride === mode;
+              return (
+                <Pressable
+                  key={mode}
+                  onPress={() => setThemeOverride(mode)}
+                  style={({ pressed }) => [
+                    styles.segmentBtn,
+                    selected && { backgroundColor: theme.colors.accentPrimary },
+                    pressed && styles.rowPressed,
+                  ]}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected }}
+                  accessibilityLabel={mode === 'system' ? '外観、自動' : mode === 'light' ? '外観、ライト' : '外観、ダーク'}
+                >
+                  <Text style={[styles.segmentBtnText, { color: selected ? theme.colors.textOnAccent : theme.colors.textSecondary }]}>
+                    {mode === 'system' ? '自動' : mode === 'light' ? 'ライト' : 'ダーク'}
+                  </Text>
+                </Pressable>
+              );
+            })}
           </View>
         </View>
 
-        {/* AI consent */}
-        <View style={styles.settingsCard}>
+        <View style={[styles.settingsCard, { backgroundColor: theme.colors.surfacePrimary, borderColor: theme.colors.borderSubtle }]}>
           <View style={styles.settingsRowHeader}>
-            <Text style={styles.settingsGroupLabel}>AI画像識別への同意</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.settingsGroupLabel, { color: theme.colors.textPrimary, marginBottom: 2 }]}>AI画像識別への同意</Text>
+              <Text style={[styles.settingsMiniStatus, { color: aiConsentGiven ? theme.colors.statusVerified : theme.colors.textTertiary }]}>{aiConsentGiven ? 'オン' : 'オフ・デモモード'}</Text>
+            </View>
             <Switch
               value={aiConsentGiven}
               onValueChange={setAiConsentGiven}
+              trackColor={{ false: theme.colors.surfaceTertiary, true: theme.colors.accentPrimary }}
               accessibilityLabel="AI画像識別への同意"
             />
           </View>
-          <Text style={styles.settingsDesc}>
-            オンにすると、撮影した写真がAnthropic社のClaude
-            APIに送信され、植物の識別に使用されます。オフの場合はデモ（ランダム判定）モードで動作し、写真は外部に送信されません。デモ結果は図鑑・XP・履歴に反映されません。
+          <Text style={[styles.settingsDesc, { color: theme.colors.textSecondary }]}>
+            オンにすると、撮影した写真を外部AIサービスへ送信し植物候補の解析に使用します。オフではデモモードになり、写真は外部へ送信されません。デモ結果は図鑑・XP・履歴に反映しません。
           </Text>
         </View>
 
-        {/* Data export / delete */}
-        <View style={styles.settingsCard}>
-          <Text style={styles.settingsGroupLabel}>データ管理</Text>
-          <Pressable style={styles.legalRow} onPress={handleExportData}>
-            <Ionicons name="share-outline" size={16} color={Colors.textSecondary} />
-            <Text style={styles.legalRowText}>データをエクスポート</Text>
-            <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
-          </Pressable>
-          <Pressable style={styles.legalRow} onPress={handleDeleteAllData}>
-            <Ionicons name="trash-outline" size={16} color={Colors.dangerRed} />
-            <Text style={[styles.legalRowText, { color: Colors.dangerRed }]}>すべてのデータを削除</Text>
-            <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
-          </Pressable>
+        <View style={[styles.settingsCard, { backgroundColor: theme.colors.surfacePrimary, borderColor: theme.colors.borderSubtle }]}>
+          <Text style={[styles.settingsGroupLabel, { color: theme.colors.textPrimary }]}>データ管理</Text>
+          <SettingsRow icon="share-outline" label="データをエクスポート" onPress={handleExportData} />
+          <SettingsRow icon="trash-outline" label="すべてのデータを削除" onPress={handleDeleteAllData} danger />
         </View>
 
-        {/* Sources & licenses */}
-        <View style={styles.settingsCard}>
-          <Pressable style={styles.legalRow} onPress={() => setSourcesVisible(true)}>
-            <Ionicons name="library-outline" size={16} color={Colors.textSecondary} />
-            <Text style={styles.legalRowText}>データソース・出典について</Text>
-            <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
-          </Pressable>
-          <Pressable
-            style={styles.legalRow}
-            onPress={() => Linking.openURL(PRIVACY_POLICY_URL).catch(() => {})}
-          >
-            <Ionicons name="shield-checkmark-outline" size={16} color={Colors.textSecondary} />
-            <Text style={styles.legalRowText}>プライバシーポリシー</Text>
-            <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
-          </Pressable>
-          <Pressable
-            style={styles.legalRow}
-            onPress={() => Linking.openURL(TERMS_URL).catch(() => {})}
-          >
-            <Ionicons name="document-text-outline" size={16} color={Colors.textSecondary} />
-            <Text style={styles.legalRowText}>利用規約</Text>
-            <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
-          </Pressable>
-          <Pressable
-            style={styles.legalRow}
-            onPress={() => Linking.openURL(`mailto:${SUPPORT_EMAIL}`).catch(() => {})}
-          >
-            <Ionicons name="mail-outline" size={16} color={Colors.textSecondary} />
-            <Text style={styles.legalRowText}>お問い合わせ</Text>
-            <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
-          </Pressable>
-          <Text style={styles.versionText}>バージョン {APP_VERSION}</Text>
+        <View style={[styles.settingsCard, { backgroundColor: theme.colors.surfacePrimary, borderColor: theme.colors.borderSubtle }]}>
+          <SettingsRow icon="library-outline" label="データソース・出典について" onPress={() => setSourcesVisible(true)} />
+          <SettingsRow icon="shield-checkmark-outline" label="プライバシーポリシー" onPress={() => Linking.openURL(PRIVACY_POLICY_URL).catch(() => {})} />
+          <SettingsRow icon="document-text-outline" label="利用規約" onPress={() => Linking.openURL(TERMS_URL).catch(() => {})} />
+          <SettingsRow icon="mail-outline" label="お問い合わせ" onPress={() => Linking.openURL(`mailto:${SUPPORT_EMAIL}`).catch(() => {})} />
+          <Text style={[styles.versionText, { color: theme.colors.textTertiary }]}>バージョン {APP_VERSION}</Text>
         </View>
-      </View>
+      </Section>
 
-      <View style={{ height: 32 }} />
-
-      {/* Share Card Modal */}
       <ShareCard
         visible={shareCardVisible}
         onClose={() => setShareCardVisible(false)}
@@ -797,78 +605,143 @@ export default function ProfileScreen() {
         seasonIcon={seasonCfg.icon}
       />
 
-      {/* Edit Name Modal */}
-      <Modal
-        visible={editNameVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setEditNameVisible(false)}
-      >
-        <Pressable
-          style={styles.modalOverlay}
-          onPress={() => setEditNameVisible(false)}
-        >
-          <Pressable style={styles.modalCard} onPress={() => {}}>
-            <Text style={styles.modalTitle}>名前を変更</Text>
+      <Modal visible={editNameVisible} transparent animationType="fade" onRequestClose={() => setEditNameVisible(false)}>
+        <View style={[styles.modalOverlay, { backgroundColor: theme.colors.overlay }]}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setEditNameVisible(false)} accessibilityElementsHidden />
+          <View style={[styles.modalCard, { backgroundColor: theme.colors.surfacePrimary, borderColor: theme.colors.borderSubtle, shadowColor: theme.colors.shadow }]} accessibilityViewIsModal>
+            <Text style={[styles.modalTitle, { color: theme.colors.textPrimary }]} accessibilityRole="header">名前を変更</Text>
             <TextInput
-              style={styles.nameInput}
+              style={[styles.nameInput, { borderColor: theme.colors.accentPrimary, color: theme.colors.textPrimary, backgroundColor: theme.colors.surfaceSecondary }]}
               value={tempName}
               onChangeText={setTempName}
-              placeholder="名前を入力..."
+              placeholder="名前を入力"
+              placeholderTextColor={theme.colors.textTertiary}
               maxLength={20}
               autoFocus
               keyboardType="default"
               autoCapitalize="words"
+              accessibilityLabel="名前"
             />
             <View style={styles.modalBtns}>
               <Pressable
-                style={[styles.modalBtn, styles.modalBtnCancel]}
+                style={({ pressed }) => [styles.modalBtn, { backgroundColor: theme.colors.surfaceSecondary }, pressed && styles.buttonPressed]}
                 onPress={() => setEditNameVisible(false)}
+                accessibilityRole="button"
               >
-                <Text style={styles.modalBtnCancelText}>キャンセル</Text>
+                <Text style={[styles.modalBtnText, { color: theme.colors.textSecondary }]}>キャンセル</Text>
               </Pressable>
               <Pressable
-                style={[styles.modalBtn, styles.modalBtnSave]}
+                style={({ pressed }) => [styles.modalBtn, { backgroundColor: theme.colors.accentPrimary }, pressed && styles.buttonPressed]}
                 onPress={handleSaveName}
+                accessibilityRole="button"
               >
-                <Text style={styles.modalBtnSaveText}>保存</Text>
+                <Text style={[styles.modalBtnText, { color: theme.colors.textOnAccent }]}>保存</Text>
               </Pressable>
             </View>
-          </Pressable>
-        </Pressable>
+          </View>
+        </View>
       </Modal>
 
-      {/* Sources & Licenses Modal */}
-      <Modal
-        visible={sourcesVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setSourcesVisible(false)}
-      >
-        <Pressable style={styles.modalOverlay} onPress={() => setSourcesVisible(false)}>
-          <Pressable style={styles.modalCard} onPress={() => {}}>
-            <Text style={styles.modalTitle}>データソース・出典について</Text>
-            <ScrollView style={{ maxHeight: 320 }}>
-              <Text style={styles.sourcesText}>
-                本アプリの植物データ（科・属などの分類情報を含む）は、編集部が一般的な植物学の知見をもとに作成したものです（reviewStatus:
-                editorial）。特定の公的データベース（GBIF・POWO・iNaturalist・YListなど）とはまだ連携しておらず、個々の記載に外部データベースIDや出典を紐づけていません。
+      <Modal visible={sourcesVisible} transparent animationType="fade" onRequestClose={() => setSourcesVisible(false)}>
+        <View style={[styles.modalOverlay, { backgroundColor: theme.colors.overlay }]}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setSourcesVisible(false)} accessibilityElementsHidden />
+          <View style={[styles.modalCard, { backgroundColor: theme.colors.surfacePrimary, borderColor: theme.colors.borderSubtle, shadowColor: theme.colors.shadow }]} accessibilityViewIsModal>
+            <Text style={[styles.modalTitle, { color: theme.colors.textPrimary }]} accessibilityRole="header">データソース・出典について</Text>
+            <ScrollView style={styles.sourcesScroll} showsVerticalScrollIndicator={false}>
+              <Text style={[styles.sourcesText, { color: theme.colors.textSecondary }]}>
+                本アプリの植物データ（科・属などの分類情報を含む）は、編集部が一般的な植物学の知見をもとに作成したものです（reviewStatus: editorial）。特定の公的データベース（GBIF・POWO・iNaturalist・YListなど）とはまだ連携しておらず、個々の記載に外部データベースIDや出典を紐づけていません。
                 {'\n\n'}
                 効能・用途に関する記述は、医学的な効果を保証するものではなく、伝統的な言い伝え・慣習的な利用として紹介しています。
                 {'\n\n'}
-                実際の識別（AI認識）にはAnthropic社のClaude
-                APIを利用しています（同意した場合のみ）。将来的に専門データベースとの連携や専門家レビューを追加し、出典を明示していく予定です。
+                AI画像識別は、同意がオンの場合のみ外部AIサービスを利用します。将来的に専門データベースとの連携や専門家レビューを追加し、出典を明示していく予定です。
               </Text>
             </ScrollView>
             <Pressable
-              style={[styles.modalBtn, styles.modalBtnSave, { marginTop: 16 }]}
+              style={({ pressed }) => [styles.modalBtn, { backgroundColor: theme.colors.accentPrimary, marginTop: 16 }, pressed && styles.buttonPressed]}
               onPress={() => setSourcesVisible(false)}
+              accessibilityRole="button"
+              accessibilityLabel="出典情報を閉じる"
             >
-              <Text style={styles.modalBtnSaveText}>閉じる</Text>
+              <Text style={[styles.modalBtnText, { color: theme.colors.textOnAccent }]}>閉じる</Text>
             </Pressable>
-          </Pressable>
-        </Pressable>
+          </View>
+        </View>
       </Modal>
     </ScrollView>
+  );
+}
+
+function Section({
+  title,
+  icon,
+  children,
+}: {
+  title: string;
+  icon: React.ComponentProps<typeof Ionicons>['name'];
+  children: React.ReactNode;
+}) {
+  const theme = useTheme();
+  return (
+    <View style={styles.section}>
+      <View style={styles.sectionTitleRow}>
+        <Ionicons name={icon} size={18} color={theme.colors.textSecondary} />
+        <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>{title}</Text>
+      </View>
+      {children}
+    </View>
+  );
+}
+
+function IconButton({
+  icon,
+  label,
+  onPress,
+  danger = false,
+  compact = false,
+}: {
+  icon: React.ComponentProps<typeof Ionicons>['name'];
+  label: string;
+  onPress: () => void;
+  danger?: boolean;
+  compact?: boolean;
+}) {
+  const theme = useTheme();
+  return (
+    <Pressable
+      style={({ pressed }) => [styles.iconButton, compact && styles.iconButtonCompact, pressed && styles.rowPressed]}
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+    >
+      <Ionicons name={icon} size={18} color={danger ? theme.colors.statusDanger : theme.colors.textTertiary} />
+    </Pressable>
+  );
+}
+
+function SettingsRow({
+  icon,
+  label,
+  onPress,
+  danger = false,
+}: {
+  icon: React.ComponentProps<typeof Ionicons>['name'];
+  label: string;
+  onPress: () => void;
+  danger?: boolean;
+}) {
+  const theme = useTheme();
+  const color = danger ? theme.colors.statusDanger : theme.colors.textSecondary;
+  return (
+    <Pressable
+      style={({ pressed }) => [styles.legalRow, { borderBottomColor: theme.colors.borderSubtle }, pressed && styles.rowPressed]}
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+    >
+      <Ionicons name={icon} size={18} color={color} />
+      <Text style={[styles.legalRowText, { color }]}>{label}</Text>
+      <Ionicons name="chevron-forward" size={17} color={theme.colors.textTertiary} />
+    </Pressable>
   );
 }
 
@@ -881,459 +754,150 @@ function HistoryRow({
   plant: { id: string; name: string; emoji: string; danger: 'GREEN' | 'YELLOW' | 'RED' };
   onPress: () => void;
 }) {
+  const theme = useTheme();
   const [imgError, setImgError] = useState(false);
   const showThumb = !!record.imageUri && !imgError;
   return (
-    <Pressable style={styles.historyItem} onPress={onPress}>
+    <Pressable
+      style={({ pressed }) => [styles.historyItem, { borderBottomColor: theme.colors.borderSubtle }, pressed && styles.rowPressed]}
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`${plant.name}。${formatScanDate(record.scannedAt)}。詳細を見る`}
+    >
       {showThumb ? (
-        <Image
-          source={{ uri: record.imageUri }}
-          style={styles.historyThumb}
-          resizeMode="cover"
-          onError={() => setImgError(true)}
-        />
+        <Image source={{ uri: record.imageUri }} style={[styles.historyThumb, { backgroundColor: theme.colors.surfaceSecondary }]} resizeMode="cover" onError={() => setImgError(true)} accessibilityIgnoresInvertColors />
       ) : (
-        <Text style={styles.historyEmoji}>{plant.emoji}</Text>
+        <View style={[styles.historyEmojiWrap, { backgroundColor: theme.colors.surfaceSecondary }]}>
+          <Text style={styles.historyEmoji}>{plant.emoji}</Text>
+        </View>
       )}
       <View style={styles.historyInfo}>
-        <Text style={styles.historyName}>{plant.name}</Text>
-        <Text style={styles.historyTime}>{formatScanDate(record.scannedAt)}</Text>
+        <Text style={[styles.historyName, { color: theme.colors.textPrimary }]}>{plant.name}</Text>
+        <Text style={[styles.historyTime, { color: theme.colors.textTertiary }]}>{formatScanDate(record.scannedAt)}</Text>
       </View>
       <DangerBadge danger={plant.danger} size="sm" />
+      <Ionicons name="chevron-forward" size={16} color={theme.colors.textTertiary} />
     </Pressable>
   );
 }
 
-function StatBox({
-  label,
-  value,
-  unit,
-  color,
-}: {
-  label: string;
-  value: string;
-  unit: string;
-  color: string;
-}) {
+function StatBox({ label, value, unit, color }: { label: string; value: string; unit: string; color: string }) {
+  const theme = useTheme();
   return (
-    <View style={[styles.statBox, { borderTopColor: color, borderTopWidth: 3 }]}>
+    <View
+      style={[styles.statBox, { backgroundColor: theme.colors.surfacePrimary, borderColor: theme.colors.borderSubtle, borderTopColor: color, shadowColor: theme.colors.shadow }]}
+      accessible
+      accessibilityRole="text"
+      accessibilityLabel={`${label} ${value} ${unit}`}
+    >
       <Text style={[styles.statValue, { color }]}>{value}</Text>
-      <Text style={styles.statUnit}>{unit}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
+      <Text style={[styles.statUnit, { color: theme.colors.textTertiary }]}>{unit}</Text>
+      <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>{label}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.bg },
-  hero: {
-    paddingTop: 60,
-    paddingBottom: 28,
-    paddingHorizontal: 24,
-    alignItems: 'center',
-  },
-  avatar: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-    backgroundColor: 'rgba(255,255,255,0.25)',
-    borderWidth: 3,
-    borderColor: 'rgba(255,255,255,0.4)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  playerName: { fontSize: 22, fontWeight: '900', color: '#FFFFFF' },
-  titleText: { fontSize: 13, color: '#C8E6C9', marginTop: 4, marginBottom: 10 },
-  editNameBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    marginBottom: 16,
-  },
-  editNameText: { color: '#FFFFFF', fontSize: 12, fontWeight: '600' },
-  levelBox: { width: '100%', gap: 6 },
-  levelLabel: { fontSize: 14, fontWeight: '800', color: '#FFFFFF', textAlign: 'center' },
-  xpBarOuter: {
-    height: 12,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    borderRadius: 6,
-    overflow: 'hidden',
-  },
-  xpBarInner: { height: '100%', backgroundColor: '#FFEB3B', borderRadius: 6 },
-  xpLabel: { fontSize: 11, color: '#C8E6C9', textAlign: 'center' },
+  container: { flex: 1 },
+  scrollContent: { paddingBottom: 32 },
+  hero: { paddingBottom: 24, paddingHorizontal: 20 },
+  heroEyebrow: { fontSize: 10, lineHeight: 13, fontWeight: '800', letterSpacing: 1.7, color: 'rgba(255,255,255,0.58)', marginBottom: 10 },
+  identityRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  avatar: { width: 64, height: 64, borderRadius: 32, backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.25)', justifyContent: 'center', alignItems: 'center' },
+  identityText: { flex: 1 },
+  playerName: { fontSize: 22, lineHeight: 28, fontWeight: '900', color: '#FFFFFF' },
+  titleText: { fontSize: 13, lineHeight: 18, color: '#B7DDBB', marginTop: 2 },
+  editNameBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.20)', justifyContent: 'center', alignItems: 'center' },
+  levelBox: { width: '100%', marginTop: 18 },
+  levelTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 7 },
+  levelLabel: { fontSize: 14, lineHeight: 19, fontWeight: '800', color: '#FFFFFF' },
+  xpLabel: { fontSize: 11, lineHeight: 15, color: '#CBE4CE', fontWeight: '600' },
+  xpBarOuter: { height: 8, backgroundColor: 'rgba(255,255,255,0.17)', borderRadius: 4, overflow: 'hidden' },
+  xpBarInner: { height: '100%', backgroundColor: '#E8D866', borderRadius: 4 },
+  heroBottomRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 14, gap: 10 },
+  streakBadge: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(255,255,255,0.10)', borderRadius: 999, paddingHorizontal: 13 },
+  streakText: { fontSize: 13, lineHeight: 18, fontWeight: '800', color: '#FFFFFF' },
+  shareBtn: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.18)', borderRadius: 999, paddingHorizontal: 14 },
+  shareBtnText: { fontSize: 13, lineHeight: 18, fontWeight: '800', color: '#FFFFFF' },
+  glassPressed: { backgroundColor: 'rgba(255,255,255,0.22)' },
 
-  section: { paddingHorizontal: 16, paddingTop: 20 },
-  settingsCard: {
-    backgroundColor: Colors.bgCard,
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 5,
-    elevation: 2,
-  },
-  settingsGroupLabel: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: Colors.text,
-    marginBottom: 10,
-  },
-  settingsRowHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  settingsDesc: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-    lineHeight: 18,
-  },
-  segmentedRow: {
-    flexDirection: 'row',
-    backgroundColor: Colors.bg,
-    borderRadius: 10,
-    padding: 3,
-    gap: 4,
-  },
-  segmentBtn: {
-    flex: 1,
-    paddingVertical: 8,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  segmentBtnActive: {
-    backgroundColor: Colors.primary,
-  },
-  segmentBtnText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: Colors.textSecondary,
-  },
-  segmentBtnTextActive: {
-    color: '#FFFFFF',
-  },
-  sourcesText: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-    lineHeight: 20,
-  },
-  legalRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.cardBorder,
-  },
-  legalRowText: { flex: 1, fontSize: 14, color: Colors.textSecondary, fontWeight: '600' },
-  versionText: { marginTop: 12, fontSize: 12, color: Colors.textMuted, textAlign: 'center' },
-  sectionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 },
-  sectionTitle: { fontSize: 16, fontWeight: '800', color: Colors.text },
+  section: { paddingHorizontal: 16, paddingTop: 22 },
+  sectionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 11 },
+  sectionTitle: { fontSize: 16, lineHeight: 21, fontWeight: '800' },
+  disclaimerSection: { paddingTop: 22 },
 
-  heroBottomRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 14,
-    gap: 12,
-  },
-  streakBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-  },
-  streakText: { fontSize: 13, fontWeight: '800', color: '#FFFFFF' },
-  shareBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-  },
-  shareBtnText: { fontSize: 13, fontWeight: '800', color: '#FFFFFF' },
+  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 9 },
+  statBox: { flex: 1, minWidth: '30%', borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, borderTopWidth: 3, paddingVertical: 13, paddingHorizontal: 9, alignItems: 'center', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 5, elevation: 2 },
+  statValue: { fontSize: 22, lineHeight: 27, fontWeight: '900' },
+  statUnit: { fontSize: 11, lineHeight: 14, fontWeight: '600' },
+  statLabel: { fontSize: 11, lineHeight: 15, marginTop: 3, textAlign: 'center', fontWeight: '600' },
 
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
-  statBox: {
-    backgroundColor: Colors.bgCard,
-    borderRadius: 14,
-    paddingVertical: 14,
-    paddingHorizontal: 10,
-    alignItems: 'center',
-    minWidth: '30%',
-    flex: 1,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.09,
-    shadowRadius: 6,
-    elevation: 4,
-  },
-  statValue: { fontSize: 24, fontWeight: '900', lineHeight: 28 },
-  statUnit: { fontSize: 11, color: Colors.textMuted, fontWeight: '600' },
-  statLabel: { fontSize: 10, color: Colors.textSecondary, marginTop: 3, textAlign: 'center', fontWeight: '600' },
+  calendarCard: { borderRadius: 17, borderWidth: StyleSheet.hairlineWidth, padding: 14, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 5, elevation: 2 },
+  calendarMonth: { fontSize: 14, lineHeight: 19, fontWeight: '800', textAlign: 'center', marginBottom: 10 },
+  calendarDowRow: { flexDirection: 'row', marginBottom: 4 },
+  calendarDow: { flex: 1, textAlign: 'center', fontSize: 11, lineHeight: 14, fontWeight: '700' },
+  calendarGrid: { flexDirection: 'row', flexWrap: 'wrap' },
+  calendarCell: { width: `${100 / 7}%`, aspectRatio: 1, padding: 2, alignItems: 'center', justifyContent: 'center' },
+  calendarDayCell: { borderRadius: 100 },
+  calendarDayNum: { fontSize: 11, lineHeight: 14, fontWeight: '700', textAlign: 'center' },
+  calendarLegend: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 10, gap: 4 },
+  calendarLegendLabel: { fontSize: 10, lineHeight: 13, fontWeight: '600' },
+  calendarLegendDot: { width: 12, height: 12, borderRadius: 6 },
 
-  calendarCard: {
-    backgroundColor: Colors.bgCard,
-    borderRadius: 16,
-    padding: 14,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.07,
-    shadowRadius: 5,
-    elevation: 3,
-  },
-  calendarMonth: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: Colors.text,
-    textAlign: 'center',
-    marginBottom: 10,
-  },
-  calendarDowRow: {
-    flexDirection: 'row',
-    marginBottom: 4,
-  },
-  calendarDow: {
-    flex: 1,
-    textAlign: 'center',
-    fontSize: 10,
-    fontWeight: '700',
-    color: Colors.textMuted,
-  },
-  calendarGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  calendarCell: {
-    width: `${100 / 7}%`,
-    aspectRatio: 1,
-    padding: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  calendarDayCell: {
-    borderRadius: 100,
-  },
-  calendarDayCellEmpty: {
-    backgroundColor: 'transparent',
-  },
-  calendarDayCellToday: {
-    borderWidth: 2,
-    borderColor: Colors.primaryDark,
-  },
-  calendarDayNum: {
-    fontSize: 11,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  calendarDayNumFilled: {
-    color: '#FFFFFF',
-    fontWeight: '800',
-  },
-  calendarDayNumEmpty: {
-    color: Colors.textMuted,
-  },
-  calendarDayNumToday: {
-    color: Colors.primaryDark,
-    fontWeight: '900',
-  },
-  calendarLegend: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 10,
-    gap: 4,
-  },
-  calendarLegendLabel: {
-    fontSize: 10,
-    color: Colors.textMuted,
-    fontWeight: '600',
-  },
-  calendarLegendDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-  },
+  achievementsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 9 },
+  achCard: { width: '48.5%', minHeight: 86, flexDirection: 'row', alignItems: 'center', gap: 9, borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, padding: 11 },
+  achIconWrap: { width: 42, height: 42, borderRadius: 21, justifyContent: 'center', alignItems: 'center' },
+  achTextWrap: { flex: 1 },
+  achLabel: { fontSize: 12, lineHeight: 16, fontWeight: '800' },
+  achDesc: { fontSize: 11, lineHeight: 16, marginTop: 2 },
 
-  achievementsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
-  achCard: {
-    backgroundColor: Colors.primaryPale,
-    borderRadius: 14,
-    paddingVertical: 14,
-    paddingHorizontal: 8,
-    alignItems: 'center',
-    width: '31%',
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 5,
-    elevation: 3,
-  },
-  achCardLocked: {
-    backgroundColor: '#F0F0F0',
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-  },
-  achIconItem: { marginBottom: 6 },
-  achLabel: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: Colors.primaryDark,
-    textAlign: 'center',
-    lineHeight: 14,
-  },
-  achTextLocked: { color: Colors.textMuted, fontWeight: '600' },
-  achDesc: {
-    fontSize: 9,
-    color: Colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 13,
-    marginTop: 3,
-  },
+  seasonBreakdownRow: { flexDirection: 'row', gap: 8 },
+  seasonBreakdownCell: { flex: 1, borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, paddingVertical: 11, alignItems: 'center' },
+  seasonBreakdownLabel: { fontSize: 12, lineHeight: 16, fontWeight: '700' },
+  seasonBreakdownValue: { fontSize: 20, lineHeight: 24, fontWeight: '900', marginTop: 2 },
 
-  emptyHistory: {
-    backgroundColor: Colors.bgCard,
-    borderRadius: 12,
-    padding: 20,
-    alignItems: 'center',
-  },
-  emptyHistoryText: {
-    fontSize: 13,
-    color: Colors.textMuted,
-  },
-  historyList: {
-    backgroundColor: Colors.bgCard,
-    borderRadius: 14,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.07,
-    shadowRadius: 5,
-    elevation: 3,
-  },
-  seasonBreakdownRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  seasonBreakdownCell: {
-    flex: 1,
-    backgroundColor: Colors.bgCard,
-    borderRadius: 12,
-    paddingVertical: 12,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  seasonBreakdownLabel: { fontSize: 12, fontWeight: '700', color: Colors.textSecondary },
-  seasonBreakdownValue: { fontSize: 20, fontWeight: '900', color: Colors.primary, marginTop: 2 },
-  revisitRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-    gap: 10,
-  },
-  revisitLabel: { fontSize: 14, fontWeight: '700', color: Colors.text },
-  revisitDate: { fontSize: 12, color: Colors.textMuted, marginTop: 2 },
-  historySearchBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: Colors.bgCard,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    marginBottom: 10,
-  },
-  historySearchInput: { flex: 1, fontSize: 13, color: Colors.text },
-  historyItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-    gap: 12,
-  },
-  historyEmoji: { fontSize: 30 },
-  historyThumb: {
-    width: 52,
-    height: 52,
-    borderRadius: 10,
-    backgroundColor: '#E0E0E0',
-  },
+  historyList: { borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden' },
+  revisitRow: { minHeight: 64, flexDirection: 'row', alignItems: 'center', paddingLeft: 11, paddingRight: 4, paddingVertical: 7, borderBottomWidth: StyleSheet.hairlineWidth, gap: 9 },
+  rowIconWrap: { width: 38, height: 38, borderRadius: 19, justifyContent: 'center', alignItems: 'center' },
+  rowMainAction: { flex: 1, minHeight: 48, justifyContent: 'center' },
+  revisitLabel: { fontSize: 14, lineHeight: 19, fontWeight: '700' },
+  revisitDate: { fontSize: 12, lineHeight: 16, marginTop: 2 },
+  historySearchBox: { minHeight: 50, flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: StyleSheet.hairlineWidth, borderRadius: 15, paddingLeft: 12, paddingRight: 3, marginBottom: 10 },
+  historySearchInput: { flex: 1, fontSize: 14, paddingVertical: 0 },
+  historyItem: { minHeight: 68, flexDirection: 'row', alignItems: 'center', paddingLeft: 11, paddingRight: 4, paddingVertical: 7, borderBottomWidth: StyleSheet.hairlineWidth, gap: 10 },
+  historyEmojiWrap: { width: 48, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  historyEmoji: { fontSize: 26 },
+  historyThumb: { width: 48, height: 48, borderRadius: 14 },
   historyInfo: { flex: 1 },
-  historyName: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: Colors.text,
-  },
-  historyTime: {
-    fontSize: 12,
-    color: Colors.textMuted,
-    marginTop: 3,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 40,
-  },
-  modalCard: {
-    backgroundColor: Colors.bgCard,
-    borderRadius: 20,
-    padding: 24,
-    width: '100%',
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: Colors.text,
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  nameInput: {
-    borderWidth: 2,
-    borderColor: Colors.primary,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    fontSize: 16,
-    color: Colors.text,
-    marginBottom: 16,
-  },
-  modalBtns: { flexDirection: 'row', gap: 10 },
-  modalBtn: { flex: 1, paddingVertical: 12, borderRadius: 12, alignItems: 'center' },
-  modalBtnCancel: { backgroundColor: Colors.bg },
-  modalBtnSave: { backgroundColor: Colors.primary },
-  modalBtnCancelText: { color: Colors.textSecondary, fontWeight: '700' },
-  modalBtnSaveText: { color: '#FFFFFF', fontWeight: '800' },
+  historyName: { fontSize: 14, lineHeight: 19, fontWeight: '700' },
+  historyTime: { fontSize: 12, lineHeight: 16, marginTop: 2 },
+  iconButton: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
+  iconButtonCompact: { width: 44, height: 44 },
+  emptyHistory: { minHeight: 112, borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, padding: 20, alignItems: 'center', justifyContent: 'center', gap: 9 },
+  emptyHistoryText: { fontSize: 13, lineHeight: 19, textAlign: 'center' },
+
+  settingsCard: { borderRadius: 17, borderWidth: StyleSheet.hairlineWidth, padding: 13, marginBottom: 10 },
+  settingsGroupLabel: { fontSize: 14, lineHeight: 19, fontWeight: '800', marginBottom: 10 },
+  settingsMiniStatus: { fontSize: 11, lineHeight: 15, fontWeight: '700' },
+  settingsRowHeader: { minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 6 },
+  settingsDesc: { fontSize: 13, lineHeight: 20 },
+  segmentedRow: { flexDirection: 'row', borderRadius: 14, padding: 3, gap: 3 },
+  segmentBtn: { flex: 1, minHeight: 44, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
+  segmentBtnText: { fontSize: 13, lineHeight: 17, fontWeight: '700' },
+  legalRow: { minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 2, borderBottomWidth: StyleSheet.hairlineWidth },
+  legalRowText: { flex: 1, fontSize: 14, lineHeight: 19, fontWeight: '600' },
+  versionText: { marginTop: 12, fontSize: 12, lineHeight: 16, textAlign: 'center' },
+
+  modalOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
+  modalCard: { borderRadius: 22, borderWidth: StyleSheet.hairlineWidth, padding: 20, width: '100%', maxWidth: 440, shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.24, shadowRadius: 20, elevation: 16 },
+  modalTitle: { fontSize: 18, lineHeight: 24, fontWeight: '800', marginBottom: 15, textAlign: 'center' },
+  nameInput: { minHeight: 52, borderWidth: 1.5, borderRadius: 14, paddingHorizontal: 14, fontSize: 16, marginBottom: 15 },
+  modalBtns: { flexDirection: 'row', gap: 9 },
+  modalBtn: { flex: 1, minHeight: 52, borderRadius: 14, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 14 },
+  modalBtnText: { fontSize: 15, lineHeight: 20, fontWeight: '800' },
+  sourcesScroll: { maxHeight: 360 },
+  sourcesText: { fontSize: 14, lineHeight: 22 },
+
+  rowPressed: { opacity: 0.68 },
+  buttonPressed: { opacity: 0.82, transform: [{ scale: 0.99 }] },
 });
