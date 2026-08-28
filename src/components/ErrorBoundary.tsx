@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { Theme, useTheme } from '../theme/ThemeProvider';
 
@@ -40,48 +41,51 @@ class ErrorBoundaryImpl extends React.Component<BoundaryProps, State> {
 
     if (this.state.hasError) {
       return (
-        <View style={[styles.container, { backgroundColor: theme.colors.canvas }]}>
-          <View
-            style={[
-              styles.iconWrap,
-              {
-                backgroundColor: theme.colors.surfaceSecondary,
-                borderColor: theme.colors.borderSubtle,
-              },
-            ]}
-            accessibilityElementsHidden
-          >
-            <Ionicons name="leaf-outline" size={36} color={theme.colors.accentPrimary} />
+        <>
+          <StatusBar style={theme.mode === 'dark' ? 'light' : 'dark'} />
+          <View style={[styles.container, { backgroundColor: theme.colors.canvas }]}>
+            <View
+              style={[
+                styles.iconWrap,
+                {
+                  backgroundColor: theme.colors.surfaceSecondary,
+                  borderColor: theme.colors.borderSubtle,
+                },
+              ]}
+              accessibilityElementsHidden
+            >
+              <Ionicons name="leaf-outline" size={36} color={theme.colors.accentPrimary} />
+            </View>
+
+            <Text
+              style={[styles.title, { color: theme.colors.textPrimary }]}
+              accessibilityRole="header"
+            >
+              うまく表示できませんでした
+            </Text>
+            <Text style={[styles.desc, { color: theme.colors.textSecondary }]}>
+              一時的な表示エラーが発生しました。下のボタンでもう一度画面を開き直せます。
+            </Text>
+
+            <Pressable
+              style={({ pressed }) => [
+                styles.btn,
+                { backgroundColor: theme.colors.accentPrimary },
+                pressed && styles.btnPressed,
+              ]}
+              onPress={this.handleReset}
+              accessibilityRole="button"
+              accessibilityLabel="もう一度試す"
+            >
+              <Ionicons name="refresh" size={19} color={theme.colors.textOnAccent} />
+              <Text style={[styles.btnText, { color: theme.colors.textOnAccent }]}>もう一度試す</Text>
+            </Pressable>
+
+            <Text style={[styles.helper, { color: theme.colors.textTertiary }]}>
+              同じ画面で繰り返す場合は、一度アプリを閉じてから開き直してください。
+            </Text>
           </View>
-
-          <Text
-            style={[styles.title, { color: theme.colors.textPrimary }]}
-            accessibilityRole="header"
-          >
-            うまく表示できませんでした
-          </Text>
-          <Text style={[styles.desc, { color: theme.colors.textSecondary }]}>
-            一時的な表示エラーが発生しました。下のボタンでもう一度画面を開き直せます。
-          </Text>
-
-          <Pressable
-            style={({ pressed }) => [
-              styles.btn,
-              { backgroundColor: theme.colors.accentPrimary },
-              pressed && styles.btnPressed,
-            ]}
-            onPress={this.handleReset}
-            accessibilityRole="button"
-            accessibilityLabel="もう一度試す"
-          >
-            <Ionicons name="refresh" size={19} color={theme.colors.textOnAccent} />
-            <Text style={[styles.btnText, { color: theme.colors.textOnAccent }]}>もう一度試す</Text>
-          </Pressable>
-
-          <Text style={[styles.helper, { color: theme.colors.textTertiary }]}>
-            同じ画面で繰り返す場合は、一度アプリを閉じてから開き直してください。
-          </Text>
-        </View>
+        </>
       );
     }
     return this.props.children;
