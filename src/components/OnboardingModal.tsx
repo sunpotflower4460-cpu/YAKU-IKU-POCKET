@@ -66,6 +66,8 @@ export function OnboardingModal({ visible, onComplete }: Props) {
   const reduceMotion = useReduceMotion();
   const { width, height, fontScale } = useWindowDimensions();
   const [slideIndex, setSlideIndex] = useState(0);
+  const slideIndexRef = useRef(0);
+  const wasVisibleRef = useRef(false);
   const translateAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.96)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
@@ -80,7 +82,12 @@ export function OnboardingModal({ visible, onComplete }: Props) {
   const safetyAccent = theme.colors.statusCaution;
 
   useEffect(() => {
-    if (visible) {
+    const justOpened = visible && !wasVisibleRef.current;
+    const justClosed = !visible && wasVisibleRef.current;
+    wasVisibleRef.current = visible;
+
+    if (justOpened) {
+      slideIndexRef.current = 0;
       setSlideIndex(0);
       translateAnim.setValue(0);
       scaleAnim.setValue(reduceMotion ? 1 : 0.96);
@@ -101,15 +108,35 @@ export function OnboardingModal({ visible, onComplete }: Props) {
           }),
         ]).start();
       }
-    } else {
+      return;
+    }
+
+    if (justClosed) {
+      scaleAnim.stopAnimation();
+      opacityAnim.stopAnimation();
+      translateAnim.stopAnimation();
       scaleAnim.setValue(0.96);
       opacityAnim.setValue(0);
+      return;
     }
-  }, [visible, reduceMotion, translateAnim, scaleAnim, opacityAnim, theme.motion.stateChange]);
+
+    // If the accessibility preference changes while onboarding is already
+    // open, preserve the current page instead of replaying the entrance/reset.
+    if (visible && reduceMotion) {
+      scaleAnim.stopAnimation();
+      opacityAnim.stopAnimation();
+      translateAnim.stopAnimation();
+      scaleAnim.setValue(1);
+      opacityAnim.setValue(1);
+      translateAnim.setValue(-slideIndexRef.current * cardWidth);
+    }
+  }, [visible, reduceMotion, cardWidth, translateAnim, scaleAnim, opacityAnim, theme.motion.stateChange]);
 
   useEffect(() => {
-    translateAnim.setValue(-slideIndex * cardWidth);
-  }, [cardWidth, slideIndex, translateAnim]);
+    // Browser resizing / split-view changes the card width. Re-anchor the
+    // currently visible page without treating it as a user navigation event.
+    translateAnim.setValue(-slideIndexRef.current * cardWidth);
+  }, [cardWidth, translateAnim]);
 
   useEffect(() => {
     if (!visible) return;
@@ -122,8 +149,10 @@ export function OnboardingModal({ visible, onComplete }: Props) {
   }, [visible, slideIndex, reduceMotion, theme.motion.expand]);
 
   function goToSlide(index: number) {
+    slideIndexRef.current = index;
     setSlideIndex(index);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    translateAnim.stopAnimation();
     if (reduceMotion) {
       translateAnim.setValue(-index * cardWidth);
       return;
@@ -279,7 +308,7 @@ export function OnboardingModal({ visible, onComplete }: Props) {
                             importantForAccessibility="no-hide-descendants"
                           >
                             <Ionicons name="warning-outline" size={17} color={safetyAccent} />
-                            <Text style={[styles.safetyBoxText, { color: theme.colors.textPrimary }]}>
+                            <Text style={[styles.safetyBoxText, { color: theme.colors.textPrimary }]}> 
                               採取・摂取の前に、専門家へ確認してください
                             </Text>
                           </View>
