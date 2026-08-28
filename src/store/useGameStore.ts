@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 import { ScanRecord, UnidentifiedObservation, PracticeRecord } from '../types';
 import { TraitCheck } from '../types/traitCheck';
 import { SourceOrigin } from '../types/plantUse';
@@ -15,6 +16,7 @@ import {
 import { todayLocalStr, localDateStrOffset } from '../utils/date';
 import { getCurrentSeason, getSeasonalPlants } from '../utils/season';
 import { clearObservationPhotos, deleteObservationPhoto } from '../utils/observationPhotoStorage';
+import { sanitizePersistedGameState } from './persistSanitizer';
 
 export const RARITY_XP: Record<number, number> = {
   1: 30,
@@ -303,6 +305,10 @@ export const useGameStore = create<GameState>()(
       markCandidatesCompared: () => set({ hasComparedCandidates: true }),
 
       recordUnidentifiedObservation: (imageUri?: string, note?: string) => {
+        // This can be the only action a user performs after midnight. Refresh
+        // session boundaries even though unidentified entries do not earn XP or
+        // increment daily scan quests.
+        get().startSession();
         const snapshot = get();
         if (imageUri && isPhotoReferenced(snapshot, imageUri)) return;
 
@@ -449,9 +455,20 @@ export const useGameStore = create<GameState>()(
       name: 'yaku-iku-storage',
       storage: createJSONStorage(() => AsyncStorage),
       version: 1,
-      migrate: (persisted, _version) => persisted as GameState,
+      migrate: (persisted, _version) => sanitizePersistedGameState(persisted) as GameState,
+      // The default Zustand merge trusts every parsed field. Quarantine current-
+      // version payloads too (migrate only runs on version mismatches) so a
+      // syntactically valid but malformed AsyncStorage value cannot poison state.
+      merge: (persisted, current) => ({
+        ...current,
+        ...sanitizePersistedGameState(persisted),
+      }) as GameState,
       partialize: ({ _hasHydrated, setHasHydrated, ...rest }) => rest,
       onRehydrateStorage: () => (_state, error) => {
+        // Static web export runs this module in Node where AsyncStorage's web
+        // implementation has no `window`. Its read failure is expected there;
+        // do not write hydration state back through AsyncStorage during SSR.
+        if (Platform.OS === 'web' && typeof window === 'undefined') return;
         if (error) console.warn('[store] Failed to rehydrate persisted state:', error);
         useGameStore.setState({ _hasHydrated: true });
       },
