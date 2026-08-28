@@ -6,6 +6,8 @@ import { useTheme } from '../theme/ThemeProvider';
 interface Props {
   danger: DangerLevel;
   size?: 'sm' | 'md';
+  /** Set false when a parent control already includes the attention category. */
+  accessible?: boolean;
 }
 
 const DANGER_LABELS: Record<DangerLevel, string> = {
@@ -25,7 +27,7 @@ export const DANGER_DOT_COLOR: Record<DangerLevel, string> = {
   RED: '#E53935',
 };
 
-export function DangerBadge({ danger, size = 'md' }: Props) {
+export function DangerBadge({ danger, size = 'md', accessible = true }: Props) {
   const theme = useTheme();
   const isSmall = size === 'sm';
   const dotSize = isSmall ? 7 : 9;
@@ -41,9 +43,11 @@ export function DangerBadge({ danger, size = 'md' }: Props) {
 
   return (
     <View
-      accessible
-      accessibilityRole="text"
-      accessibilityLabel={`植物情報の注意区分、${DANGER_LABELS[danger]}`}
+      accessible={accessible}
+      accessibilityElementsHidden={!accessible}
+      importantForAccessibility={accessible ? 'auto' : 'no-hide-descendants'}
+      accessibilityRole={accessible ? 'text' : undefined}
+      accessibilityLabel={accessible ? `植物情報の注意区分、${DANGER_LABELS[danger]}` : undefined}
       style={[
         styles.badge,
         {
