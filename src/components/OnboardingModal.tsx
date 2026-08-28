@@ -71,11 +71,22 @@ export function OnboardingModal({ visible, onComplete }: Props) {
   const translateAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.96)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
-  const slideTitleRefs = useRef<Array<React.ElementRef<typeof Text> | null>>([]);
+  const slideTitleRefs = useRef<(React.ElementRef<typeof Text> | null)[]>([]);
 
   const cardWidth = Math.min(Math.max(width - 32, 280), 440);
-  const cardMaxHeight = Math.max(height - 32, 420);
-  const slideContentMaxHeight = Math.max(cardMaxHeight - 300, 210);
+  // The overlay reserves 16pt above and below. Keep the card inside that
+  // available viewport even in a short browser window / split-view layout.
+  const cardMaxHeight = Math.max(1, height - 32);
+  const stackActions = fontScale >= 1.3 || width < 360;
+  const visualHeaderHeight = Math.min(160, Math.max(80, Math.round(height * 0.22)));
+  const safetyHeaderHeight = Math.min(132, Math.max(72, Math.round(height * 0.18)));
+  const controlsReserve = stackActions ? 188 : 132;
+  const slideContentMaxHeight = Math.max(
+    20,
+    Math.min(260, cardMaxHeight - visualHeaderHeight - controlsReserve)
+  );
+  const illustrationSize = Math.min(94, Math.max(60, visualHeaderHeight - 18));
+  const mainIconSize = Math.min(47, Math.max(30, Math.round(illustrationSize * 0.5)));
   const stackActions = fontScale >= 1.3 || width < 360;
   const safetyBg = theme.mode === 'dark' ? theme.colors.surfaceSecondary : '#FFF9EC';
   const safetySurface = theme.mode === 'dark' ? theme.colors.surfaceTertiary : '#FFF1C9';
@@ -191,7 +202,7 @@ export function OnboardingModal({ visible, onComplete }: Props) {
       statusBarTranslucent
       onRequestClose={handleBack}
     >
-      <View style={[styles.overlay, { backgroundColor: theme.colors.overlay }]}>
+      <View style={[styles.overlay, { backgroundColor: theme.colors.overlay }]}> 
         <Animated.View
           accessibilityViewIsModal
           onAccessibilityEscape={handleBack}
@@ -208,7 +219,7 @@ export function OnboardingModal({ visible, onComplete }: Props) {
             },
           ]}
         >
-          <View style={[styles.slidesWrapper, { width: cardWidth }]}>
+          <View style={[styles.slidesWrapper, { width: cardWidth }]}> 
             <Animated.View
               style={[
                 styles.slidesTrack,
@@ -237,25 +248,48 @@ export function OnboardingModal({ visible, onComplete }: Props) {
                       <View
                         style={[
                           styles.safetyHeader,
-                          { backgroundColor: safetySurface, borderBottomColor: `${safetyAccent}66` },
+                          {
+                            height: safetyHeaderHeight,
+                            backgroundColor: safetySurface,
+                            borderBottomColor: `${safetyAccent}66`,
+                          },
                         ]}
                         accessibilityElementsHidden
                         importantForAccessibility="no-hide-descendants"
                       >
-                        <View style={[styles.safetyIconCircle, { backgroundColor: `${safetyAccent}16` }]}>
-                          <Ionicons name={slide.icon} size={46} color={safetyAccent} />
+                        <View
+                          style={[
+                            styles.safetyIconCircle,
+                            {
+                              width: Math.min(84, Math.max(56, safetyHeaderHeight - 20)),
+                              height: Math.min(84, Math.max(56, safetyHeaderHeight - 20)),
+                              borderRadius: 42,
+                              backgroundColor: `${safetyAccent}16`,
+                            },
+                          ]}
+                        >
+                          <Ionicons name={slide.icon} size={Math.min(46, Math.max(30, safetyHeaderHeight * 0.42))} color={safetyAccent} />
                         </View>
                       </View>
                     ) : (
                       <LinearGradient
                         colors={slide.gradient!}
-                        style={styles.slideHeader}
+                        style={[styles.slideHeader, { height: visualHeaderHeight }]}
                         accessibilityElementsHidden
                         importantForAccessibility="no-hide-descendants"
                       >
-                        <View style={styles.illustrationCircle}>
-                          <Ionicons name={slide.icon} size={47} color="#FFFFFF" />
-                          {slide.subIcon && (
+                        <View
+                          style={[
+                            styles.illustrationCircle,
+                            {
+                              width: illustrationSize,
+                              height: illustrationSize,
+                              borderRadius: illustrationSize / 2,
+                            },
+                          ]}
+                        >
+                          <Ionicons name={slide.icon} size={mainIconSize} color="#FFFFFF" />
+                          {slide.subIcon && illustrationSize >= 70 && (
                             <View style={styles.subIconWrap}>
                               <Ionicons name={slide.subIcon} size={19} color="#FFFFFF" />
                             </View>
@@ -339,7 +373,7 @@ export function OnboardingModal({ visible, onComplete }: Props) {
             ))}
           </View>
 
-          <View style={[styles.actions, { backgroundColor: theme.colors.surfacePrimary }]}>
+          <View style={[styles.actions, { backgroundColor: theme.colors.surfacePrimary }]}> 
             <Text
               style={[styles.progressLabel, { color: theme.colors.textTertiary }]}
               accessibilityRole="text"
@@ -348,7 +382,7 @@ export function OnboardingModal({ visible, onComplete }: Props) {
               {slideIndex + 1} / {SLIDES.length} ・ {SLIDES[slideIndex].label}
             </Text>
 
-            <View style={[styles.actionRow, stackActions && styles.actionRowStacked]}>
+            <View style={[styles.actionRow, stackActions && styles.actionRowStacked]}> 
               {slideIndex === 0 ? (
                 <Pressable
                   style={({ pressed }) => [
