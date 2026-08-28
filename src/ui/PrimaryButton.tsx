@@ -23,6 +23,7 @@ export function PrimaryButton({
   const isDisabled = disabled || loading;
   return (
     <Pressable
+      {...rest}
       accessibilityRole="button"
       accessibilityLabel={loading ? `${label}、処理中` : label}
       accessibilityState={{ ...accessibilityState, disabled: !!isDisabled, busy: !!loading }}
@@ -41,7 +42,6 @@ export function PrimaryButton({
         },
         typeof style === 'function' ? style(state) : style,
       ]}
-      {...rest}
     >
       {loading && <ActivityIndicator size="small" color={theme.colors.textOnAccent} />}
       <DynamicText
