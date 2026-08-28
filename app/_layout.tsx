@@ -10,7 +10,11 @@ function ThemedStack() {
   const theme = useTheme();
   return (
     <>
-      <StatusBar style={theme.mode === 'dark' ? 'light' : 'dark'} />
+      {/* All primary routes start on a dark/colored top surface (custom tab
+          heroes/camera or the plant-detail accent header), so light status-bar
+          content gives reliable contrast in both theme modes. ErrorBoundary
+          overrides this when it presents its light recovery screen. */}
+      <StatusBar style="light" />
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen
@@ -20,6 +24,7 @@ function ThemedStack() {
             headerStyle: { backgroundColor: theme.colors.accentPrimary },
             headerTintColor: theme.colors.textOnAccent,
             headerTitleStyle: { fontWeight: '700' },
+            headerShadowVisible: false,
             presentation: 'card',
           }}
         />
