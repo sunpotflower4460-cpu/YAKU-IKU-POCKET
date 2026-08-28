@@ -30,7 +30,7 @@ describe('PlantCard — interaction structure', () => {
       );
     });
 
-    const cardLabel = `${plant.name}。見つけやすさの目安5段階中${plant.rarity}`;
+    const cardLabel = `${plant.name}。珍しさの目安5段階中${plant.rarity}`;
     const favoriteLabel = `${plant.name}をお気に入りに追加`;
     const cardButton = renderer!.root.findAll(
       (node) => node.props.accessibilityRole === 'button' && node.props.accessibilityLabel?.startsWith(cardLabel)
