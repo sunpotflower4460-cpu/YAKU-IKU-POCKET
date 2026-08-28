@@ -23,7 +23,8 @@ export function EmptyState({ icon, title, description, action }: Props) {
         variant="headline"
         weight="secondary"
         accessibilityRole="header"
-        style={{ marginTop: theme.space[3], textAlign: 'center' }}
+        accessibilityLiveRegion="polite"
+        style={[styles.title, { marginTop: theme.space[3] }]}
       >
         {title}
       </DynamicText>
@@ -31,16 +32,23 @@ export function EmptyState({ icon, title, description, action }: Props) {
         <DynamicText
           variant="subheadline"
           color={theme.colors.textSecondary}
-          style={{ marginTop: theme.space[1], textAlign: 'center' }}
+          style={[styles.description, { marginTop: theme.space[1] }]}
         >
           {description}
         </DynamicText>
       )}
-      {action && <View style={{ marginTop: theme.space[4], maxWidth: '100%' }}>{action}</View>}
+      {action && (
+        <View style={[styles.action, { marginTop: theme.space[4] }]}>
+          {action}
+        </View>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { alignItems: 'center', paddingHorizontal: 24 },
+  title: { textAlign: 'center', maxWidth: 520 },
+  description: { textAlign: 'center', maxWidth: 520 },
+  action: { maxWidth: '100%', alignItems: 'center' },
 });
