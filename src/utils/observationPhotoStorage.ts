@@ -34,8 +34,17 @@ let ensureDirPromise: Promise<void> | null = null;
 // data reset; if it finishes late we delete that stale result again.
 let storageGeneration = 0;
 
+// Timestamp + random alone can collide if two different photos are persisted in
+// the same millisecond and Math.random happens to repeat. The process-local
+// sequence makes that impossible within one app runtime; the random suffix still
+// makes cross-restart collisions vanishingly unlikely.
+let photoSequence = 0;
+
 const SAFE_IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'heic', 'heif', 'webp']);
-const MANAGED_PHOTO_NAME = /^\d+_[a-z0-9]{1,16}\.(?:jpg|jpeg|png|heic|heif|webp)$/i;
+// Accept both the legacy timestamp_random filename and the newer
+// timestamp_sequence_random shape so photos created by older app versions remain
+// eligible for safe cleanup.
+const MANAGED_PHOTO_NAME = /^\d+_(?:[a-z0-9]{1,16}|[a-z0-9]{1,12}_[a-z0-9]{6})\.(?:jpg|jpeg|png|heic|heif|webp)$/i;
 
 async function ensureObservationsDir(): Promise<void> {
   if (!OBSERVATIONS_DIR) return;
@@ -84,7 +93,8 @@ async function copyToDurableStorage(cacheUri: string): Promise<string> {
     await ensureObservationsDir();
     const ext = imageExtension(cacheUri);
     const randomPart = Math.random().toString(36).slice(2, 8).padEnd(6, '0');
-    const destUri = `${OBSERVATIONS_DIR}${Date.now()}_${randomPart}.${ext}`;
+    photoSequence += 1;
+    const destUri = `${OBSERVATIONS_DIR}${Date.now()}_${photoSequence.toString(36)}_${randomPart}.${ext}`;
     await FileSystem.copyAsync({ from: cacheUri, to: destUri });
     return destUri;
   } catch (err) {
