@@ -102,6 +102,45 @@ describe('persistObservationPhoto', () => {
     expect(secondUri).toBe(firstUri);
   });
 
+  it('does not cache a failed copy, so a transient failure can retry', async () => {
+    mockGetInfoAsync.mockResolvedValue({ exists: true });
+    mockCopyAsync
+      .mockRejectedValueOnce(new Error('temporary disk error'))
+      .mockResolvedValueOnce(undefined);
+
+    const source = 'file:///cache/retry.jpg';
+    const first = await persistObservationPhoto(source);
+    const second = await persistObservationPhoto(source);
+
+    expect(first).toBe(source);
+    expect(second).not.toBe(source);
+    expect(mockCopyAsync).toHaveBeenCalledTimes(2);
+  });
+
+  it('invalidates and removes a copy that finishes after a full reset', async () => {
+    mockGetInfoAsync.mockResolvedValue({ exists: true });
+    let resolveCopy!: () => void;
+    mockCopyAsync.mockImplementation(
+      () => new Promise<void>((resolve) => { resolveCopy = resolve; })
+    );
+
+    const source = 'file:///cache/reset-race.jpg';
+    const pending = persistObservationPhoto(source);
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+    expect(mockCopyAsync).toHaveBeenCalledTimes(1);
+    const staleDest = mockCopyAsync.mock.calls[0][0].to as string;
+
+    await clearObservationPhotos();
+    resolveCopy();
+
+    await expect(pending).resolves.toBe(source);
+    expect(mockDeleteAsync).toHaveBeenCalledWith(
+      'file:///mock-documents/observations/',
+      { idempotent: true }
+    );
+    expect(mockDeleteAsync).toHaveBeenCalledWith(staleDest, { idempotent: true });
+  });
+
   it('uses a safe jpg suffix when a source URI has no usable extension', async () => {
     mockGetInfoAsync.mockResolvedValue({ exists: true });
     mockCopyAsync.mockResolvedValue(undefined);
