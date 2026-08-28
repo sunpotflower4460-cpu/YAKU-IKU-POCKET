@@ -23,10 +23,10 @@ export default function TabLayout() {
   const [levelUpData, setLevelUpData] = useState({ level: 1, title: '' });
 
   const tabBottomInset = Math.max(insets.bottom, theme.space[2]);
-  // Navigation labels follow Dynamic Type. Give the bar some extra vertical
-  // room at larger accessibility sizes instead of letting labels collide with
-  // the home indicator or get visually clipped.
-  const dynamicTypeExtra = Math.min(Math.max((fontScale - 1) * 16, 0), 18);
+  // Navigation labels follow Dynamic Type. Scale the bar far enough for the
+  // largest accessibility categories instead of capping growth while the
+  // label itself keeps growing. Normal text remains at the original height.
+  const dynamicTypeExtra = Math.min(Math.max((fontScale - 1) * 24, 0), 40);
   const tabBarHeight = 56 + tabBottomInset + dynamicTypeExtra;
 
   useEffect(() => {
