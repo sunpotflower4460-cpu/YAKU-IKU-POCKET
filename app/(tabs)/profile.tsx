@@ -48,28 +48,28 @@ interface AchievementDef {
 }
 
 const ACHIEVEMENTS: AchievementDef[] = [
-  { id: 'first_discovery', icon: 'leaf-outline', label: '初めての発見', desc: '初めて植物を発見した', check: (ctx) => ctx.discoveredPlantIds.length >= 1 },
-  { id: 'ten_plants', icon: 'book-outline', label: '図鑑の始まり', desc: '10種類の植物を発見した', check: (ctx) => ctx.discoveredPlantIds.length >= 10 },
-  { id: 'twenty_five', icon: 'ribbon-outline', label: 'コレクター見習い', desc: '25種類の植物を発見した', check: (ctx) => ctx.discoveredPlantIds.length >= 25 },
-  { id: 'all_fifty', icon: 'trophy-outline', label: '図鑑完成', desc: `全${TOTAL_PLANTS}種類の植物を発見した`, check: (ctx) => ctx.discoveredPlantIds.length >= TOTAL_PLANTS },
+  { id: 'first_discovery', icon: 'leaf-outline', label: '初めての観察', desc: '初めて植物を記録した', check: (ctx) => ctx.discoveredPlantIds.length >= 1 },
+  { id: 'ten_plants', icon: 'book-outline', label: '10種類の記録', desc: '10種類の植物を記録した', check: (ctx) => ctx.discoveredPlantIds.length >= 10 },
+  { id: 'twenty_five', icon: 'ribbon-outline', label: '25種類の記録', desc: '25種類の植物を記録した', check: (ctx) => ctx.discoveredPlantIds.length >= 25 },
+  { id: 'all_fifty', icon: 'trophy-outline', label: '図鑑の記録達成', desc: `全${TOTAL_PLANTS}種類の植物を記録した`, check: (ctx) => ctx.discoveredPlantIds.length >= TOTAL_PLANTS },
   {
-    id: 'danger_master', icon: 'skull-outline', label: '毒草の知識', desc: '危険（RED）植物を発見した',
+    id: 'danger_master', icon: 'shield-checkmark-outline', label: '危険植物を学ぶ', desc: '危険（RED）植物を記録した',
     check: (ctx) => PLANTS.filter((p) => p.danger === 'RED').some((p) => ctx.discoveredPlantIds.includes(p.id)),
   },
   {
-    id: 'herb_collector', icon: 'leaf', label: 'ハーブ愛好家', desc: 'ハーブを10種類発見した',
+    id: 'herb_collector', icon: 'leaf', label: 'ハーブの観察者', desc: 'ハーブを10種類記録した',
     check: (ctx) => PLANTS.filter((p) => p.category === 'スパイス・ハーブ' && ctx.discoveredPlantIds.includes(p.id)).length >= 10,
   },
   {
-    id: 'wild_hunter', icon: 'compass-outline', label: '野草ハンター', desc: '野草を10種類発見した',
+    id: 'wild_hunter', icon: 'compass-outline', label: '野草の観察者', desc: '野草を10種類記録した',
     check: (ctx) => PLANTS.filter((p) => p.category === '野草' && ctx.discoveredPlantIds.includes(p.id)).length >= 10,
   },
   {
-    id: 'rare_finder', icon: 'star-outline', label: 'レアハンター', desc: '★5レアを発見した',
+    id: 'rare_finder', icon: 'star-outline', label: '珍しい発見', desc: '見つけやすさ★5の植物を記録した',
     check: (ctx) => PLANTS.filter((p) => p.rarity === 5).some((p) => ctx.discoveredPlantIds.includes(p.id)),
   },
   {
-    id: 'all_categories', icon: 'grid-outline', label: 'バランス型', desc: '野草とハーブ両方を発見した',
+    id: 'all_categories', icon: 'grid-outline', label: '二つのフィールド', desc: '野草とハーブの両方を記録した',
     check: (ctx) =>
       PLANTS.some((p) => p.category === '野草' && ctx.discoveredPlantIds.includes(p.id)) &&
       PLANTS.some((p) => p.category === 'スパイス・ハーブ' && ctx.discoveredPlantIds.includes(p.id)),
@@ -80,12 +80,12 @@ const ACHIEVEMENTS: AchievementDef[] = [
       const families = new Set(
         ctx.discoveredPlantIds
           .map((id) => getPlantDefinitionById(id)?.taxonomy.family)
-          .filter((f): f is string => !!f)
+          .filter((family): family is string => !!family)
       );
       return families.size >= 5;
     },
   },
-  { id: 'note_taker', icon: 'create-outline', label: 'メモ魔', desc: '10件のメモを残した', check: (ctx) => Object.keys(ctx.plantNotes).length >= 10 },
+  { id: 'note_taker', icon: 'create-outline', label: '記録上手', desc: '10件の観察メモを残した', check: (ctx) => Object.keys(ctx.plantNotes).length >= 10 },
   {
     id: 'cross_season', icon: 'sync-outline', label: '季節をまたぐ観察', desc: '同じ植物を異なる季節に観察した',
     check: (ctx) => {
@@ -95,10 +95,10 @@ const ACHIEVEMENTS: AchievementDef[] = [
         if (!seasonsByPlant.has(record.plantId)) seasonsByPlant.set(record.plantId, new Set());
         seasonsByPlant.get(record.plantId)!.add(season);
       }
-      return [...seasonsByPlant.values()].some((s) => s.size >= 2);
+      return [...seasonsByPlant.values()].some((seasons) => seasons.size >= 2);
     },
   },
-  { id: 'safety_reader', icon: 'shield-checkmark-outline', label: '危険植物を学ぶ', desc: '危険植物の安全情報を確認した', check: (ctx) => ctx.viewedSafetyCardPlantIds.length >= 1 },
+  { id: 'safety_reader', icon: 'shield-checkmark-outline', label: '安全情報を読む', desc: '危険植物の安全情報を確認した', check: (ctx) => ctx.viewedSafetyCardPlantIds.length >= 1 },
   { id: 'candidate_comparer', icon: 'git-compare-outline', label: '見比べ上手', desc: '複数候補を見比べて選んだ', check: (ctx) => ctx.hasComparedCandidates },
 ];
 
@@ -146,7 +146,7 @@ export default function ProfileScreen() {
     () => ({ discoveredPlantIds, plantNotes, scanHistory, viewedSafetyCardPlantIds, hasComparedCandidates }),
     [discoveredPlantIds, plantNotes, scanHistory, viewedSafetyCardPlantIds, hasComparedCandidates]
   );
-  const unlockedAchievements = ACHIEVEMENTS.filter((a) => a.check(achievementCtx)).map((a) => ({ icon: a.icon, label: a.label }));
+  const unlockedAchievements = ACHIEVEMENTS.filter((achievement) => achievement.check(achievementCtx)).map((achievement) => ({ icon: achievement.icon, label: achievement.label }));
   const greenCount = PLANTS.filter((p) => p.danger === 'GREEN' && discoveredPlantIds.includes(p.id)).length;
   const yellowCount = PLANTS.filter((p) => p.danger === 'YELLOW' && discoveredPlantIds.includes(p.id)).length;
   const redCount = PLANTS.filter((p) => p.danger === 'RED' && discoveredPlantIds.includes(p.id)).length;
@@ -162,18 +162,18 @@ export default function ProfileScreen() {
   );
   const recentScans = useMemo(() => {
     if (!trimmedSearch) return allScansWithPlant.slice(0, 10);
-    const q = trimmedSearch.toLowerCase();
+    const query = trimmedSearch.toLowerCase();
     return allScansWithPlant.filter(
       ({ plant }) =>
-        plant.name.toLowerCase().includes(q) ||
-        plant.nameEn.toLowerCase().includes(q) ||
-        (plantNotes[plant.id] ?? '').toLowerCase().includes(q)
+        plant.name.toLowerCase().includes(query) ||
+        plant.nameEn.toLowerCase().includes(query) ||
+        (plantNotes[plant.id] ?? '').toLowerCase().includes(query)
     );
   }, [allScansWithPlant, trimmedSearch, plantNotes]);
   const matchingUnidentified = useMemo(() => {
     if (!trimmedSearch) return [];
-    const q = trimmedSearch.toLowerCase();
-    return unidentifiedObservations.filter((o) => (o.note ?? '').toLowerCase().includes(q));
+    const query = trimmedSearch.toLowerCase();
+    return unidentifiedObservations.filter((observation) => (observation.note ?? '').toLowerCase().includes(query));
   }, [unidentifiedObservations, trimmedSearch]);
 
   const seasonCounts = useMemo(() => {
@@ -184,21 +184,21 @@ export default function ProfileScreen() {
 
   const upcomingRevisits = useMemo(() => {
     const fromScans = scanHistory
-      .filter((r) => r.revisitAt)
-      .map((r) => ({
+      .filter((record) => record.revisitAt)
+      .map((record) => ({
         kind: 'scan' as const,
-        id: r.id,
-        revisitAt: r.revisitAt!,
-        label: PLANTS.find((p) => p.id === r.plantId)?.name ?? '不明な植物',
-        plantId: r.plantId,
+        id: record.id,
+        revisitAt: record.revisitAt!,
+        label: PLANTS.find((p) => p.id === record.plantId)?.name ?? '不明な植物',
+        plantId: record.plantId,
       }));
     const fromUnidentified = unidentifiedObservations
-      .filter((o) => o.revisitAt)
-      .map((o) => ({
+      .filter((observation) => observation.revisitAt)
+      .map((observation) => ({
         kind: 'unidentified' as const,
-        id: o.id,
-        revisitAt: o.revisitAt!,
-        label: o.note ? o.note.slice(0, 20) : '未同定の観察',
+        id: observation.id,
+        revisitAt: observation.revisitAt!,
+        label: observation.note ? observation.note.slice(0, 20) : '未同定の観察',
         plantId: undefined as string | undefined,
       }));
     return [...fromScans, ...fromUnidentified].sort((a, b) => a.revisitAt.localeCompare(b.revisitAt));
@@ -213,8 +213,6 @@ export default function ProfileScreen() {
     return map;
   }, [scanHistory]);
 
-  // Recompute from the local day key instead of relying on the tab subtree to
-  // remount at midnight. This also makes date-bound UI easier to reuse later.
   const calendarData = useMemo(() => {
     const now = new Date();
     const year = now.getFullYear();
@@ -225,7 +223,7 @@ export default function ProfileScreen() {
     const mm = String(month + 1).padStart(2, '0');
     const cells: (number | null)[] = [
       ...Array(startOffset).fill(null),
-      ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
+      ...Array.from({ length: daysInMonth }, (_, index) => index + 1),
     ];
     return { cells, year, month, mm, todayStr: todayKey };
   }, [todayKey]);
@@ -270,9 +268,8 @@ export default function ProfileScreen() {
       contentContainerStyle={styles.scrollContent}
       showsVerticalScrollIndicator={false}
     >
-      {/* Field-note Hero */}
       <LinearGradient colors={['#174F2A', '#226B35', '#348447']} style={[styles.hero, { paddingTop: insets.top + 18 }]}>
-        <Text style={styles.heroEyebrow}>YOUR FIELD NOTE</Text>
+        <Text style={styles.heroEyebrow}>FIELD NOTE</Text>
         <View style={styles.identityRow}>
           <View style={styles.avatar}>
             <Ionicons name="person-outline" size={34} color="#FFFFFF" />
@@ -305,30 +302,35 @@ export default function ProfileScreen() {
         </View>
 
         <View style={styles.heroBottomRow}>
-          <View style={styles.streakBadge} accessible accessibilityRole="text" accessibilityLabel={streak > 0 ? `${streak}日連続` : '今日から開始'}>
-            <Ionicons name="flame-outline" size={17} color="#FFD28B" />
-            <Text style={styles.streakText}>{streak > 0 ? `${streak}日連続` : '今日から開始'}</Text>
+          <View
+            style={styles.streakBadge}
+            accessible
+            accessibilityRole="text"
+            accessibilityLabel={streak > 0 ? `継続日数${streak}日` : '今日から記録を開始'}
+          >
+            <Ionicons name="calendar-outline" size={17} color="#D9E8C1" />
+            <Text style={styles.streakText}>{streak > 0 ? `${streak}日継続` : '今日から'}</Text>
           </View>
           <Pressable
             style={({ pressed }) => [styles.shareBtn, pressed && styles.glassPressed]}
             onPress={() => setShareCardVisible(true)}
             accessibilityRole="button"
-            accessibilityLabel="実績カードを開く"
+            accessibilityLabel="観察カードを開く"
           >
-            <Ionicons name="ribbon-outline" size={17} color="#FFFFFF" />
-            <Text style={styles.shareBtnText}>実績カード</Text>
+            <Ionicons name="share-outline" size={17} color="#FFFFFF" />
+            <Text style={styles.shareBtnText}>観察カード</Text>
           </Pressable>
         </View>
       </LinearGradient>
 
-      <Section title="コレクション統計" icon="stats-chart-outline">
+      <Section title="観察の記録" icon="stats-chart-outline">
         <View style={styles.statsGrid}>
-          <StatBox label="発見数" value={`${discoveredCount}`} unit={`/ ${PLANTS.length}`} color={theme.colors.accentPrimary} />
+          <StatBox label="記録した種類" value={`${discoveredCount}`} unit={`/ ${PLANTS.length}`} color={theme.colors.accentPrimary} />
           <StatBox label="合計XP" value={String(xp)} unit="XP" color={theme.colors.rarityLegendary} />
           <StatBox label="一般食用" value={String(greenCount)} unit="種" color={theme.colors.statusObserved} />
           <StatBox label="要注意" value={String(yellowCount)} unit="種" color={theme.colors.statusCaution} />
           <StatBox label="危険植物" value={String(redCount)} unit="種" color={theme.colors.statusDanger} />
-          <StatBox label="★5レア" value={String(rarity5Count)} unit="種" color={theme.colors.rarityLegendary} />
+          <StatBox label="珍しい植物" value={String(rarity5Count)} unit="種" color={theme.colors.rarityLegendary} />
         </View>
       </Section>
 
@@ -336,19 +338,19 @@ export default function ProfileScreen() {
         <View style={[styles.calendarCard, { backgroundColor: theme.colors.surfacePrimary, borderColor: theme.colors.borderSubtle, shadowColor: theme.colors.shadow }]}>
           <Text style={[styles.calendarMonth, { color: theme.colors.textPrimary }]}>{calendarData.year}年{calendarData.month + 1}月</Text>
           <View style={styles.calendarDowRow}>
-            {['月', '火', '水', '木', '金', '土', '日'].map((d) => (
-              <Text key={d} style={[styles.calendarDow, { color: theme.colors.textTertiary }]}>{d}</Text>
+            {['月', '火', '水', '木', '金', '土', '日'].map((day) => (
+              <Text key={day} style={[styles.calendarDow, { color: theme.colors.textTertiary }]}>{day}</Text>
             ))}
           </View>
           <View style={styles.calendarGrid}>
-            {calendarData.cells.map((day, idx) => {
-              if (day === null) return <View key={`pad-${idx}`} style={styles.calendarCell} />;
+            {calendarData.cells.map((day, index) => {
+              if (day === null) return <View key={`pad-${index}`} style={styles.calendarCell} />;
               const dd = String(day).padStart(2, '0');
               const dateStr = `${calendarData.year}-${calendarData.mm}-${dd}`;
               const isToday = dateStr === calendarData.todayStr;
               const count = dayObservationCount[dateStr] ?? 0;
-              const intensityIdx = count <= 0 ? -1 : Math.min(count - 1, observationIntensity.length - 1);
-              const fillColor = intensityIdx >= 0 ? observationIntensity[intensityIdx] : undefined;
+              const intensityIndex = count <= 0 ? -1 : Math.min(count - 1, observationIntensity.length - 1);
+              const fillColor = intensityIndex >= 0 ? observationIntensity[intensityIndex] : undefined;
               return (
                 <View
                   key={dateStr}
@@ -371,19 +373,19 @@ export default function ProfileScreen() {
           </View>
           <View style={styles.calendarLegend} accessibilityElementsHidden>
             <Text style={[styles.calendarLegendLabel, { color: theme.colors.textTertiary }]}>観察数: 少</Text>
-            {observationIntensity.map((c, i) => <View key={i} style={[styles.calendarLegendDot, { backgroundColor: c }]} />)}
+            {observationIntensity.map((color, index) => <View key={index} style={[styles.calendarLegendDot, { backgroundColor: color }]} />)}
             <Text style={[styles.calendarLegendLabel, { color: theme.colors.textTertiary }]}>多</Text>
           </View>
         </View>
       </Section>
 
-      <Section title="実績バッジ" icon="ribbon-outline">
+      <Section title="観察の足あと" icon="ribbon-outline">
         <View style={styles.achievementsGrid}>
-          {ACHIEVEMENTS.map((ach) => {
-            const unlocked = ach.check(achievementCtx);
+          {ACHIEVEMENTS.map((achievement) => {
+            const unlocked = achievement.check(achievementCtx);
             return (
               <View
-                key={ach.id}
+                key={achievement.id}
                 style={[
                   styles.achCard,
                   {
@@ -393,18 +395,18 @@ export default function ProfileScreen() {
                 ]}
                 accessible
                 accessibilityRole="text"
-                accessibilityLabel={`${ach.label}。${ach.desc}。${unlocked ? '達成済み' : '未達成'}`}
+                accessibilityLabel={`${achievement.label}。${achievement.desc}。${unlocked ? '達成済み' : '未達成'}`}
               >
                 <View style={[styles.achIconWrap, { backgroundColor: unlocked ? `${theme.colors.accentPrimary}16` : theme.colors.surfaceSecondary }]}>
                   <Ionicons
-                    name={(unlocked ? ach.icon : 'lock-closed-outline') as React.ComponentProps<typeof Ionicons>['name']}
+                    name={(unlocked ? achievement.icon : 'lock-closed-outline') as React.ComponentProps<typeof Ionicons>['name']}
                     size={24}
                     color={unlocked ? theme.colors.accentPrimary : theme.colors.textTertiary}
                   />
                 </View>
                 <View style={styles.achTextWrap}>
-                  <Text style={[styles.achLabel, { color: unlocked ? theme.colors.textPrimary : theme.colors.textTertiary }]}>{ach.label}</Text>
-                  <Text style={[styles.achDesc, { color: theme.colors.textSecondary }]}>{ach.desc}</Text>
+                  <Text style={[styles.achLabel, { color: unlocked ? theme.colors.textPrimary : theme.colors.textTertiary }]}>{achievement.label}</Text>
+                  <Text style={[styles.achDesc, { color: theme.colors.textSecondary }]}>{achievement.desc}</Text>
                 </View>
               </View>
             );
@@ -415,10 +417,10 @@ export default function ProfileScreen() {
       {scanHistory.length > 0 && (
         <Section title="季節別の観察数" icon="flower-outline">
           <View style={styles.seasonBreakdownRow}>
-            {(['春', '夏', '秋', '冬'] as const).map((s) => (
-              <View key={s} style={[styles.seasonBreakdownCell, { backgroundColor: theme.colors.surfacePrimary, borderColor: theme.colors.borderSubtle }]}>
-                <Text style={[styles.seasonBreakdownLabel, { color: theme.colors.textSecondary }]}>{s}</Text>
-                <Text style={[styles.seasonBreakdownValue, { color: theme.colors.accentPrimary }]}>{seasonCounts[s]}</Text>
+            {(['春', '夏', '秋', '冬'] as const).map((seasonName) => (
+              <View key={seasonName} style={[styles.seasonBreakdownCell, { backgroundColor: theme.colors.surfacePrimary, borderColor: theme.colors.borderSubtle }]}>
+                <Text style={[styles.seasonBreakdownLabel, { color: theme.colors.textSecondary }]}>{seasonName}</Text>
+                <Text style={[styles.seasonBreakdownValue, { color: theme.colors.accentPrimary }]}>{seasonCounts[seasonName]}</Text>
               </View>
             ))}
           </View>
@@ -428,28 +430,28 @@ export default function ProfileScreen() {
       {upcomingRevisits.length > 0 && (
         <Section title="再訪予定" icon="alarm-outline">
           <View style={[styles.historyList, { backgroundColor: theme.colors.surfacePrimary, borderColor: theme.colors.borderSubtle }]}>
-            {upcomingRevisits.map((r) => (
-              <View key={`${r.kind}_${r.id}`} style={[styles.revisitRow, { borderBottomColor: theme.colors.borderSubtle }]}>
+            {upcomingRevisits.map((revisit) => (
+              <View key={`${revisit.kind}_${revisit.id}`} style={[styles.revisitRow, { borderBottomColor: theme.colors.borderSubtle }]}>
                 <View style={[styles.rowIconWrap, { backgroundColor: theme.colors.surfaceSecondary }]}>
                   <Ionicons name="alarm-outline" size={17} color={theme.colors.accentPrimary} />
                 </View>
-                {r.kind === 'scan' && r.plantId ? (
+                {revisit.kind === 'scan' && revisit.plantId ? (
                   <Pressable
                     style={styles.rowMainAction}
-                    onPress={() => router.push(`/plant/${r.plantId}`)}
+                    onPress={() => router.push(`/plant/${revisit.plantId}`)}
                     accessibilityRole="button"
-                    accessibilityLabel={`${r.label}の図鑑詳細を開く。再訪予定 ${r.revisitAt}`}
+                    accessibilityLabel={`${revisit.label}の図鑑詳細を開く。再訪予定 ${revisit.revisitAt}`}
                   >
-                    <Text style={[styles.revisitLabel, { color: theme.colors.textPrimary }]} numberOfLines={1}>{r.label}</Text>
-                    <Text style={[styles.revisitDate, { color: theme.colors.textTertiary }]}>{r.revisitAt}</Text>
+                    <Text style={[styles.revisitLabel, { color: theme.colors.textPrimary }]} numberOfLines={1}>{revisit.label}</Text>
+                    <Text style={[styles.revisitDate, { color: theme.colors.textTertiary }]}>{revisit.revisitAt}</Text>
                   </Pressable>
                 ) : (
                   <View style={styles.rowMainAction}>
-                    <Text style={[styles.revisitLabel, { color: theme.colors.textPrimary }]} numberOfLines={1}>{r.label}</Text>
-                    <Text style={[styles.revisitDate, { color: theme.colors.textTertiary }]}>{r.revisitAt}</Text>
+                    <Text style={[styles.revisitLabel, { color: theme.colors.textPrimary }]} numberOfLines={1}>{revisit.label}</Text>
+                    <Text style={[styles.revisitDate, { color: theme.colors.textTertiary }]}>{revisit.revisitAt}</Text>
                   </View>
                 )}
-                <IconButton icon="close" label="再訪予定を削除" onPress={() => r.kind === 'scan' ? setScanRevisit(r.id, undefined) : setUnidentifiedRevisit(r.id, undefined)} />
+                <IconButton icon="close" label="再訪予定を削除" onPress={() => revisit.kind === 'scan' ? setScanRevisit(revisit.id, undefined) : setUnidentifiedRevisit(revisit.id, undefined)} />
               </View>
             ))}
           </View>
@@ -459,14 +461,14 @@ export default function ProfileScreen() {
       {unidentifiedObservations.length > 0 && (
         <Section title="未同定の観察" icon="help-circle-outline">
           <View style={[styles.historyList, { backgroundColor: theme.colors.surfacePrimary, borderColor: theme.colors.borderSubtle }]}>
-            {unidentifiedObservations.slice(0, 20).map((o) => (
-              <View key={o.id} style={[styles.historyItem, { borderBottomColor: theme.colors.borderSubtle }]}>
+            {unidentifiedObservations.slice(0, 20).map((observation) => (
+              <View key={observation.id} style={[styles.historyItem, { borderBottomColor: theme.colors.borderSubtle }]}>
                 <View style={[styles.historyEmojiWrap, { backgroundColor: theme.colors.surfaceSecondary }]}>
                   <Text style={styles.historyEmoji}>❔</Text>
                 </View>
                 <View style={styles.historyInfo}>
-                  <Text style={[styles.historyName, { color: theme.colors.textPrimary }]} numberOfLines={1}>{o.note || '未同定の植物'}</Text>
-                  <Text style={[styles.historyTime, { color: theme.colors.textTertiary }]}>{formatScanDate(o.observedAt)}</Text>
+                  <Text style={[styles.historyName, { color: theme.colors.textPrimary }]} numberOfLines={1}>{observation.note || '未同定の植物'}</Text>
+                  <Text style={[styles.historyTime, { color: theme.colors.textTertiary }]}>{formatScanDate(observation.observedAt)}</Text>
                 </View>
                 <IconButton
                   icon="trash-outline"
@@ -474,7 +476,7 @@ export default function ProfileScreen() {
                   danger
                   onPress={() => Alert.alert('観察記録を削除', 'この未同定の観察記録を削除してもよいですか？', [
                     { text: 'キャンセル', style: 'cancel' },
-                    { text: '削除', style: 'destructive', onPress: () => deleteUnidentifiedObservation(o.id) },
+                    { text: '削除', style: 'destructive', onPress: () => deleteUnidentifiedObservation(observation.id) },
                   ])}
                 />
               </View>
@@ -512,14 +514,14 @@ export default function ProfileScreen() {
             {recentScans.map(({ record, plant }) => (
               <HistoryRow key={record.id} record={record} plant={plant} onPress={() => router.push(`/plant/${plant.id}`)} />
             ))}
-            {matchingUnidentified.map((o) => (
-              <View key={o.id} style={[styles.historyItem, { borderBottomColor: theme.colors.borderSubtle }]}>
+            {matchingUnidentified.map((observation) => (
+              <View key={observation.id} style={[styles.historyItem, { borderBottomColor: theme.colors.borderSubtle }]}>
                 <View style={[styles.historyEmojiWrap, { backgroundColor: theme.colors.surfaceSecondary }]}>
                   <Text style={styles.historyEmoji}>❔</Text>
                 </View>
                 <View style={styles.historyInfo}>
-                  <Text style={[styles.historyName, { color: theme.colors.textPrimary }]} numberOfLines={1}>{o.note}</Text>
-                  <Text style={[styles.historyTime, { color: theme.colors.textTertiary }]}>{formatScanDate(o.observedAt)}</Text>
+                  <Text style={[styles.historyName, { color: theme.colors.textPrimary }]} numberOfLines={1}>{observation.note}</Text>
+                  <Text style={[styles.historyTime, { color: theme.colors.textTertiary }]}>{formatScanDate(observation.observedAt)}</Text>
                 </View>
               </View>
             ))}
@@ -560,14 +562,14 @@ export default function ProfileScreen() {
         <View style={[styles.settingsCard, { backgroundColor: theme.colors.surfacePrimary, borderColor: theme.colors.borderSubtle }]}>
           <View style={styles.settingsRowHeader}>
             <View style={{ flex: 1 }}>
-              <Text style={[styles.settingsGroupLabel, { color: theme.colors.textPrimary, marginBottom: 2 }]}>AI画像識別への同意</Text>
+              <Text style={[styles.settingsGroupLabel, { color: theme.colors.textPrimary, marginBottom: 2 }]}>AI画像解析への同意</Text>
               <Text style={[styles.settingsMiniStatus, { color: aiConsentGiven ? theme.colors.statusVerified : theme.colors.textTertiary }]}>{aiConsentGiven ? 'オン' : 'オフ・デモモード'}</Text>
             </View>
             <Switch
               value={aiConsentGiven}
               onValueChange={setAiConsentGiven}
               trackColor={{ false: theme.colors.surfaceTertiary, true: theme.colors.accentPrimary }}
-              accessibilityLabel="AI画像識別への同意"
+              accessibilityLabel="AI画像解析への同意"
             />
           </View>
           <Text style={[styles.settingsDesc, { color: theme.colors.textSecondary }]}>
@@ -577,7 +579,7 @@ export default function ProfileScreen() {
 
         <View style={[styles.settingsCard, { backgroundColor: theme.colors.surfacePrimary, borderColor: theme.colors.borderSubtle }]}>
           <Text style={[styles.settingsGroupLabel, { color: theme.colors.textPrimary }]}>データ管理</Text>
-          <SettingsRow icon="share-outline" label="データをエクスポート" onPress={handleExportData} />
+          <SettingsRow icon="share-outline" label="観察データをエクスポート" onPress={handleExportData} />
           <SettingsRow icon="trash-outline" label="すべてのデータを削除" onPress={handleDeleteAllData} danger />
         </View>
 
@@ -649,11 +651,11 @@ export default function ProfileScreen() {
             <Text style={[styles.modalTitle, { color: theme.colors.textPrimary }]} accessibilityRole="header">データソース・出典について</Text>
             <ScrollView style={styles.sourcesScroll} showsVerticalScrollIndicator={false}>
               <Text style={[styles.sourcesText, { color: theme.colors.textSecondary }]}>
-                本アプリの植物データ（科・属などの分類情報を含む）は、編集部が一般的な植物学の知見をもとに作成したものです（reviewStatus: editorial）。特定の公的データベース（GBIF・POWO・iNaturalist・YListなど）とはまだ連携しておらず、個々の記載に外部データベースIDや出典を紐づけていません。
+                本アプリの植物データ（科・属などの分類情報を含む）は、編集部が一般的な植物学の知見をもとに整理しています。現時点ではGBIF・POWO・iNaturalist・YListなどの公的・専門データベースと直接連携しておらず、個々の記載に外部データベースIDや出典を紐づけていません。
                 {'\n\n'}
-                効能・用途に関する記述は、医学的な効果を保証するものではなく、伝統的な言い伝え・慣習的な利用として紹介しています。
+                用途に関する記述は、医学的な効果を保証するものではなく、伝統的な言い伝え・慣習的な利用として紹介しています。
                 {'\n\n'}
-                AI画像識別は、同意がオンの場合のみ外部AIサービスを利用します。将来的に専門データベースとの連携や専門家レビューを追加し、出典を明示していく予定です。
+                AI画像解析は、同意がオンの場合のみ外部AIサービスを利用します。将来的に専門データベースとの連携や専門家レビューを追加し、出典をより明確にしていく予定です。
               </Text>
             </ScrollView>
             <Pressable
@@ -820,18 +822,15 @@ const styles = StyleSheet.create({
   shareBtn: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.18)', borderRadius: 999, paddingHorizontal: 14 },
   shareBtnText: { fontSize: 13, lineHeight: 18, fontWeight: '800', color: '#FFFFFF' },
   glassPressed: { backgroundColor: 'rgba(255,255,255,0.22)' },
-
   section: { paddingHorizontal: 16, paddingTop: 22 },
   sectionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 11 },
   sectionTitle: { fontSize: 16, lineHeight: 21, fontWeight: '800' },
   disclaimerSection: { paddingTop: 22 },
-
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 9 },
   statBox: { flex: 1, minWidth: '30%', borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, borderTopWidth: 3, paddingVertical: 13, paddingHorizontal: 9, alignItems: 'center', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 5, elevation: 2 },
   statValue: { fontSize: 22, lineHeight: 27, fontWeight: '900' },
   statUnit: { fontSize: 11, lineHeight: 14, fontWeight: '600' },
   statLabel: { fontSize: 11, lineHeight: 15, marginTop: 3, textAlign: 'center', fontWeight: '600' },
-
   calendarCard: { borderRadius: 17, borderWidth: StyleSheet.hairlineWidth, padding: 14, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 5, elevation: 2 },
   calendarMonth: { fontSize: 14, lineHeight: 19, fontWeight: '800', textAlign: 'center', marginBottom: 10 },
   calendarDowRow: { flexDirection: 'row', marginBottom: 4 },
@@ -843,19 +842,16 @@ const styles = StyleSheet.create({
   calendarLegend: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 10, gap: 4 },
   calendarLegendLabel: { fontSize: 10, lineHeight: 13, fontWeight: '600' },
   calendarLegendDot: { width: 12, height: 12, borderRadius: 6 },
-
   achievementsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 9 },
   achCard: { width: '48.5%', minHeight: 86, flexDirection: 'row', alignItems: 'center', gap: 9, borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, padding: 11 },
   achIconWrap: { width: 42, height: 42, borderRadius: 21, justifyContent: 'center', alignItems: 'center' },
   achTextWrap: { flex: 1 },
   achLabel: { fontSize: 12, lineHeight: 16, fontWeight: '800' },
   achDesc: { fontSize: 11, lineHeight: 16, marginTop: 2 },
-
   seasonBreakdownRow: { flexDirection: 'row', gap: 8 },
   seasonBreakdownCell: { flex: 1, borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, paddingVertical: 11, alignItems: 'center' },
   seasonBreakdownLabel: { fontSize: 12, lineHeight: 16, fontWeight: '700' },
   seasonBreakdownValue: { fontSize: 20, lineHeight: 24, fontWeight: '900', marginTop: 2 },
-
   historyList: { borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden' },
   revisitRow: { minHeight: 64, flexDirection: 'row', alignItems: 'center', paddingLeft: 11, paddingRight: 4, paddingVertical: 7, borderBottomWidth: StyleSheet.hairlineWidth, gap: 9 },
   rowIconWrap: { width: 38, height: 38, borderRadius: 19, justifyContent: 'center', alignItems: 'center' },
@@ -875,7 +871,6 @@ const styles = StyleSheet.create({
   iconButtonCompact: { width: 44, height: 44 },
   emptyHistory: { minHeight: 112, borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, padding: 20, alignItems: 'center', justifyContent: 'center', gap: 9 },
   emptyHistoryText: { fontSize: 13, lineHeight: 19, textAlign: 'center' },
-
   settingsCard: { borderRadius: 17, borderWidth: StyleSheet.hairlineWidth, padding: 13, marginBottom: 10 },
   settingsGroupLabel: { fontSize: 14, lineHeight: 19, fontWeight: '800', marginBottom: 10 },
   settingsMiniStatus: { fontSize: 11, lineHeight: 15, fontWeight: '700' },
@@ -887,7 +882,6 @@ const styles = StyleSheet.create({
   legalRow: { minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 2, borderBottomWidth: StyleSheet.hairlineWidth },
   legalRowText: { flex: 1, fontSize: 14, lineHeight: 19, fontWeight: '600' },
   versionText: { marginTop: 12, fontSize: 12, lineHeight: 16, textAlign: 'center' },
-
   modalOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
   modalCard: { borderRadius: 22, borderWidth: StyleSheet.hairlineWidth, padding: 20, width: '100%', maxWidth: 440, shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.24, shadowRadius: 20, elevation: 16 },
   modalTitle: { fontSize: 18, lineHeight: 24, fontWeight: '800', marginBottom: 15, textAlign: 'center' },
@@ -897,7 +891,6 @@ const styles = StyleSheet.create({
   modalBtnText: { fontSize: 15, lineHeight: 20, fontWeight: '800' },
   sourcesScroll: { maxHeight: 360 },
   sourcesText: { fontSize: 14, lineHeight: 22 },
-
   rowPressed: { opacity: 0.68 },
   buttonPressed: { opacity: 0.82, transform: [{ scale: 0.99 }] },
 });
