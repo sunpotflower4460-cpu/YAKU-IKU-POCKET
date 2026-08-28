@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { View, Text, StyleSheet, Pressable, Animated, Image } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Animated, Image, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from '../utils/haptics';
 import { Plant } from '../types';
@@ -40,6 +40,8 @@ export function PlantCard({
 }: Props) {
   const theme = useTheme();
   const reduceMotion = useReduceMotion();
+  const { fontScale } = useWindowDimensions();
+  const largeText = fontScale >= 1.4;
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const [imgError, setImgError] = useState(false);
 
@@ -106,6 +108,7 @@ export function PlantCard({
       <Pressable
         style={[
           styles.card,
+          largeText && styles.cardLargeText,
           {
             backgroundColor: theme.colors.surfacePrimary,
             borderColor: plant.danger === 'RED' && discovered
@@ -150,9 +153,10 @@ export function PlantCard({
         <Text
           style={[
             styles.name,
+            largeText && styles.nameLargeText,
             { color: discovered ? theme.colors.textPrimary : theme.colors.textTertiary },
           ]}
-          numberOfLines={2}
+          numberOfLines={largeText ? 3 : 2}
         >
           {discovered ? plant.name : '？？？'}
         </Text>
@@ -170,7 +174,10 @@ export function PlantCard({
               },
             ]}
           >
-            <Text style={[styles.hintChipText, { color: theme.colors.accentSecondary }]} numberOfLines={1}>
+            <Text
+              style={[styles.hintChipText, { color: theme.colors.accentSecondary }]}
+              numberOfLines={largeText ? 2 : 1}
+            >
               {familyHint ?? 'ヒント'}
             </Text>
           </View>
@@ -178,7 +185,7 @@ export function PlantCard({
 
         {discovered && (
           <View style={[styles.checkBadge, { backgroundColor: rarityColor }]} accessibilityElementsHidden>
-            <Ionicons name="checkmark" size={11} color="#FFFFFF" />
+            <Ionicons name="checkmark" size={11} color={theme.colors.textOnAccent} />
           </View>
         )}
 
@@ -238,6 +245,10 @@ const styles = StyleSheet.create({
     gap: 5,
     minHeight: 170,
   },
+  cardLargeText: {
+    minHeight: 200,
+    paddingBottom: 16,
+  },
   rarityStrip: {
     position: 'absolute',
     top: 0,
@@ -279,6 +290,9 @@ const styles = StyleSheet.create({
     minHeight: 34,
     paddingHorizontal: 2,
   },
+  nameLargeText: {
+    minHeight: 51,
+  },
   checkBadge: {
     position: 'absolute',
     top: 8,
@@ -311,6 +325,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   hintChip: {
+    maxWidth: '100%',
     borderRadius: 8,
     paddingHorizontal: 7,
     paddingVertical: 3,
@@ -319,5 +334,6 @@ const styles = StyleSheet.create({
   hintChipText: {
     fontSize: 11,
     fontWeight: '700',
+    textAlign: 'center',
   },
 });
