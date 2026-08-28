@@ -47,4 +47,30 @@ describe('PlantCard — interaction structure', () => {
     expect(onFavorite).toHaveBeenCalledTimes(1);
     expect(onPress).not.toHaveBeenCalled();
   });
+
+  it('lets the card summary own rarity and danger semantics without duplicate stops', () => {
+    const plant = PLANTS[0];
+
+    act(() => {
+      renderer = TestRenderer.create(
+        <PlantCard
+          plant={plant}
+          discovered
+          onPress={() => {}}
+        />
+      );
+    });
+
+    const cardButton = renderer!.root.findAll(
+      (node) => node.props.accessibilityRole === 'button' && node.props.accessibilityLabel?.startsWith(plant.name)
+    )[0];
+
+    expect(cardButton.props.accessibilityLabel).toContain('珍しさの目安');
+    expect(cardButton.findAll(
+      (node) => typeof node.props.accessibilityLabel === 'string' && node.props.accessibilityLabel.startsWith('珍しさの目安、')
+    )).toHaveLength(0);
+    expect(cardButton.findAll(
+      (node) => typeof node.props.accessibilityLabel === 'string' && node.props.accessibilityLabel.startsWith('植物情報の注意区分、')
+    )).toHaveLength(0);
+  });
 });
