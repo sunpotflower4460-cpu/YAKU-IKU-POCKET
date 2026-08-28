@@ -79,6 +79,15 @@ export function ShareCard(props: ShareCardProps) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const pct = totalCount > 0 ? Math.min(discoveredCount / totalCount, 1) : 0;
+  const spokenSummary = [
+    `${playerName}の観察サマリー`,
+    `称号 ${title}`,
+    `植物の記録 ${discoveredCount}/${totalCount}種類`,
+    `レベル${level}`,
+    `${xp.toLocaleString()}XP`,
+    `${season}のフィールドノート`,
+    ...(streak >= 2 ? [`${streak}日継続`] : []),
+  ].join('。');
 
   async function handleShare() {
     const message = buildShareText({ ...rest, unlockedAchievements });
@@ -116,6 +125,7 @@ export function ShareCard(props: ShareCardProps) {
             },
           ]}
           accessibilityViewIsModal
+          onAccessibilityEscape={onClose}
         >
           <View style={[styles.handle, { backgroundColor: theme.colors.borderStrong }]} accessibilityElementsHidden />
 
@@ -152,7 +162,7 @@ export function ShareCard(props: ShareCardProps) {
               style={styles.card}
               accessible
               accessibilityRole="summary"
-              accessibilityLabel={`${playerName}の観察サマリー。${discoveredCount}種類を記録。レベル${level}。`}
+              accessibilityLabel={spokenSummary}
             >
               <View style={styles.cardBrandRow}>
                 <View style={styles.brandMark}>
@@ -163,7 +173,7 @@ export function ShareCard(props: ShareCardProps) {
               </View>
 
               <View style={styles.cardIdentity}>
-                <Text style={styles.cardPlayerName} numberOfLines={1}>{playerName}</Text>
+                <Text style={styles.cardPlayerName} numberOfLines={2}>{playerName}</Text>
                 <Text style={styles.cardTitle}>{title}</Text>
               </View>
 
@@ -211,7 +221,7 @@ export function ShareCard(props: ShareCardProps) {
                           size={14}
                           color="#D4EBD7"
                         />
-                        <Text style={styles.achievementLabel} numberOfLines={1}>{achievement.label}</Text>
+                        <Text style={styles.achievementLabel} numberOfLines={2}>{achievement.label}</Text>
                       </View>
                     ))}
                   </View>
@@ -281,7 +291,7 @@ const styles = StyleSheet.create({
   handle: { width: 38, height: 4, borderRadius: 2, alignSelf: 'center', marginTop: 10, marginBottom: 13 },
   sheetTitleRow: { minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 },
   sheetTitleIcon: { width: 40, height: 40, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
-  sheetTitleText: { flex: 1 },
+  sheetTitleText: { flex: 1, minWidth: 0 },
   sheetTitle: { fontSize: 18, lineHeight: 24, fontWeight: '800' },
   sheetSubtitle: { fontSize: 12, lineHeight: 17, marginTop: 1 },
   iconClose: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
@@ -312,16 +322,16 @@ const styles = StyleSheet.create({
   achievementBlock: { marginTop: 12 },
   achievementTitle: { fontSize: 11, lineHeight: 16, fontWeight: '800', color: '#CBE7CF', marginBottom: 8 },
   achievementRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  achievementPill: { maxWidth: '100%', minHeight: 30, flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.09)', paddingHorizontal: 9 },
+  achievementPill: { maxWidth: '100%', minHeight: 34, flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.09)', paddingHorizontal: 9, paddingVertical: 4 },
   achievementLabel: { flexShrink: 1, fontSize: 10, lineHeight: 14, fontWeight: '700', color: '#E5F2E7' },
   cardFooter: { marginTop: 17 },
   cardFooterLine: { height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(255,255,255,0.14)', marginBottom: 12 },
   cardFooterText: { fontSize: 11, lineHeight: 17, color: 'rgba(232,246,234,0.68)', textAlign: 'center' },
   shareNote: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, borderRadius: 14, padding: 12, marginTop: 12, marginBottom: 12 },
   shareNoteText: { flex: 1, fontSize: 12, lineHeight: 18 },
-  shareBtn: { minHeight: 54, borderRadius: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 16 },
-  shareBtnText: { fontSize: 15, lineHeight: 21, fontWeight: '800' },
-  closeBtn: { minHeight: 48, borderRadius: 15, borderWidth: StyleSheet.hairlineWidth, alignItems: 'center', justifyContent: 'center', marginTop: 9 },
+  shareBtn: { minHeight: 54, borderRadius: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 10 },
+  shareBtnText: { fontSize: 15, lineHeight: 21, fontWeight: '800', textAlign: 'center' },
+  closeBtn: { minHeight: 48, borderRadius: 15, borderWidth: StyleSheet.hairlineWidth, alignItems: 'center', justifyContent: 'center', marginTop: 9, paddingVertical: 8 },
   closeBtnText: { fontSize: 14, lineHeight: 20, fontWeight: '700' },
   pressed: { opacity: 0.72 },
 });
