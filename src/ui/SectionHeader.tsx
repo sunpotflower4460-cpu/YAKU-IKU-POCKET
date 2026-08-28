@@ -13,7 +13,12 @@ export function SectionHeader({ title, action }: Props) {
   const theme = useTheme();
   return (
     <View style={[styles.row, { marginBottom: theme.space[2] }]}>
-      <DynamicText variant="title3" weight="secondary" style={styles.title}>
+      <DynamicText
+        variant="title3"
+        weight="secondary"
+        style={styles.title}
+        accessibilityRole="header"
+      >
         {title}
       </DynamicText>
       {action && (
@@ -42,8 +47,19 @@ export function SectionHeader({ title, action }: Props) {
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
-  title: { flex: 1, minWidth: 0 },
-  action: { justifyContent: 'center', paddingHorizontal: 10, maxWidth: '45%' },
-  actionText: { textAlign: 'center' },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  title: { flexGrow: 1, flexShrink: 1, minWidth: 180 },
+  action: {
+    justifyContent: 'center',
+    paddingHorizontal: 10,
+    maxWidth: '100%',
+    flexShrink: 1,
+  },
+  actionText: { textAlign: 'center', flexShrink: 1 },
 });
