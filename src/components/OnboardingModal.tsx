@@ -291,6 +291,7 @@ export function OnboardingModal({ visible, onComplete }: Props) {
               style={[styles.progressLabel, { color: theme.colors.textTertiary }]}
               accessibilityLiveRegion="polite"
               accessibilityRole="text"
+              accessibilityLabel={`${slideIndex + 1}/${SLIDES.length}ページ。${SLIDES[slideIndex].label}。${SLIDES[slideIndex].title}`}
             >
               {slideIndex + 1} / {SLIDES.length} ・ {SLIDES[slideIndex].label}
             </Text>
