@@ -14,7 +14,7 @@ interface Props {
   imageUri?: string;
   isFavorite?: boolean;
   hasNote?: boolean;
-  /** Family name shown on undiscovered cards as a non-spoiler learning hint (§7.6). */
+  /** Family name shown on undiscovered cards as a non-spoiler learning hint. */
   familyHint?: string;
   onPress: () => void;
   onFavorite?: () => void;
@@ -28,7 +28,16 @@ const RARITY_BG_LIGHT: Record<number, string> = {
   5: '#FFF8E1',
 };
 
-export function PlantCard({ plant, discovered, imageUri, isFavorite, hasNote, familyHint, onPress, onFavorite }: Props) {
+export function PlantCard({
+  plant,
+  discovered,
+  imageUri,
+  isFavorite,
+  hasNote,
+  familyHint,
+  onPress,
+  onFavorite,
+}: Props) {
   const theme = useTheme();
   const reduceMotion = useReduceMotion();
   const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -75,8 +84,8 @@ export function PlantCard({ plant, discovered, imageUri, isFavorite, hasNote, fa
   }
 
   const accessibilityLabel = discovered
-    ? `${plant.name}。レアリティ${plant.rarity}。${DANGER_LABEL[plant.danger]}${isFavorite ? '。お気に入り' : ''}${hasNote ? '。メモあり' : ''}`
-    : `未発見の植物。${familyHint ? `ヒントは${familyHint}。` : ''}レアリティ${plant.rarity}`;
+    ? `${plant.name}。見つけやすさの目安5段階中${plant.rarity}。${DANGER_LABEL[plant.danger]}${isFavorite ? '。お気に入り' : ''}${hasNote ? '。観察メモあり' : ''}`
+    : `未発見の植物。${familyHint ? `ヒントは${familyHint}。` : ''}見つけやすさの目安5段階中${plant.rarity}`;
 
   return (
     <Animated.View
@@ -85,7 +94,11 @@ export function PlantCard({ plant, discovered, imageUri, isFavorite, hasNote, fa
         {
           borderRadius: theme.radius.card,
           shadowColor: theme.colors.shadow,
-          shadowOpacity: theme.mode === 'dark' ? 0.22 : (isLegendary || isSuperRare) && discovered ? 0.16 : 0.08,
+          shadowOpacity: theme.mode === 'dark'
+            ? 0.22
+            : (isLegendary || isSuperRare) && discovered
+              ? 0.16
+              : 0.08,
           transform: [{ scale: scaleAnim }],
         },
       ]}
@@ -105,7 +118,7 @@ export function PlantCard({ plant, discovered, imageUri, isFavorite, hasNote, fa
         onPressOut={handlePressOut}
         accessibilityRole="button"
         accessibilityLabel={accessibilityLabel}
-        accessibilityHint="詳細を見る"
+        accessibilityHint={discovered ? '詳細を見る' : '発見のヒントを見る'}
       >
         <View style={[styles.rarityStrip, { backgroundColor: rarityColor }]} />
 
@@ -145,7 +158,6 @@ export function PlantCard({ plant, discovered, imageUri, isFavorite, hasNote, fa
         </Text>
 
         <RarityStars rarity={plant.rarity} size="sm" />
-
         {discovered && <DangerBadge danger={plant.danger} size="sm" />}
 
         {!discovered && (
@@ -186,13 +198,13 @@ export function PlantCard({ plant, discovered, imageUri, isFavorite, hasNote, fa
               { backgroundColor: theme.colors.surfaceSecondary },
               pressed && styles.heartBtnPressed,
             ]}
-            onPress={(e) => {
-              e.stopPropagation?.();
+            onPress={(event) => {
+              event.stopPropagation?.();
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
               onFavorite();
             }}
             accessibilityRole="button"
-            accessibilityLabel={isFavorite ? 'お気に入りから外す' : 'お気に入りに追加'}
+            accessibilityLabel={isFavorite ? `${plant.name}をお気に入りから外す` : `${plant.name}をお気に入りに追加`}
             accessibilityState={{ selected: !!isFavorite }}
           >
             <Ionicons
@@ -287,9 +299,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  heartBtnPressed: {
-    opacity: 0.68,
-  },
+  heartBtnPressed: { opacity: 0.68 },
   noteBadge: {
     position: 'absolute',
     top: 8,
