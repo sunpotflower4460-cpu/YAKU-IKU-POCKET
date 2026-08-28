@@ -7,6 +7,7 @@ import { SourceOrigin } from '../types/plantUse';
 import { generateId } from '../utils/id';
 import { PLANTS } from '../data/plants';
 import { todayLocalStr, localDateStrOffset } from '../utils/date';
+import { clearObservationPhotos, deleteObservationPhoto } from '../utils/observationPhotoStorage';
 
 // ─── XP constants (exported for display in UI) ──────────────────────────────
 // First discovery: weighted by rarity
@@ -22,6 +23,10 @@ export const XP_PER_LEVEL = 500;
 
 function todayStr(): string {
   return todayLocalStr(); // YYYY-MM-DD (device-local, JST-aware)
+}
+
+function findKnownPlant(plantId: string) {
+  return PLANTS.find((p) => p.id === plantId);
 }
 
 // ─── State shape ─────────────────────────────────────────────────────────────
@@ -200,10 +205,14 @@ export const useGameStore = create<GameState>()(
 
       // ── Discover a plant ─────────────────────────────────────────────────
       discoverPlant: (plantId: string) => {
+        const plant = findKnownPlant(plantId);
+        // The store is the final integrity boundary. Unknown/stale IDs must
+        // never create ghost discoveries or award XP even if a caller is buggy.
+        if (!plant) return;
+
         const { discoveredPlantIds, todayDate } = get();
         const isNew = !discoveredPlantIds.includes(plantId);
-        const plant = PLANTS.find((p) => p.id === plantId);
-        const rarity = plant?.rarity ?? 1;
+        const rarity = plant.rarity;
         const gainedXp = isNew ? (RARITY_XP[rarity] ?? 100) : XP_PER_RESCAN;
         const isToday = todayDate === todayStr();
 
@@ -219,11 +228,11 @@ export const useGameStore = create<GameState>()(
             ? Math.max(state.todayMaxRarity, rarity)
             : state.todayMaxRarity,
           todayDangers:
-            isToday && plant?.danger && !state.todayDangers.includes(plant.danger)
+            isToday && !state.todayDangers.includes(plant.danger)
               ? [...state.todayDangers, plant.danger]
               : state.todayDangers,
           todayCategories:
-            isToday && plant?.category && !state.todayCategories.includes(plant.category)
+            isToday && !state.todayCategories.includes(plant.category)
               ? [...state.todayCategories, plant.category]
               : state.todayCategories,
         }));
@@ -231,6 +240,8 @@ export const useGameStore = create<GameState>()(
 
       // ── Record a scan ────────────────────────────────────────────────────
       addScan: (plantId: string, imageUri?: string) => {
+        if (!findKnownPlant(plantId)) return;
+
         const { todayDate } = get();
         const record: ScanRecord = {
           id: generateId('scan'),
@@ -248,9 +259,11 @@ export const useGameStore = create<GameState>()(
 
       // ── Atomic observation record (discovery + history + XP in one update) ─
       recordObservation: (plantId: string, imageUri?: string, traitChecks?: TraitCheck[]) => {
+        const plant = findKnownPlant(plantId);
+        if (!plant) return;
+
         const isToday = get().todayDate === todayStr();
-        const plant = PLANTS.find((p) => p.id === plantId);
-        const rarity = plant?.rarity ?? 1;
+        const rarity = plant.rarity;
         const record: ScanRecord = {
           id: generateId('scan'),
           plantId,
@@ -259,6 +272,13 @@ export const useGameStore = create<GameState>()(
           traitChecks: traitChecks && traitChecks.length > 0 ? traitChecks : undefined,
         };
         set((state) => {
+          // One persisted photo represents one observation. This also closes a
+          // real double-tap race: concurrent save taps share the same durable
+          // URI in observationPhotoStorage, so only the first may award XP.
+          if (imageUri && state.scanHistory.some((r) => r.imageUri === imageUri)) {
+            return state;
+          }
+
           const isNew = !state.discoveredPlantIds.includes(plantId);
           const gainedXp = isNew ? (RARITY_XP[rarity] ?? 100) : XP_PER_RESCAN;
           return {
@@ -273,11 +293,11 @@ export const useGameStore = create<GameState>()(
               ? Math.max(state.todayMaxRarity, rarity)
               : state.todayMaxRarity,
             todayDangers:
-              isToday && plant?.danger && !state.todayDangers.includes(plant.danger)
+              isToday && !state.todayDangers.includes(plant.danger)
                 ? [...state.todayDangers, plant.danger]
                 : state.todayDangers,
             todayCategories:
-              isToday && plant?.category && !state.todayCategories.includes(plant.category)
+              isToday && !state.todayCategories.includes(plant.category)
                 ? [...state.todayCategories, plant.category]
                 : state.todayCategories,
           };
@@ -291,6 +311,7 @@ export const useGameStore = create<GameState>()(
       setAiConsentGiven: (given: boolean) => set({ aiConsentGiven: given }),
 
       markSafetyCardViewed: (plantId: string) => {
+        if (!findKnownPlant(plantId)) return;
         set((state) =>
           state.viewedSafetyCardPlantIds.includes(plantId)
             ? state
@@ -307,15 +328,22 @@ export const useGameStore = create<GameState>()(
           imageUri,
           note,
         };
-        set((state) => ({
-          unidentifiedObservations: [observation, ...state.unidentifiedObservations].slice(0, 100),
-        }));
+        set((state) => {
+          if (imageUri && state.unidentifiedObservations.some((o) => o.imageUri === imageUri)) {
+            return state;
+          }
+          return {
+            unidentifiedObservations: [observation, ...state.unidentifiedObservations].slice(0, 100),
+          };
+        });
       },
 
       deleteUnidentifiedObservation: (id: string) => {
+        const target = get().unidentifiedObservations.find((o) => o.id === id);
         set((state) => ({
           unidentifiedObservations: state.unidentifiedObservations.filter((o) => o.id !== id),
         }));
+        if (target?.imageUri) void deleteObservationPhoto(target.imageUri);
       },
 
       setScanRevisit: (scanId: string, revisitAt: string | undefined) => {
@@ -339,6 +367,7 @@ export const useGameStore = create<GameState>()(
       },
 
       addPracticeRecord: (plantId: string, category: string, note: string) => {
+        if (!findKnownPlant(plantId)) return;
         const record: PracticeRecord = {
           id: generateId('practice'),
           plantId,
@@ -353,9 +382,16 @@ export const useGameStore = create<GameState>()(
         set((state) => ({ practiceRecords: state.practiceRecords.filter((r) => r.id !== id) }));
       },
 
-      resetAllData: () => set({ ...INITIAL_USER_DATA }),
+      resetAllData: () => {
+        // Make the in-memory + persisted Zustand state disappear immediately;
+        // durable photos are then cleaned in the background. The cleanup util
+        // is idempotent and swallows filesystem errors so reset cannot get stuck.
+        set({ ...INITIAL_USER_DATA });
+        void clearObservationPhotos();
+      },
 
       toggleFavorite: (plantId: string) => {
+        if (!findKnownPlant(plantId)) return;
         set((state) => ({
           favoritePlantIds: state.favoritePlantIds.includes(plantId)
             ? state.favoritePlantIds.filter((id) => id !== plantId)
@@ -364,6 +400,7 @@ export const useGameStore = create<GameState>()(
       },
 
       setPlantNote: (plantId: string, note: string) => {
+        if (!findKnownPlant(plantId)) return;
         set((state) => ({
           plantNotes: note.trim()
             ? { ...state.plantNotes, [plantId]: note.trim() }
