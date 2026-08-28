@@ -300,7 +300,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 17,
     fontWeight: '800',
-    color: '#D4E4D6',
+    color: '#F4F8F4',
     letterSpacing: 1.1,
     marginBottom: 7,
   },
@@ -326,7 +326,7 @@ const styles = StyleSheet.create({
   messageText: {
     fontSize: 14,
     lineHeight: 21,
-    color: 'rgba(238,248,239,0.78)',
+    color: '#EEF8EF',
     marginTop: 8,
     textAlign: 'center',
   },
