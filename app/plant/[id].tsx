@@ -672,7 +672,13 @@ export default function PlantDetailScreen() {
             <Pressable
               style={({ pressed }) => [
                 styles.noteSaveBtn,
-                { backgroundColor: noteCanSave ? theme.colors.accentPrimary : theme.colors.surfaceTertiary },
+                {
+                  backgroundColor: noteSaved
+                    ? theme.colors.surfaceSecondary
+                    : noteCanSave
+                      ? theme.colors.accentPrimary
+                      : theme.colors.surfaceTertiary,
+                },
                 pressed && noteCanSave && styles.pressed,
               ]}
               onPress={handleSaveNote}
@@ -681,8 +687,8 @@ export default function PlantDetailScreen() {
               accessibilityLabel={noteSaved ? '観察メモは保存済み' : '観察メモを保存'}
               accessibilityState={{ disabled: !noteCanSave }}
             >
-              {noteSaved && <Ionicons name="checkmark" size={17} color={theme.colors.textOnAccent} />}
-              <Text style={[styles.noteSaveBtnText, { color: noteCanSave || noteSaved ? theme.colors.textOnAccent : theme.colors.textTertiary }]}>
+              {noteSaved && <Ionicons name="checkmark" size={17} color={theme.colors.statusVerified} />}
+              <Text style={[styles.noteSaveBtnText, { color: noteSaved ? theme.colors.statusVerified : noteCanSave ? theme.colors.textOnAccent : theme.colors.textTertiary }]}>
                 {noteSaved ? '保存済み' : '保存'}
               </Text>
             </Pressable>
@@ -831,16 +837,16 @@ const styles = StyleSheet.create({
   emojiCircleDanger: { backgroundColor: 'rgba(255,120,110,0.12)' },
   emoji: { fontSize: 60 },
   plantName: { fontSize: 29, lineHeight: 36, fontWeight: '900', color: '#FFFFFF', textAlign: 'center' },
-  plantNameEn: { fontSize: 15, lineHeight: 20, color: 'rgba(255,255,255,0.84)', marginTop: 4, fontWeight: '650' },
+  plantNameEn: { fontSize: 15, lineHeight: 20, color: 'rgba(255,255,255,0.84)', marginTop: 4, fontWeight: '600' },
   plantNameLatin: { fontSize: 13, lineHeight: 18, color: 'rgba(255,255,255,0.66)', fontStyle: 'italic', marginTop: 2, marginBottom: 13 },
   badgeRow: { flexDirection: 'row', gap: 10, alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', justifyContent: 'center' },
   heroMetaRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8 },
   categoryChip: { minHeight: 30, justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.13)', borderRadius: 999, paddingHorizontal: 12, borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.20)' },
   categoryText: { color: '#FFFFFF', fontSize: 12, lineHeight: 17, fontWeight: '700' },
   photoIndicator: { minHeight: 30, flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: 'rgba(0,0,0,0.24)', borderRadius: 999, paddingHorizontal: 11 },
-  photoIndicatorText: { color: 'rgba(255,255,255,0.9)', fontSize: 12, lineHeight: 17, fontWeight: '650' },
+  photoIndicatorText: { color: 'rgba(255,255,255,0.9)', fontSize: 12, lineHeight: 17, fontWeight: '600' },
   favoriteBtn: { minHeight: 46, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, marginTop: 16, backgroundColor: 'rgba(255,255,255,0.13)', borderRadius: 999, paddingHorizontal: 18, borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.25)' },
-  favoriteBtnText: { fontSize: 14, lineHeight: 19, fontWeight: '750', color: '#FFFFFF' },
+  favoriteBtnText: { fontSize: 14, lineHeight: 19, fontWeight: '700', color: '#FFFFFF' },
   heroPressed: { opacity: 0.78 },
   discoveryBar: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth },
   discoveryChip: { minHeight: 36, flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 999, paddingHorizontal: 11 },
@@ -849,20 +855,20 @@ const styles = StyleSheet.create({
   body: { padding: 16, gap: 0 },
   section: { borderRadius: 18, padding: 16, marginBottom: 12, borderWidth: StyleSheet.hairlineWidth, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 2 },
   sectionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
-  sectionTitle: { fontSize: 16, lineHeight: 22, fontWeight: '850' },
+  sectionTitle: { fontSize: 16, lineHeight: 22, fontWeight: '800' },
   bodyText: { fontSize: 15, lineHeight: 24 },
   infoBlock: { marginTop: 14 },
   infoRow: { minHeight: 40, flexDirection: 'row', alignItems: 'flex-start', gap: 8, paddingVertical: 8 },
   infoIcon: { width: 22, marginTop: 1 },
   infoLabel: { width: 68, fontSize: 13, lineHeight: 19, fontWeight: '700' },
-  infoValue: { flex: 1, fontSize: 14, lineHeight: 21, fontWeight: '550' },
+  infoValue: { flex: 1, fontSize: 14, lineHeight: 21, fontWeight: '500' },
   quickCautionRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginTop: 8, padding: 12, borderRadius: 12, borderLeftWidth: 3 },
   quickCautionText: { flex: 1, fontSize: 13, lineHeight: 20, fontWeight: '600' },
   rarityDetail: { flexDirection: 'row', alignItems: 'center', gap: 12, flexWrap: 'wrap' },
-  rarityLabel: { fontSize: 14, lineHeight: 20, fontWeight: '750' },
-  rarityXpHint: { fontSize: 12, lineHeight: 17, fontWeight: '650', marginTop: 9 },
+  rarityLabel: { fontSize: 14, lineHeight: 20, fontWeight: '700' },
+  rarityXpHint: { fontSize: 12, lineHeight: 17, fontWeight: '600', marginTop: 9 },
   warningNote: { borderRadius: 12, padding: 13, borderLeftWidth: 3 },
-  warningNoteText: { fontSize: 14, lineHeight: 22, fontWeight: '650' },
+  warningNoteText: { fontSize: 14, lineHeight: 22, fontWeight: '600' },
   tierHeaderRow: { minHeight: 56, flexDirection: 'row', alignItems: 'center', gap: 11, margin: -6, padding: 6, borderRadius: 12 },
   tierIcon: { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   tierTitleBlock: { flex: 1 },
@@ -883,13 +889,13 @@ const styles = StyleSheet.create({
   effectsCaveat: { marginTop: 10, fontSize: 12, lineHeight: 18 },
   sourceRefList: { marginTop: 8, gap: 6 },
   sourceRefRow: { minHeight: 46, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 10, borderRadius: 12, borderWidth: StyleSheet.hairlineWidth },
-  sourceRefText: { flex: 1, fontSize: 13, lineHeight: 19, fontWeight: '650' },
+  sourceRefText: { flex: 1, fontSize: 13, lineHeight: 19, fontWeight: '600' },
   emptyCallout: { minHeight: 58, flexDirection: 'row', alignItems: 'flex-start', gap: 9, borderRadius: 12, padding: 12 },
   originRow: { marginBottom: 14 },
   originBtn: { minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderRadius: 12, paddingHorizontal: 13, marginBottom: 8, borderWidth: StyleSheet.hairlineWidth },
   originBtnText: { flex: 1, fontSize: 14, lineHeight: 20, fontWeight: '700' },
   gateRow: { minHeight: 36, flexDirection: 'row', alignItems: 'center', gap: 6 },
-  gateText: { fontSize: 12, lineHeight: 17, fontWeight: '650' },
+  gateText: { fontSize: 12, lineHeight: 17, fontWeight: '600' },
   useCard: { borderRadius: 12, padding: 13, marginBottom: 8, borderWidth: StyleSheet.hairlineWidth },
   useCardLocked: { opacity: 0.72 },
   useCardHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 5 },
@@ -907,7 +913,7 @@ const styles = StyleSheet.create({
   noteSection: { borderRadius: 18, padding: 16, marginBottom: 12, borderWidth: StyleSheet.hairlineWidth, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 2 },
   noteTitleRow: { minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
   noteTitleLabel: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  noteSectionTitle: { fontSize: 16, lineHeight: 22, fontWeight: '850' },
+  noteSectionTitle: { fontSize: 16, lineHeight: 22, fontWeight: '800' },
   noteDeleteBtn: { minWidth: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8 },
   noteDeleteText: { fontSize: 13, lineHeight: 19, fontWeight: '700' },
   noteInput: { borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 13, paddingVertical: 12, fontSize: 14, lineHeight: 22, color: '#000', minHeight: 112 },
@@ -922,6 +928,6 @@ const styles = StyleSheet.create({
   relatedName: { fontSize: 12, lineHeight: 17, fontWeight: '700', textAlign: 'center' },
   relatedDangerDot: { width: 8, height: 8, borderRadius: 4, marginTop: 7 },
   scanCta: { minHeight: 56, borderRadius: 16, paddingHorizontal: 18, marginTop: 2, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 9 },
-  scanCtaText: { fontSize: 16, lineHeight: 22, fontWeight: '850' },
+  scanCtaText: { fontSize: 16, lineHeight: 22, fontWeight: '800' },
   pressed: { opacity: 0.72 },
 });
