@@ -17,17 +17,17 @@ export function SecondaryButton({ label, fullWidth, disabled, style, ...rest }: 
       accessibilityLabel={label}
       accessibilityState={{ disabled: !!disabled }}
       disabled={disabled}
-      style={({ pressed }) => [
+      style={(state) => [
         styles.base,
         {
           minHeight: theme.minTapTarget,
           borderRadius: theme.radius.pill,
           paddingHorizontal: theme.space[5],
-          backgroundColor: pressed ? theme.colors.surfaceTertiary : theme.colors.surfaceSecondary,
+          backgroundColor: state.pressed ? theme.colors.surfaceTertiary : theme.colors.surfaceSecondary,
           opacity: disabled ? 0.5 : 1,
           alignSelf: fullWidth ? 'stretch' : 'flex-start',
         },
-        typeof style === 'function' ? undefined : style,
+        typeof style === 'function' ? style(state) : style,
       ]}
       {...rest}
     >
