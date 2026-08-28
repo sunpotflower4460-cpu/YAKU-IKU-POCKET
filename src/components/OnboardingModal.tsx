@@ -62,7 +62,7 @@ const SLIDES: Slide[] = [
 export function OnboardingModal({ visible, onComplete }: Props) {
   const theme = useTheme();
   const reduceMotion = useReduceMotion();
-  const { width, height } = useWindowDimensions();
+  const { width, height, fontScale } = useWindowDimensions();
   const [slideIndex, setSlideIndex] = useState(0);
   const translateAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.96)).current;
@@ -71,6 +71,7 @@ export function OnboardingModal({ visible, onComplete }: Props) {
   const cardWidth = Math.min(Math.max(width - 32, 280), 440);
   const cardMaxHeight = Math.max(height - 32, 420);
   const slideContentMaxHeight = Math.max(cardMaxHeight - 300, 210);
+  const stackActions = fontScale >= 1.3 || width < 360;
   const safetyBg = theme.mode === 'dark' ? theme.colors.surfaceSecondary : '#FFF9EC';
   const safetySurface = theme.mode === 'dark' ? theme.colors.surfaceTertiary : '#FFF1C9';
   const safetyAccent = theme.colors.statusCaution;
@@ -125,6 +126,10 @@ export function OnboardingModal({ visible, onComplete }: Props) {
     if (slideIndex < SLIDES.length - 1) goToSlide(slideIndex + 1);
   }
 
+  function handleBack() {
+    if (slideIndex > 0) goToSlide(slideIndex - 1);
+  }
+
   function handleSkipToSafety() {
     goToSlide(SLIDES.length - 1);
   }
@@ -142,11 +147,12 @@ export function OnboardingModal({ visible, onComplete }: Props) {
       transparent
       animationType={reduceMotion ? 'none' : 'fade'}
       statusBarTranslucent
-      onRequestClose={() => undefined}
+      onRequestClose={handleBack}
     >
       <View style={[styles.overlay, { backgroundColor: theme.colors.overlay }]}>
         <Animated.View
           accessibilityViewIsModal
+          onAccessibilityEscape={handleBack}
           style={[
             styles.card,
             {
@@ -289,25 +295,12 @@ export function OnboardingModal({ visible, onComplete }: Props) {
               {slideIndex + 1} / {SLIDES.length} ・ {SLIDES[slideIndex].label}
             </Text>
 
-            {isLastSlide ? (
-              <Pressable
-                style={({ pressed }) => [
-                  styles.btnPrimary,
-                  { backgroundColor: theme.colors.accentPrimary },
-                  pressed && styles.buttonPressed,
-                ]}
-                onPress={handleComplete}
-                accessibilityRole="button"
-                accessibilityLabel="安全ガイドを確認してはじめる"
-              >
-                <Text style={[styles.btnPrimaryText, { color: theme.colors.textOnAccent }]}>確認してはじめる</Text>
-                <Ionicons name="arrow-forward" size={18} color={theme.colors.textOnAccent} />
-              </Pressable>
-            ) : (
-              <View style={styles.actionRow}>
+            <View style={[styles.actionRow, stackActions && styles.actionRowStacked]}>
+              {slideIndex === 0 ? (
                 <Pressable
                   style={({ pressed }) => [
-                    styles.btnSkip,
+                    styles.btnSecondary,
+                    stackActions && styles.btnStacked,
                     { backgroundColor: theme.colors.surfaceSecondary },
                     pressed && styles.buttonPressed,
                   ]}
@@ -315,11 +308,45 @@ export function OnboardingModal({ visible, onComplete }: Props) {
                   accessibilityRole="button"
                   accessibilityLabel="安全ガイドを見る"
                 >
-                  <Text style={[styles.btnSkipText, { color: theme.colors.textSecondary }]}>安全ガイド</Text>
+                  <Text style={[styles.btnSecondaryText, { color: theme.colors.textSecondary }]}>安全ガイド</Text>
                 </Pressable>
+              ) : (
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.btnSecondary,
+                    stackActions && styles.btnStacked,
+                    { backgroundColor: theme.colors.surfaceSecondary },
+                    pressed && styles.buttonPressed,
+                  ]}
+                  onPress={handleBack}
+                  accessibilityRole="button"
+                  accessibilityLabel="前の説明に戻る"
+                >
+                  <Ionicons name="arrow-back" size={18} color={theme.colors.textSecondary} />
+                  <Text style={[styles.btnSecondaryText, { color: theme.colors.textSecondary }]}>戻る</Text>
+                </Pressable>
+              )}
+
+              {isLastSlide ? (
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.btnPrimary,
+                    stackActions && styles.btnStacked,
+                    { backgroundColor: theme.colors.accentPrimary },
+                    pressed && styles.buttonPressed,
+                  ]}
+                  onPress={handleComplete}
+                  accessibilityRole="button"
+                  accessibilityLabel="安全ガイドを確認してはじめる"
+                >
+                  <Text style={[styles.btnPrimaryText, { color: theme.colors.textOnAccent }]}>確認してはじめる</Text>
+                  <Ionicons name="arrow-forward" size={18} color={theme.colors.textOnAccent} />
+                </Pressable>
+              ) : (
                 <Pressable
                   style={({ pressed }) => [
                     styles.btnNext,
+                    stackActions && styles.btnStacked,
                     { backgroundColor: theme.colors.accentPrimary },
                     pressed && styles.buttonPressed,
                   ]}
@@ -330,8 +357,8 @@ export function OnboardingModal({ visible, onComplete }: Props) {
                   <Text style={[styles.btnNextText, { color: theme.colors.textOnAccent }]}>次へ</Text>
                   <Ionicons name="arrow-forward" size={18} color={theme.colors.textOnAccent} />
                 </Pressable>
-              </View>
-            )}
+              )}
+            </View>
           </View>
         </Animated.View>
       </View>
@@ -460,6 +487,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 10,
   },
+  actionRowStacked: {
+    flexDirection: 'column-reverse',
+  },
   btnNext: {
     flex: 1,
     minHeight: 54,
@@ -475,19 +505,22 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 22,
   },
-  btnSkip: {
+  btnSecondary: {
     minHeight: 54,
     paddingHorizontal: 16,
     borderRadius: 16,
+    flexDirection: 'row',
+    gap: 7,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  btnSkipText: {
+  btnSecondaryText: {
     fontWeight: '700',
     fontSize: 14,
     lineHeight: 20,
   },
   btnPrimary: {
+    flex: 1,
     minHeight: 56,
     borderRadius: 16,
     paddingHorizontal: 18,
@@ -500,6 +533,10 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     fontSize: 16,
     lineHeight: 22,
+  },
+  btnStacked: {
+    flex: 0,
+    width: '100%',
   },
   buttonPressed: {
     opacity: 0.82,
