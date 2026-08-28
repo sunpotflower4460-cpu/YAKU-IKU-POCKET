@@ -68,6 +68,17 @@ describe('persistObservationPhoto', () => {
     expect(secondUri).toBe(firstUri);
   });
 
+  it('reuses a just-completed copy for a queued repeat tap', async () => {
+    mockGetInfoAsync.mockResolvedValue({ exists: true });
+    mockCopyAsync.mockResolvedValue(undefined);
+
+    const firstUri = await persistObservationPhoto('file:///cache/queued-tap.jpg');
+    const secondUri = await persistObservationPhoto('file:///cache/queued-tap.jpg');
+
+    expect(mockCopyAsync).toHaveBeenCalledTimes(1);
+    expect(secondUri).toBe(firstUri);
+  });
+
   it('uses a safe jpg suffix when a source URI has no usable extension', async () => {
     mockGetInfoAsync.mockResolvedValue({ exists: true });
     mockCopyAsync.mockResolvedValue(undefined);
