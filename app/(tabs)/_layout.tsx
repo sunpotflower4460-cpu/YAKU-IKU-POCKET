@@ -11,6 +11,7 @@ import { getPlayerTitle } from '../../src/utils/playerTitle';
 export default function TabLayout() {
   const startSession = useGameStore((s) => s.startSession);
   const hasHydrated = useGameStore((s) => s._hasHydrated);
+  const sessionDate = useGameStore((s) => s.todayDate);
   const xp = useGameStore((s) => s.xp);
 
   const currentLevel = Math.floor(xp / XP_PER_LEVEL) + 1;
@@ -55,6 +56,11 @@ export default function TabLayout() {
   return (
     <>
       <Tabs
+        // Several screens intentionally memoize "current month/day" UI data.
+        // When startSession observes a date rollover after foregrounding, remount
+        // the screen subtree once so those mount-time calendars cannot remain
+        // stuck on yesterday / the previous month.
+        key={sessionDate || 'hydrating'}
         screenOptions={{
           tabBarActiveTintColor: Colors.tabActive,
           tabBarInactiveTintColor: Colors.tabInactive,
