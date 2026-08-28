@@ -10,6 +10,13 @@ interface Props {
 }
 
 const ICON_SIZES = { sm: 11, md: 15, lg: 20 };
+const RARITY_SPOKEN_LABEL: Record<Rarity, string> = {
+  1: 'よく見かける',
+  2: '比較的見つけやすい',
+  3: 'やや珍しい',
+  4: '珍しい',
+  5: 'とても珍しい',
+};
 
 export function RarityStars({ rarity, size = 'md' }: Props) {
   const theme = useTheme();
@@ -28,7 +35,7 @@ export function RarityStars({ rarity, size = 'md' }: Props) {
       style={styles.container}
       accessible
       accessibilityRole="text"
-      accessibilityLabel={`珍しさの目安、5段階中${safeRarity}`}
+      accessibilityLabel={`珍しさの目安、${RARITY_SPOKEN_LABEL[safeRarity]}、5段階中${safeRarity}`}
     >
       <View
         style={styles.stars}
