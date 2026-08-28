@@ -182,12 +182,6 @@ export function PlantCard({
           </View>
         )}
 
-        {discovered && (
-          <View style={[styles.checkBadge, { backgroundColor: rarityColor }]} accessibilityElementsHidden>
-            <Ionicons name="checkmark" size={11} color={theme.colors.textOnAccent} />
-          </View>
-        )}
-
         {discovered && hasNote && (
           <View
             style={[styles.noteBadge, { backgroundColor: theme.colors.surfaceSecondary }]}
@@ -290,19 +284,9 @@ const styles = StyleSheet.create({
   nameLargeText: {
     minHeight: 51,
   },
-  checkBadge: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   heartBtn: {
     position: 'absolute',
-    bottom: 2,
+    top: 2,
     right: 2,
     width: 44,
     height: 44,
