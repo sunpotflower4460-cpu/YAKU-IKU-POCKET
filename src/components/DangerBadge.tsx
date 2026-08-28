@@ -9,21 +9,16 @@ interface Props {
 }
 
 const DANGER_LABELS: Record<DangerLevel, string> = {
-  // Describe the species generally — never assert the *scanned* specimen is
-  // safe to eat (identification is not guaranteed reliable).
+  // Describe the species generally — never assert the scanned specimen is
+  // safe to eat because identification remains provisional.
   GREEN: '一般に食用とされる',
   YELLOW: '要注意',
   RED: '危険・有毒',
 };
 
-/** Same Japanese danger-level labels as the badge itself — for other UI. */
 export const DANGER_LABEL: Record<DangerLevel, string> = DANGER_LABELS;
 
-/**
- * Stable dot colors for legacy call sites that draw a small status dot instead
- * of the full badge. The badge itself uses semantic theme colors so it adapts
- * to light/dark mode.
- */
+/** Stable colors for legacy call sites that draw a small status dot. */
 export const DANGER_DOT_COLOR: Record<DangerLevel, string> = {
   GREEN: '#43A047',
   YELLOW: '#F9A825',
@@ -37,14 +32,14 @@ export function DangerBadge({ danger, size = 'md' }: Props) {
   const statusColor = danger === 'RED'
     ? theme.colors.statusDanger
     : danger === 'YELLOW'
-    ? theme.colors.statusCaution
-    : theme.colors.statusObserved;
+      ? theme.colors.statusCaution
+      : theme.colors.statusObserved;
 
   return (
     <View
       accessible
       accessibilityRole="text"
-      accessibilityLabel={`安全区分: ${DANGER_LABELS[danger]}`}
+      accessibilityLabel={`植物情報の注意区分、${DANGER_LABELS[danger]}`}
       style={[
         styles.badge,
         {
@@ -65,6 +60,7 @@ export function DangerBadge({ danger, size = 'md' }: Props) {
             backgroundColor: statusColor,
           },
         ]}
+        accessibilityElementsHidden
       />
       <Text
         style={[
@@ -75,6 +71,8 @@ export function DangerBadge({ danger, size = 'md' }: Props) {
             lineHeight: isSmall ? 15 : 18,
           },
         ]}
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
       >
         {DANGER_LABELS[danger]}
       </Text>
@@ -92,7 +90,5 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   dot: {},
-  label: {
-    fontWeight: '700',
-  },
+  label: { fontWeight: '700' },
 });
