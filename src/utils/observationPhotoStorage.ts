@@ -14,6 +14,15 @@ const OBSERVATIONS_DIR = FileSystem.documentDirectory
   ? `${FileSystem.documentDirectory}observations/`
   : null;
 
+// A save button can be tapped twice while the first filesystem copy is still
+// pending. Reuse the same in-flight copy for the same camera URI so both calls
+// resolve to one durable URI instead of creating two files. The store also
+// treats one durable photo as one observation, giving us defence in depth
+// against accidental double-save / double-XP races.
+const inFlightCopies = new Map<string, Promise<string>>();
+
+const SAFE_IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'heic', 'heif', 'webp']);
+
 async function ensureObservationsDir(): Promise<void> {
   if (!OBSERVATIONS_DIR) return;
   const info = await FileSystem.getInfoAsync(OBSERVATIONS_DIR);
@@ -22,21 +31,88 @@ async function ensureObservationsDir(): Promise<void> {
   }
 }
 
-/**
- * Copy a captured photo into persistent storage and return the durable URI.
- * Returns the original URI unchanged on web or on any copy failure — a
- * missing durable copy should never block saving the observation itself.
- */
-export async function persistObservationPhoto(cacheUri: string): Promise<string> {
-  if (Platform.OS === 'web' || !OBSERVATIONS_DIR) return cacheUri;
+function imageExtension(uri: string): string {
+  const withoutQuery = uri.split(/[?#]/, 1)[0];
+  const match = withoutQuery.match(/\.([a-zA-Z0-9]+)$/);
+  const ext = match?.[1]?.toLowerCase();
+  return ext && SAFE_IMAGE_EXTENSIONS.has(ext) ? ext : 'jpg';
+}
+
+async function copyToDurableStorage(cacheUri: string): Promise<string> {
   try {
     await ensureObservationsDir();
-    const ext = cacheUri.split('.').pop()?.split('?')[0] || 'jpg';
+    const ext = imageExtension(cacheUri);
     const destUri = `${OBSERVATIONS_DIR}${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
     await FileSystem.copyAsync({ from: cacheUri, to: destUri });
     return destUri;
   } catch (err) {
     console.warn('[observationPhotoStorage] copy failed, keeping cache URI:', err);
     return cacheUri;
+  }
+}
+
+/**
+ * Copy a captured photo into persistent storage and return the durable URI.
+ * Returns the original URI unchanged on web or on any copy failure — a
+ * missing durable copy should never block saving the observation itself.
+ * Concurrent calls for the same source URI share one copy operation.
+ */
+export async function persistObservationPhoto(cacheUri: string): Promise<string> {
+  if (Platform.OS === 'web' || !OBSERVATIONS_DIR) return cacheUri;
+
+  const existing = inFlightCopies.get(cacheUri);
+  if (existing) return existing;
+
+  const copyPromise = copyToDurableStorage(cacheUri);
+  inFlightCopies.set(cacheUri, copyPromise);
+  try {
+    return await copyPromise;
+  } finally {
+    if (inFlightCopies.get(cacheUri) === copyPromise) {
+      inFlightCopies.delete(cacheUri);
+    }
+  }
+}
+
+/**
+ * Delete one photo managed by this module. Arbitrary file URIs are ignored so
+ * a corrupted persisted value can never make the app delete an unrelated file.
+ */
+export async function deleteObservationPhoto(uri?: string): Promise<void> {
+  if (
+    Platform.OS === 'web' ||
+    !OBSERVATIONS_DIR ||
+    !uri ||
+    !uri.startsWith(OBSERVATIONS_DIR) ||
+    typeof FileSystem.deleteAsync !== 'function'
+  ) {
+    return;
+  }
+
+  try {
+    await FileSystem.deleteAsync(uri, { idempotent: true });
+  } catch (err) {
+    // Record deletion must not be blocked by a stale/missing file.
+    console.warn('[observationPhotoStorage] delete failed:', err);
+  }
+}
+
+/** Remove every durable observation photo created by this app. */
+export async function clearObservationPhotos(): Promise<void> {
+  inFlightCopies.clear();
+  if (
+    Platform.OS === 'web' ||
+    !OBSERVATIONS_DIR ||
+    typeof FileSystem.deleteAsync !== 'function'
+  ) {
+    return;
+  }
+
+  try {
+    await FileSystem.deleteAsync(OBSERVATIONS_DIR, { idempotent: true });
+  } catch (err) {
+    // The in-memory/user-data reset should still succeed if filesystem cleanup
+    // fails (e.g. an already-missing directory or transient OS error).
+    console.warn('[observationPhotoStorage] clear failed:', err);
   }
 }
