@@ -20,6 +20,7 @@ export function SecondaryButton({
   const theme = useTheme();
   return (
     <Pressable
+      {...rest}
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityState={{ ...accessibilityState, disabled: !!disabled }}
@@ -37,7 +38,6 @@ export function SecondaryButton({
         },
         typeof style === 'function' ? style(state) : style,
       ]}
-      {...rest}
     >
       <DynamicText
         variant="callout"
