@@ -103,7 +103,7 @@ export function ScanResultModal({
   const reduceMotion = useReduceMotion();
   const scaleAnim = useRef(new Animated.Value(0.96)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
-  const shimmerAnim = useRef(new Animated.Value(0)).current;
+  const shimmerAnim = useRef(new Animated.Value(0.7)).current;
   const sparkleAnim = useRef(new Animated.Value(0)).current;
   const resultHeadingRef = useRef<React.ElementRef<typeof Text>>(null);
 
@@ -125,6 +125,8 @@ export function ScanResultModal({
     if (visible && plant) {
       scaleAnim.setValue(reduceMotion ? 1 : 0.96);
       opacityAnim.setValue(1);
+      shimmerAnim.setValue(0.7);
+      sparkleAnim.setValue(0);
 
       let entry: Animated.CompositeAnimation | null = null;
       let shimmerLoop: Animated.CompositeAnimation | null = null;
@@ -174,7 +176,7 @@ export function ScanResultModal({
 
     scaleAnim.setValue(0.96);
     opacityAnim.setValue(0);
-    shimmerAnim.setValue(0);
+    shimmerAnim.setValue(0.7);
     sparkleAnim.setValue(0);
   }, [visible, plant, isNewDiscovery, reduceMotion, scaleAnim, opacityAnim, shimmerAnim, sparkleAnim, theme.motion.stateChange]);
 
@@ -200,7 +202,7 @@ export function ScanResultModal({
     const msg =
       `植物候補を観察しました\n\n` +
       `${plant.emoji} ${plant.name} (${plant.nameEn})\n` +
-      `見つけやすさの目安: ${rarityStars}\n` +
+      `珍しさの目安: ${rarityStars}\n` +
       `注意区分: ${dangerLabel}\n\n` +
       `薬育ポケットのフィールドノートから\n` +
       `※AIの候補は参考情報です。採取・摂取はアプリだけで判断せず、専門家に確認してください。\n` +
@@ -221,6 +223,7 @@ export function ScanResultModal({
   const emojiScale = shimmerAnim.interpolate({
     inputRange: [0.7, 1],
     outputRange: [1, 1.06],
+    extrapolate: 'clamp',
   });
   const sparkleOpacity = sparkleAnim.interpolate({
     inputRange: [0, 1],
@@ -380,7 +383,7 @@ export function ScanResultModal({
                   </View>
                 )}
 
-                <View style={styles.candidateList}>
+                <View style={styles.candidateList} accessibilityRole="radiogroup">
                   {candidates.map((candidate) => {
                     const selected = candidate.plant.id === selectedPlantId;
                     return (
@@ -397,7 +400,7 @@ export function ScanResultModal({
                         ]}
                         onPress={() => onSelectCandidate?.(candidate)}
                         disabled={isSaving}
-                        accessibilityRole="button"
+                        accessibilityRole="radio"
                         accessibilityState={{ selected, disabled: isSaving }}
                         accessibilityLabel={`候補${candidate.score.overallRank}: ${candidate.plant.name}、${DANGER_LABEL[candidate.plant.danger]}、画像との一致度${candidate.score.visionScore ?? '不明'}${selected ? '、選択中' : ''}`}
                       >
