@@ -3,8 +3,9 @@
 // daily quests, streaks, and the profile calendar aligned with the user's real
 // day instead of rolling over at 09:00 JST (which UTC-based dates would do).
 
-/** Format a Date as a local `YYYY-MM-DD` string. */
+/** Format a Date as a local `YYYY-MM-DD` string, or '' for an invalid Date. */
 export function toLocalDateStr(date: Date): string {
+  if (!Number.isFinite(date.getTime())) return '';
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, '0');
   const d = String(date.getDate()).padStart(2, '0');
