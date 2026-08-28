@@ -1,6 +1,6 @@
 import { Tabs } from 'expo-router';
 import { useState, useEffect, useRef } from 'react';
-import { View, AppState, StyleSheet } from 'react-native';
+import { View, AppState, StyleSheet, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from '../../src/utils/haptics';
@@ -12,6 +12,7 @@ import { useTheme } from '../../src/theme/ThemeProvider';
 export default function TabLayout() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  const { fontScale } = useWindowDimensions();
   const startSession = useGameStore((state) => state.startSession);
   const hasHydrated = useGameStore((state) => state._hasHydrated);
   const sessionDate = useGameStore((state) => state.todayDate);
@@ -23,7 +24,11 @@ export default function TabLayout() {
   const [levelUpData, setLevelUpData] = useState({ level: 1, title: '' });
 
   const tabBottomInset = Math.max(insets.bottom, theme.space[2]);
-  const tabBarHeight = 56 + tabBottomInset;
+  // Navigation labels follow Dynamic Type. Give the bar some extra vertical
+  // room at larger accessibility sizes instead of letting labels collide with
+  // the home indicator or get visually clipped.
+  const dynamicTypeExtra = Math.min(Math.max((fontScale - 1) * 16, 0), 18);
+  const tabBarHeight = 56 + tabBottomInset + dynamicTypeExtra;
 
   useEffect(() => {
     if (hasHydrated) startSession();
