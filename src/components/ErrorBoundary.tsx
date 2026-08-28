@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { ScrollView, StyleSheet, Text, View, Pressable } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { Theme, useTheme } from '../theme/ThemeProvider';
@@ -43,7 +43,12 @@ class ErrorBoundaryImpl extends React.Component<BoundaryProps, State> {
       return (
         <>
           <StatusBar style={theme.mode === 'dark' ? 'light' : 'dark'} />
-          <View style={[styles.container, { backgroundColor: theme.colors.canvas }]}>
+          <ScrollView
+            style={{ backgroundColor: theme.colors.canvas }}
+            contentContainerStyle={styles.container}
+            showsVerticalScrollIndicator={false}
+            bounces={false}
+          >
             <View
               style={[
                 styles.iconWrap,
@@ -53,6 +58,7 @@ class ErrorBoundaryImpl extends React.Component<BoundaryProps, State> {
                 },
               ]}
               accessibilityElementsHidden
+              importantForAccessibility="no-hide-descendants"
             >
               <Ionicons name="leaf-outline" size={36} color={theme.colors.accentPrimary} />
             </View>
@@ -60,6 +66,7 @@ class ErrorBoundaryImpl extends React.Component<BoundaryProps, State> {
             <Text
               style={[styles.title, { color: theme.colors.textPrimary }]}
               accessibilityRole="header"
+              accessibilityLiveRegion="assertive"
             >
               うまく表示できませんでした
             </Text>
@@ -84,7 +91,7 @@ class ErrorBoundaryImpl extends React.Component<BoundaryProps, State> {
             <Text style={[styles.helper, { color: theme.colors.textTertiary }]}>
               同じ画面で繰り返す場合は、一度アプリを閉じてから開き直してください。
             </Text>
-          </View>
+          </ScrollView>
         </>
       );
     }
@@ -99,7 +106,8 @@ export function ErrorBoundary({ children }: Props) {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
+    flexGrow: 1,
+    minHeight: '100%',
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 28,
@@ -131,7 +139,9 @@ const styles = StyleSheet.create({
     minHeight: 52,
     marginTop: 24,
     minWidth: 190,
+    maxWidth: '100%',
     paddingHorizontal: 22,
+    paddingVertical: 10,
     borderRadius: 16,
     flexDirection: 'row',
     gap: 8,
@@ -144,7 +154,9 @@ const styles = StyleSheet.create({
   },
   btnText: {
     fontSize: 16,
+    lineHeight: 22,
     fontWeight: '800',
+    textAlign: 'center',
   },
   helper: {
     marginTop: 14,
