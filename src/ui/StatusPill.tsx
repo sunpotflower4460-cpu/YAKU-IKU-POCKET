@@ -45,8 +45,13 @@ export function StatusPill({ kind, label }: Props) {
       accessibilityLabel={label}
     >
       <View style={styles.inner} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-        <Ionicons name={ICON[kind]} size={12} color={color} />
-        <DynamicText variant="caption1" weight="secondary" color={labelColor}>
+        <Ionicons name={ICON[kind]} size={12} color={color} style={styles.icon} />
+        <DynamicText
+          variant="caption1"
+          weight="secondary"
+          color={labelColor}
+          style={styles.label}
+        >
           {label}
         </DynamicText>
       </View>
@@ -56,14 +61,18 @@ export function StatusPill({ kind, label }: Props) {
 
 const styles = StyleSheet.create({
   base: {
+    maxWidth: '100%',
     borderWidth: 1,
     paddingHorizontal: 8,
     paddingVertical: 3,
     alignSelf: 'flex-start',
   },
   inner: {
+    maxWidth: '100%',
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: 4,
   },
+  icon: { flexShrink: 0, marginTop: 2 },
+  label: { flexShrink: 1 },
 });
