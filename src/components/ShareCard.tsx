@@ -16,6 +16,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeProvider';
+import { useReduceMotion } from '../utils/reduceMotion';
 
 interface Achievement {
   icon: string;
@@ -80,6 +81,7 @@ export function ShareCard(props: ShareCardProps) {
     seasonIcon,
   } = rest;
   const theme = useTheme();
+  const reduceMotion = useReduceMotion();
   const insets = useSafeAreaInsets();
   const { width, fontScale } = useWindowDimensions();
   const compactCard = width < 360 || fontScale >= 1.3;
@@ -100,9 +102,9 @@ export function ShareCard(props: ShareCardProps) {
     const timer = setTimeout(() => {
       const node = findNodeHandle(titleRef.current);
       if (node) AccessibilityInfo.setAccessibilityFocus(node);
-    }, 260);
+    }, reduceMotion ? 70 : 260);
     return () => clearTimeout(timer);
-  }, [visible]);
+  }, [visible, reduceMotion]);
 
   async function handleShare() {
     const message = buildShareText({ ...rest, unlockedAchievements });
@@ -117,7 +119,7 @@ export function ShareCard(props: ShareCardProps) {
   return (
     <Modal
       visible={visible}
-      animationType="slide"
+      animationType={reduceMotion ? 'none' : 'slide'}
       transparent
       statusBarTranslucent
       onRequestClose={onClose}
@@ -157,7 +159,7 @@ export function ShareCard(props: ShareCardProps) {
                 ref={titleRef}
                 style={[styles.sheetTitle, { color: theme.colors.textPrimary }]}
                 accessibilityRole="header"
-                accessibilityLabel="観察サマリー。今までの記録を、ひとつのカードに"
+                accessibilityLabel="観察サマリー"
               >
                 観察サマリー
               </Text>
