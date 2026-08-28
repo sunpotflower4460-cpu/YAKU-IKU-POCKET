@@ -30,6 +30,7 @@ export function SecondaryButton({
           minHeight: theme.minTapTarget,
           borderRadius: theme.radius.pill,
           paddingHorizontal: theme.space[5],
+          paddingVertical: theme.space[2],
           backgroundColor: state.pressed ? theme.colors.surfaceTertiary : theme.colors.surfaceSecondary,
           opacity: disabled ? 0.5 : 1,
           alignSelf: fullWidth ? 'stretch' : 'flex-start',
@@ -38,7 +39,12 @@ export function SecondaryButton({
       ]}
       {...rest}
     >
-      <DynamicText variant="callout" weight="secondary" color={theme.colors.textPrimary}>
+      <DynamicText
+        variant="callout"
+        weight="secondary"
+        color={theme.colors.textPrimary}
+        style={styles.label}
+      >
         {label}
       </DynamicText>
     </Pressable>
@@ -46,5 +52,13 @@ export function SecondaryButton({
 }
 
 const styles = StyleSheet.create({
-  base: { alignItems: 'center', justifyContent: 'center' },
+  base: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    maxWidth: '100%',
+  },
+  label: {
+    flexShrink: 1,
+    textAlign: 'center',
+  },
 });
