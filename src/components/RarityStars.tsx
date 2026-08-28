@@ -7,6 +7,8 @@ import { useTheme } from '../theme/ThemeProvider';
 interface Props {
   rarity: Rarity;
   size?: 'sm' | 'md' | 'lg';
+  /** Set false when a parent control already includes rarity in its label. */
+  accessible?: boolean;
 }
 
 const ICON_SIZES = { sm: 11, md: 15, lg: 20 };
@@ -18,7 +20,7 @@ const RARITY_SPOKEN_LABEL: Record<Rarity, string> = {
   5: 'とても珍しい',
 };
 
-export function RarityStars({ rarity, size = 'md' }: Props) {
+export function RarityStars({ rarity, size = 'md', accessible = true }: Props) {
   const theme = useTheme();
   const safeRarity = Math.max(1, Math.min(5, rarity)) as Rarity;
   const color = [
@@ -33,9 +35,11 @@ export function RarityStars({ rarity, size = 'md' }: Props) {
   return (
     <View
       style={styles.container}
-      accessible
-      accessibilityRole="text"
-      accessibilityLabel={`珍しさの目安、${RARITY_SPOKEN_LABEL[safeRarity]}、5段階中${safeRarity}`}
+      accessible={accessible}
+      accessibilityElementsHidden={!accessible}
+      importantForAccessibility={accessible ? 'auto' : 'no-hide-descendants'}
+      accessibilityRole={accessible ? 'text' : undefined}
+      accessibilityLabel={accessible ? `珍しさの目安、${RARITY_SPOKEN_LABEL[safeRarity]}、5段階中${safeRarity}` : undefined}
     >
       <View
         style={styles.stars}
