@@ -1,15 +1,21 @@
 import { Platform } from 'react-native';
-import { persistObservationPhoto } from '../observationPhotoStorage';
+import {
+  clearObservationPhotos,
+  deleteObservationPhoto,
+  persistObservationPhoto,
+} from '../observationPhotoStorage';
 
 const mockGetInfoAsync = jest.fn();
 const mockMakeDirectoryAsync = jest.fn();
 const mockCopyAsync = jest.fn();
+const mockDeleteAsync = jest.fn();
 
 jest.mock('expo-file-system', () => ({
   documentDirectory: 'file:///mock-documents/',
   getInfoAsync: (...args: unknown[]) => mockGetInfoAsync(...args),
   makeDirectoryAsync: (...args: unknown[]) => mockMakeDirectoryAsync(...args),
   copyAsync: (...args: unknown[]) => mockCopyAsync(...args),
+  deleteAsync: (...args: unknown[]) => mockDeleteAsync(...args),
 }));
 
 describe('persistObservationPhoto', () => {
@@ -43,6 +49,35 @@ describe('persistObservationPhoto', () => {
     );
   });
 
+  it('deduplicates concurrent copies of the same camera URI', async () => {
+    mockGetInfoAsync.mockResolvedValue({ exists: true });
+    let resolveCopy!: () => void;
+    mockCopyAsync.mockImplementation(
+      () => new Promise<void>((resolve) => { resolveCopy = resolve; })
+    );
+
+    const first = persistObservationPhoto('file:///cache/same.jpg');
+    const second = persistObservationPhoto('file:///cache/same.jpg');
+
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(mockCopyAsync).toHaveBeenCalledTimes(1);
+
+    resolveCopy();
+    const [firstUri, secondUri] = await Promise.all([first, second]);
+    expect(secondUri).toBe(firstUri);
+  });
+
+  it('uses a safe jpg suffix when a source URI has no usable extension', async () => {
+    mockGetInfoAsync.mockResolvedValue({ exists: true });
+    mockCopyAsync.mockResolvedValue(undefined);
+
+    const result = await persistObservationPhoto('file:///cache/camera-output');
+
+    expect(result).toMatch(/\.jpg$/);
+    expect(mockCopyAsync.mock.calls[0][0].to).toMatch(/\.jpg$/);
+  });
+
   it('falls back to the original URI on web (no durable/cache distinction there)', async () => {
     (Platform as unknown as { OS: string }).OS = 'web';
     const result = await persistObservationPhoto('blob:http://localhost/abc');
@@ -56,5 +91,33 @@ describe('persistObservationPhoto', () => {
 
     const result = await persistObservationPhoto('file:///cache/photo.jpg');
     expect(result).toBe('file:///cache/photo.jpg');
+  });
+});
+
+describe('observation photo deletion', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (Platform as unknown as { OS: string }).OS = 'ios';
+    mockDeleteAsync.mockResolvedValue(undefined);
+  });
+
+  it('deletes a photo only when it belongs to the managed observations directory', async () => {
+    await deleteObservationPhoto('file:///mock-documents/observations/saved.jpg');
+    expect(mockDeleteAsync).toHaveBeenCalledWith(
+      'file:///mock-documents/observations/saved.jpg',
+      { idempotent: true }
+    );
+
+    mockDeleteAsync.mockClear();
+    await deleteObservationPhoto('file:///somewhere-else/private.jpg');
+    expect(mockDeleteAsync).not.toHaveBeenCalled();
+  });
+
+  it('clears the whole managed directory on full data deletion', async () => {
+    await clearObservationPhotos();
+    expect(mockDeleteAsync).toHaveBeenCalledWith(
+      'file:///mock-documents/observations/',
+      { idempotent: true }
+    );
   });
 });
