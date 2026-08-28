@@ -3,9 +3,10 @@ import { View, Text, StyleSheet, Pressable, Animated, Image } from 'react-native
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from '../utils/haptics';
 import { Plant } from '../types';
-import { Colors } from '../constants/colors';
 import { RarityStars } from './RarityStars';
-import { DangerBadge } from './DangerBadge';
+import { DangerBadge, DANGER_LABEL } from './DangerBadge';
+import { useTheme } from '../theme/ThemeProvider';
+import { useReduceMotion } from '../utils/reduceMotion';
 
 interface Props {
   plant: Plant;
@@ -19,15 +20,7 @@ interface Props {
   onFavorite?: () => void;
 }
 
-const RARITY_COLOR: Record<number, string> = {
-  1: Colors.rarity1,
-  2: Colors.rarity2,
-  3: Colors.rarity3,
-  4: Colors.rarity4,
-  5: Colors.rarity5,
-};
-
-const RARITY_BG: Record<number, string> = {
+const RARITY_BG_LIGHT: Record<number, string> = {
   1: '#F5F5F5',
   2: '#F1F8E9',
   3: '#E3F2FD',
@@ -36,24 +29,42 @@ const RARITY_BG: Record<number, string> = {
 };
 
 export function PlantCard({ plant, discovered, imageUri, isFavorite, hasNote, familyHint, onPress, onFavorite }: Props) {
-  const rarityColor = RARITY_COLOR[plant.rarity];
-  const rarityBg = RARITY_BG[plant.rarity];
+  const theme = useTheme();
+  const reduceMotion = useReduceMotion();
   const scaleAnim = useRef(new Animated.Value(1)).current;
+  const [imgError, setImgError] = useState(false);
+
+  const rarityColor = [
+    theme.colors.rarityCommon,
+    theme.colors.rarityUncommon,
+    theme.colors.rarityRare,
+    theme.colors.rarityEpic,
+    theme.colors.rarityLegendary,
+  ][Math.max(0, Math.min(4, plant.rarity - 1))];
+  const rarityBg = theme.mode === 'dark'
+    ? `${rarityColor}24`
+    : (RARITY_BG_LIGHT[plant.rarity] ?? theme.colors.surfaceSecondary);
+
+  const isLegendary = plant.rarity === 5;
+  const isSuperRare = plant.rarity === 4;
+  const showPhoto = discovered && !!imageUri && !imgError;
 
   function handlePressIn() {
+    if (reduceMotion) return;
     Animated.spring(scaleAnim, {
-      toValue: 0.93,
-      tension: 300,
-      friction: 14,
+      toValue: 0.98,
+      tension: 320,
+      friction: 22,
       useNativeDriver: true,
     }).start();
   }
 
   function handlePressOut() {
+    if (reduceMotion) return;
     Animated.spring(scaleAnim, {
       toValue: 1,
-      tension: 200,
-      friction: 10,
+      tension: 260,
+      friction: 20,
       useNativeDriver: true,
     }).start();
   }
@@ -63,41 +74,49 @@ export function PlantCard({ plant, discovered, imageUri, isFavorite, hasNote, fa
     onPress();
   }
 
-  const [imgError, setImgError] = useState(false);
-  const isLegendary = plant.rarity === 5;
-  const isSuperRare = plant.rarity === 4;
-  const showPhoto = discovered && !!imageUri && !imgError;
+  const accessibilityLabel = discovered
+    ? `${plant.name}。レアリティ${plant.rarity}。${DANGER_LABEL[plant.danger]}${isFavorite ? '。お気に入り' : ''}${hasNote ? '。メモあり' : ''}`
+    : `未発見の植物。${familyHint ? `ヒントは${familyHint}。` : ''}レアリティ${plant.rarity}`;
 
   return (
     <Animated.View
-      style={[styles.wrapper, { transform: [{ scale: scaleAnim }] }]}
+      style={[
+        styles.wrapper,
+        {
+          borderRadius: theme.radius.card,
+          shadowColor: theme.colors.shadow,
+          shadowOpacity: theme.mode === 'dark' ? 0.22 : (isLegendary || isSuperRare) && discovered ? 0.16 : 0.08,
+          transform: [{ scale: scaleAnim }],
+        },
+      ]}
     >
       <Pressable
         style={[
           styles.card,
-          plant.danger === 'RED' && discovered && styles.dangerCard,
-          (isLegendary || isSuperRare) && discovered && styles.rareCard,
+          {
+            backgroundColor: theme.colors.surfacePrimary,
+            borderColor: plant.danger === 'RED' && discovered
+              ? theme.colors.statusDanger
+              : theme.colors.borderSubtle,
+          },
         ]}
         onPress={handlePress}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
+        accessibilityRole="button"
+        accessibilityLabel={accessibilityLabel}
+        accessibilityHint="詳細を見る"
       >
-        {/* Rarity color strip at top */}
         <View style={[styles.rarityStrip, { backgroundColor: rarityColor }]} />
 
-        {/* Subtle glow background for rare cards */}
         {(isLegendary || isSuperRare) && discovered && (
-          <View
-            style={[styles.rarityGlow, { backgroundColor: rarityColor + '14' }]}
-          />
+          <View style={[styles.rarityGlow, { backgroundColor: `${rarityColor}12` }]} />
         )}
 
-        {/* Emoji / Photo circle */}
         <View
           style={[
             styles.emojiWrap,
-            { backgroundColor: discovered ? rarityBg : '#EEEEEE' },
-            showPhoto && styles.emojiWrapPhoto,
+            { backgroundColor: discovered ? rarityBg : theme.colors.surfaceSecondary },
           ]}
         >
           {showPhoto ? (
@@ -106,68 +125,80 @@ export function PlantCard({ plant, discovered, imageUri, isFavorite, hasNote, fa
               style={styles.plantPhoto}
               resizeMode="cover"
               onError={() => setImgError(true)}
+              accessibilityIgnoresInvertColors
             />
           ) : discovered ? (
             <Text style={styles.emoji}>{plant.emoji}</Text>
           ) : (
-            <Text style={styles.questionMark}>？</Text>
+            <Text style={[styles.questionMark, { color: theme.colors.textTertiary }]}>？</Text>
           )}
         </View>
 
-        {/* Plant name */}
         <Text
-          style={[styles.name, !discovered && styles.unknownName]}
+          style={[
+            styles.name,
+            { color: discovered ? theme.colors.textPrimary : theme.colors.textTertiary },
+          ]}
           numberOfLines={2}
         >
           {discovered ? plant.name : '？？？'}
         </Text>
 
-        {/* Rarity stars */}
         <RarityStars rarity={plant.rarity} size="sm" />
 
-        {/* Danger badge (discovered only) */}
         {discovered && <DangerBadge danger={plant.danger} size="sm" />}
 
-        {/* Hint indicator for undiscovered — shows the family as a non-spoiler clue when known */}
         {!discovered && (
-          <View style={styles.hintChip}>
-            <Text style={styles.hintChipText} numberOfLines={1}>
+          <View
+            style={[
+              styles.hintChip,
+              {
+                backgroundColor: theme.colors.surfaceSecondary,
+                borderColor: theme.colors.borderSubtle,
+              },
+            ]}
+          >
+            <Text style={[styles.hintChipText, { color: theme.colors.accentSecondary }]} numberOfLines={1}>
               {familyHint ?? 'ヒント'}
             </Text>
           </View>
         )}
 
-        {/* Checkmark badge for discovered */}
         {discovered && (
-          <View style={[styles.checkBadge, { backgroundColor: rarityColor }]}>
-            <Text style={styles.checkText}>✓</Text>
+          <View style={[styles.checkBadge, { backgroundColor: rarityColor }]} accessibilityElementsHidden>
+            <Ionicons name="checkmark" size={11} color="#FFFFFF" />
           </View>
         )}
 
-        {/* Note indicator */}
         {discovered && hasNote && (
-          <View style={styles.noteBadge}>
-            <Ionicons name="create-outline" size={11} color={Colors.primaryDark} />
+          <View
+            style={[styles.noteBadge, { backgroundColor: theme.colors.surfaceSecondary }]}
+            accessibilityElementsHidden
+          >
+            <Ionicons name="create-outline" size={13} color={theme.colors.accentPrimary} />
           </View>
         )}
 
-        {/* Favorite heart button */}
         {discovered && onFavorite && (
           <Pressable
-            style={styles.heartBtn}
+            style={({ pressed }) => [
+              styles.heartBtn,
+              { backgroundColor: theme.colors.surfaceSecondary },
+              pressed && styles.heartBtnPressed,
+            ]}
             onPress={(e) => {
               e.stopPropagation?.();
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
               onFavorite();
             }}
-            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
             accessibilityRole="button"
             accessibilityLabel={isFavorite ? 'お気に入りから外す' : 'お気に入りに追加'}
+            accessibilityState={{ selected: !!isFavorite }}
           >
             <Ionicons
               name={isFavorite ? 'heart' : 'heart-outline'}
-              size={14}
-              color={isFavorite ? '#E53935' : '#BDBDBD'}
+              size={18}
+              color={isFavorite ? '#D9363E' : theme.colors.textTertiary}
             />
           </Pressable>
         )}
@@ -180,38 +211,27 @@ const styles = StyleSheet.create({
   wrapper: {
     flex: 1,
     margin: 5,
+    shadowOffset: { width: 0, height: 3 },
+    shadowRadius: 8,
+    elevation: 4,
   },
   card: {
-    backgroundColor: Colors.bgCard,
-    borderRadius: 16,
+    borderRadius: 17,
+    borderWidth: StyleSheet.hairlineWidth,
     paddingTop: 16,
-    paddingBottom: 12,
+    paddingBottom: 13,
     paddingHorizontal: 8,
     alignItems: 'center',
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.10,
-    shadowRadius: 7,
-    elevation: 4,
     gap: 5,
-  },
-  dangerCard: {
-    backgroundColor: '#FFF5F5',
-  },
-  rareCard: {
-    shadowOpacity: 0.18,
-    shadowRadius: 8,
-    elevation: 6,
+    minHeight: 170,
   },
   rarityStrip: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
-    height: 4,
-    borderTopLeftRadius: 14,
-    borderTopRightRadius: 14,
+    height: 3,
   },
   rarityGlow: {
     position: 'absolute',
@@ -229,7 +249,6 @@ const styles = StyleSheet.create({
     marginBottom: 2,
     overflow: 'hidden',
   },
-  emojiWrapPhoto: {},
   plantPhoto: {
     width: 58,
     height: 58,
@@ -238,55 +257,57 @@ const styles = StyleSheet.create({
   emoji: { fontSize: 32 },
   questionMark: {
     fontSize: 26,
-    color: '#BDBDBD',
-    fontWeight: '900',
+    fontWeight: '800',
   },
   name: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '700',
-    color: Colors.text,
     textAlign: 'center',
-    lineHeight: 16,
-    minHeight: 32,
+    lineHeight: 17,
+    minHeight: 34,
     paddingHorizontal: 2,
   },
-  unknownName: { color: '#BDBDBD' },
   checkBadge: {
     position: 'absolute',
     top: 8,
-    right: 6,
-    width: 16,
-    height: 16,
-    borderRadius: 8,
+    right: 8,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  checkText: {
-    color: '#FFFFFF',
-    fontSize: 9,
-    fontWeight: '900',
-  },
   heartBtn: {
     position: 'absolute',
-    bottom: 6,
-    right: 5,
+    bottom: 2,
+    right: 2,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  heartBtnPressed: {
+    opacity: 0.68,
   },
   noteBadge: {
     position: 'absolute',
     top: 8,
-    left: 6,
+    left: 8,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   hintChip: {
-    backgroundColor: Colors.primaryPale,
     borderRadius: 8,
     paddingHorizontal: 7,
     paddingVertical: 3,
-    borderWidth: 1,
-    borderColor: Colors.border,
+    borderWidth: StyleSheet.hairlineWidth,
   },
   hintChipText: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '700',
-    color: Colors.primaryDark,
   },
 });
