@@ -12,6 +12,8 @@ import {
   Share,
   Alert,
   Switch,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -141,6 +143,8 @@ export default function ProfileScreen() {
   const totalPlants = PLANTS.length;
   const todayKey = todayLocalStr();
   const observationIntensity = [theme.colors.accentSecondary, theme.colors.accentPrimary, theme.colors.accentPrimaryPressed];
+  const normalizedTempName = tempName.trim();
+  const canSaveName = normalizedTempName.length > 0 && normalizedTempName !== playerName;
 
   const achievementCtx: AchievementContext = useMemo(
     () => ({ discoveredPlantIds, plantNotes, scanHistory, viewedSafetyCardPlantIds, hasComparedCandidates }),
@@ -229,7 +233,8 @@ export default function ProfileScreen() {
   }, [todayKey]);
 
   function handleSaveName() {
-    if (tempName.trim().length > 0) setPlayerName(tempName.trim());
+    if (!canSaveName) return;
+    setPlayerName(normalizedTempName);
     setEditNameVisible(false);
   }
 
@@ -275,7 +280,7 @@ export default function ProfileScreen() {
             <Ionicons name="person-outline" size={34} color="#FFFFFF" />
           </View>
           <View style={styles.identityText}>
-            <Text style={styles.playerName} numberOfLines={1}>{playerName}</Text>
+            <Text style={styles.playerName} numberOfLines={2}>{playerName}</Text>
             <Text style={styles.titleText}>{title}</Text>
           </View>
           <Pressable
@@ -608,9 +613,16 @@ export default function ProfileScreen() {
       />
 
       <Modal visible={editNameVisible} transparent animationType="fade" onRequestClose={() => setEditNameVisible(false)}>
-        <View style={[styles.modalOverlay, { backgroundColor: theme.colors.overlay }]}>
-          <Pressable style={StyleSheet.absoluteFill} onPress={() => setEditNameVisible(false)} accessibilityElementsHidden />
-          <View style={[styles.modalCard, { backgroundColor: theme.colors.surfacePrimary, borderColor: theme.colors.borderSubtle, shadowColor: theme.colors.shadow }]} accessibilityViewIsModal>
+        <KeyboardAvoidingView
+          style={[styles.modalOverlay, { backgroundColor: theme.colors.overlay }]}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setEditNameVisible(false)} accessible={false} />
+          <View
+            style={[styles.modalCard, { backgroundColor: theme.colors.surfacePrimary, borderColor: theme.colors.borderSubtle, shadowColor: theme.colors.shadow }]}
+            accessibilityViewIsModal
+            onAccessibilityEscape={() => setEditNameVisible(false)}
+          >
             <Text style={[styles.modalTitle, { color: theme.colors.textPrimary }]} accessibilityRole="header">名前を変更</Text>
             <TextInput
               style={[styles.nameInput, { borderColor: theme.colors.accentPrimary, color: theme.colors.textPrimary, backgroundColor: theme.colors.surfaceSecondary }]}
@@ -622,8 +634,14 @@ export default function ProfileScreen() {
               autoFocus
               keyboardType="default"
               autoCapitalize="words"
+              returnKeyType="done"
+              onSubmitEditing={handleSaveName}
               accessibilityLabel="名前"
+              accessibilityHint="20文字まで入力できます"
             />
+            <Text style={[styles.nameCounter, { color: theme.colors.textTertiary }]} accessibilityLiveRegion="polite">
+              {tempName.length}/20
+            </Text>
             <View style={styles.modalBtns}>
               <Pressable
                 style={({ pressed }) => [styles.modalBtn, { backgroundColor: theme.colors.surfaceSecondary }, pressed && styles.buttonPressed]}
@@ -633,21 +651,32 @@ export default function ProfileScreen() {
                 <Text style={[styles.modalBtnText, { color: theme.colors.textSecondary }]}>キャンセル</Text>
               </Pressable>
               <Pressable
-                style={({ pressed }) => [styles.modalBtn, { backgroundColor: theme.colors.accentPrimary }, pressed && styles.buttonPressed]}
+                style={({ pressed }) => [
+                  styles.modalBtn,
+                  { backgroundColor: canSaveName ? theme.colors.accentPrimary : theme.colors.surfaceTertiary },
+                  pressed && canSaveName && styles.buttonPressed,
+                ]}
                 onPress={handleSaveName}
+                disabled={!canSaveName}
                 accessibilityRole="button"
+                accessibilityState={{ disabled: !canSaveName }}
+                accessibilityLabel="名前を保存"
               >
-                <Text style={[styles.modalBtnText, { color: theme.colors.textOnAccent }]}>保存</Text>
+                <Text style={[styles.modalBtnText, { color: canSaveName ? theme.colors.textOnAccent : theme.colors.textTertiary }]}>保存</Text>
               </Pressable>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       <Modal visible={sourcesVisible} transparent animationType="fade" onRequestClose={() => setSourcesVisible(false)}>
         <View style={[styles.modalOverlay, { backgroundColor: theme.colors.overlay }]}>
-          <Pressable style={StyleSheet.absoluteFill} onPress={() => setSourcesVisible(false)} accessibilityElementsHidden />
-          <View style={[styles.modalCard, { backgroundColor: theme.colors.surfacePrimary, borderColor: theme.colors.borderSubtle, shadowColor: theme.colors.shadow }]} accessibilityViewIsModal>
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setSourcesVisible(false)} accessible={false} />
+          <View
+            style={[styles.modalCard, { backgroundColor: theme.colors.surfacePrimary, borderColor: theme.colors.borderSubtle, shadowColor: theme.colors.shadow }]}
+            accessibilityViewIsModal
+            onAccessibilityEscape={() => setSourcesVisible(false)}
+          >
             <Text style={[styles.modalTitle, { color: theme.colors.textPrimary }]} accessibilityRole="header">データソース・出典について</Text>
             <ScrollView style={styles.sourcesScroll} showsVerticalScrollIndicator={false}>
               <Text style={[styles.sourcesText, { color: theme.colors.textSecondary }]}>
@@ -806,7 +835,7 @@ const styles = StyleSheet.create({
   heroEyebrow: { fontSize: 10, lineHeight: 13, fontWeight: '800', letterSpacing: 1.7, color: 'rgba(255,255,255,0.58)', marginBottom: 10 },
   identityRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   avatar: { width: 64, height: 64, borderRadius: 32, backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.25)', justifyContent: 'center', alignItems: 'center' },
-  identityText: { flex: 1 },
+  identityText: { flex: 1, minWidth: 0 },
   playerName: { fontSize: 22, lineHeight: 28, fontWeight: '900', color: '#FFFFFF' },
   titleText: { fontSize: 13, lineHeight: 18, color: '#B7DDBB', marginTop: 2 },
   editNameBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.20)', justifyContent: 'center', alignItems: 'center' },
@@ -883,12 +912,13 @@ const styles = StyleSheet.create({
   legalRowText: { flex: 1, fontSize: 14, lineHeight: 19, fontWeight: '600' },
   versionText: { marginTop: 12, fontSize: 12, lineHeight: 16, textAlign: 'center' },
   modalOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
-  modalCard: { borderRadius: 22, borderWidth: StyleSheet.hairlineWidth, padding: 20, width: '100%', maxWidth: 440, shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.24, shadowRadius: 20, elevation: 16 },
+  modalCard: { borderRadius: 22, borderWidth: StyleSheet.hairlineWidth, padding: 20, width: '100%', maxWidth: 440, maxHeight: '90%', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.24, shadowRadius: 20, elevation: 16 },
   modalTitle: { fontSize: 18, lineHeight: 24, fontWeight: '800', marginBottom: 15, textAlign: 'center' },
-  nameInput: { minHeight: 52, borderWidth: 1.5, borderRadius: 14, paddingHorizontal: 14, fontSize: 16, marginBottom: 15 },
+  nameInput: { minHeight: 52, borderWidth: 1.5, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 10, fontSize: 16 },
+  nameCounter: { fontSize: 12, lineHeight: 17, textAlign: 'right', marginTop: 5, marginBottom: 12 },
   modalBtns: { flexDirection: 'row', gap: 9 },
-  modalBtn: { flex: 1, minHeight: 52, borderRadius: 14, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 14 },
-  modalBtnText: { fontSize: 15, lineHeight: 20, fontWeight: '800' },
+  modalBtn: { flex: 1, minHeight: 52, borderRadius: 14, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 14, paddingVertical: 9 },
+  modalBtnText: { fontSize: 15, lineHeight: 20, fontWeight: '800', textAlign: 'center' },
   sourcesScroll: { maxHeight: 360 },
   sourcesText: { fontSize: 14, lineHeight: 22 },
   rowPressed: { opacity: 0.68 },
