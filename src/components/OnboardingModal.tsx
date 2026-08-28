@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
+  AccessibilityInfo,
   Animated,
+  findNodeHandle,
   Modal,
   Pressable,
   ScrollView,
@@ -67,6 +69,7 @@ export function OnboardingModal({ visible, onComplete }: Props) {
   const translateAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.96)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
+  const slideTitleRefs = useRef<Array<React.ElementRef<typeof Text> | null>>([]);
 
   const cardWidth = Math.min(Math.max(width - 32, 280), 440);
   const cardMaxHeight = Math.max(height - 32, 420);
@@ -107,6 +110,16 @@ export function OnboardingModal({ visible, onComplete }: Props) {
   useEffect(() => {
     translateAnim.setValue(-slideIndex * cardWidth);
   }, [cardWidth, slideIndex, translateAnim]);
+
+  useEffect(() => {
+    if (!visible) return;
+    const delay = reduceMotion ? 70 : theme.motion.expand + 90;
+    const timer = setTimeout(() => {
+      const node = findNodeHandle(slideTitleRefs.current[slideIndex]);
+      if (node) AccessibilityInfo.setAccessibilityFocus(node);
+    }, delay);
+    return () => clearTimeout(timer);
+  }, [visible, slideIndex, reduceMotion, theme.motion.expand]);
 
   function goToSlide(index: number) {
     setSlideIndex(index);
@@ -197,13 +210,20 @@ export function OnboardingModal({ visible, onComplete }: Props) {
                           styles.safetyHeader,
                           { backgroundColor: safetySurface, borderBottomColor: `${safetyAccent}66` },
                         ]}
+                        accessibilityElementsHidden
+                        importantForAccessibility="no-hide-descendants"
                       >
                         <View style={[styles.safetyIconCircle, { backgroundColor: `${safetyAccent}16` }]}>
                           <Ionicons name={slide.icon} size={46} color={safetyAccent} />
                         </View>
                       </View>
                     ) : (
-                      <LinearGradient colors={slide.gradient!} style={styles.slideHeader}>
+                      <LinearGradient
+                        colors={slide.gradient!}
+                        style={styles.slideHeader}
+                        accessibilityElementsHidden
+                        importantForAccessibility="no-hide-descendants"
+                      >
                         <View style={styles.illustrationCircle}>
                           <Ionicons name={slide.icon} size={47} color="#FFFFFF" />
                           {slide.subIcon && (
@@ -222,11 +242,15 @@ export function OnboardingModal({ visible, onComplete }: Props) {
                       bounces={false}
                     >
                       <Text
+                        ref={(node) => {
+                          slideTitleRefs.current[index] = node;
+                        }}
                         style={[
                           styles.slideTitle,
                           { color: slide.isSafety ? safetyAccent : theme.colors.textPrimary },
                         ]}
                         accessibilityRole="header"
+                        accessibilityLabel={`${index + 1}/${SLIDES.length}ページ。${slide.label}。${slide.title}`}
                       >
                         {slide.title}
                       </Text>
@@ -289,9 +313,8 @@ export function OnboardingModal({ visible, onComplete }: Props) {
           <View style={[styles.actions, { backgroundColor: theme.colors.surfacePrimary }]}>
             <Text
               style={[styles.progressLabel, { color: theme.colors.textTertiary }]}
-              accessibilityLiveRegion="polite"
               accessibilityRole="text"
-              accessibilityLabel={`${slideIndex + 1}/${SLIDES.length}ページ。${SLIDES[slideIndex].label}。${SLIDES[slideIndex].title}`}
+              accessibilityLabel={`${slideIndex + 1}/${SLIDES.length}ページ。${SLIDES[slideIndex].label}`}
             >
               {slideIndex + 1} / {SLIDES.length} ・ {SLIDES[slideIndex].label}
             </Text>
@@ -496,6 +519,7 @@ const styles = StyleSheet.create({
     minHeight: 54,
     borderRadius: 16,
     paddingHorizontal: 18,
+    paddingVertical: 8,
     flexDirection: 'row',
     gap: 7,
     alignItems: 'center',
@@ -505,10 +529,12 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     fontSize: 16,
     lineHeight: 22,
+    textAlign: 'center',
   },
   btnSecondary: {
     minHeight: 54,
     paddingHorizontal: 16,
+    paddingVertical: 8,
     borderRadius: 16,
     flexDirection: 'row',
     gap: 7,
@@ -519,12 +545,14 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontSize: 14,
     lineHeight: 20,
+    textAlign: 'center',
   },
   btnPrimary: {
     flex: 1,
     minHeight: 56,
     borderRadius: 16,
     paddingHorizontal: 18,
+    paddingVertical: 8,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -534,6 +562,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     fontSize: 16,
     lineHeight: 22,
+    textAlign: 'center',
   },
   btnStacked: {
     flex: 0,
