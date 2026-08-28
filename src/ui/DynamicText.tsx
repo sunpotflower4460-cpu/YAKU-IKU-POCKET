@@ -9,9 +9,9 @@ interface Props extends TextProps {
 }
 
 /**
- * Text that scales with the system's Dynamic Type setting (RN's default
- * `allowFontScaling` is true; this component just centralises variant→size
- * mapping so screens stop hardcoding font sizes).
+ * Text that scales with the system's Dynamic Type setting. Font size and line
+ * height come from the same semantic variant so large text keeps predictable
+ * rhythm instead of inheriting platform-dependent leading.
  */
 export function DynamicText({ variant = 'body', weight = 'regular', color, style, ...rest }: Props) {
   const theme = useTheme();
@@ -21,6 +21,7 @@ export function DynamicText({ variant = 'body', weight = 'regular', color, style
       style={[
         {
           fontSize: theme.type[variant],
+          lineHeight: theme.lineHeight[variant],
           fontWeight: theme.weight[weight],
           color: color ?? theme.colors.textPrimary,
         },

@@ -12,30 +12,47 @@ interface Props extends PressableProps {
 
 /**
  * Icon-only control. Always requires accessibilityLabel (icons alone don't
- * read to VoiceOver). Visual size can be smaller than the tap target — the
- * padding here keeps the hit area at 44x44pt regardless of icon size.
+ * read to VoiceOver). The control itself is a full 44x44pt tap target; callers
+ * may opt into extra hitSlop only when surrounding controls cannot overlap.
  */
-export function IconButton({ icon, accessibilityLabel, size = 20, variant = 'plain', style, ...rest }: Props) {
+export function IconButton({
+  icon,
+  accessibilityLabel,
+  size = 20,
+  variant = 'plain',
+  disabled,
+  accessibilityState,
+  style,
+  ...rest
+}: Props) {
   const theme = useTheme();
   return (
     <Pressable
+      {...rest}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
-      hitSlop={8}
-      style={({ pressed }) => [
+      accessibilityState={{ ...accessibilityState, disabled: !!disabled }}
+      disabled={disabled}
+      style={(state) => [
         styles.base,
         {
           width: theme.minTapTarget,
           height: theme.minTapTarget,
           borderRadius: theme.radius.pill,
           backgroundColor:
-            variant === 'surface' ? (pressed ? theme.colors.surfaceTertiary : theme.colors.surfaceSecondary) : 'transparent',
+            variant === 'surface' ? (state.pressed ? theme.colors.surfaceTertiary : theme.colors.surfaceSecondary) : 'transparent',
+          opacity: disabled ? 0.5 : 1,
         },
-        typeof style === 'function' ? undefined : style,
+        typeof style === 'function' ? style(state) : style,
       ]}
-      {...rest}
     >
-      <Ionicons name={icon} size={size} color={theme.colors.textPrimary} />
+      <Ionicons
+        name={icon}
+        size={size}
+        color={theme.colors.textPrimary}
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+      />
     </Pressable>
   );
 }

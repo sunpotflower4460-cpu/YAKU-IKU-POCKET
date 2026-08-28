@@ -2,45 +2,66 @@ import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Rarity } from '../types';
-import { Colors } from '../constants/colors';
+import { useTheme } from '../theme/ThemeProvider';
 
 interface Props {
   rarity: Rarity;
   size?: 'sm' | 'md' | 'lg';
+  /** Set false when a parent control already includes rarity in its label. */
+  accessible?: boolean;
 }
 
-const RARITY_COLORS: Record<Rarity, string> = {
-  1: Colors.rarity1,
-  2: Colors.rarity2,
-  3: Colors.rarity3,
-  4: Colors.rarity4,
-  5: Colors.rarity5,
+const ICON_SIZES = { sm: 11, md: 15, lg: 20 };
+const RARITY_SPOKEN_LABEL: Record<Rarity, string> = {
+  1: 'よく見かける',
+  2: '比較的見つけやすい',
+  3: 'やや珍しい',
+  4: '珍しい',
+  5: 'とても珍しい',
 };
 
-// sm: 10px, md: 14px, lg: 20px
-const ICON_SIZES = { sm: 10, md: 14, lg: 20 };
-
-export function RarityStars({ rarity, size = 'md' }: Props) {
+export function RarityStars({ rarity, size = 'md', accessible = true }: Props) {
+  const theme = useTheme();
   const safeRarity = Math.max(1, Math.min(5, rarity)) as Rarity;
-  const color = RARITY_COLORS[safeRarity];
+  const color = [
+    theme.colors.rarityCommon,
+    theme.colors.rarityUncommon,
+    theme.colors.rarityRare,
+    theme.colors.rarityEpic,
+    theme.colors.rarityLegendary,
+  ][safeRarity - 1];
   const iconSize = ICON_SIZES[size];
 
   return (
-    <View style={styles.container}>
-      {Array.from({ length: 5 }, (_, i) => (
-        <Ionicons
-          key={i}
-          name={i < safeRarity ? 'star' : 'star-outline'}
-          size={iconSize}
-          color={i < safeRarity ? color : Colors.rarity1}
-        />
-      ))}
+    <View
+      style={styles.container}
+      accessible={accessible}
+      accessibilityElementsHidden={!accessible}
+      importantForAccessibility={accessible ? 'auto' : 'no-hide-descendants'}
+      accessibilityRole={accessible ? 'text' : undefined}
+      accessibilityLabel={accessible ? `珍しさの目安、${RARITY_SPOKEN_LABEL[safeRarity]}、5段階中${safeRarity}` : undefined}
+    >
+      <View
+        style={styles.stars}
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+      >
+        {Array.from({ length: 5 }, (_, index) => (
+          <Ionicons
+            key={index}
+            name={index < safeRarity ? 'star' : 'star-outline'}
+            size={iconSize}
+            color={index < safeRarity ? color : theme.colors.textTertiary}
+          />
+        ))}
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  container: { alignSelf: 'flex-start' },
+  stars: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 1,

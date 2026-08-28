@@ -1,14 +1,22 @@
 import React, { useEffect, useRef } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  Modal,
+  AccessibilityInfo,
   Animated,
+  findNodeHandle,
+  Modal,
+  Platform,
   Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from '../utils/haptics';
+import { useReduceMotion } from '../utils/reduceMotion';
+import { useTheme } from '../theme/ThemeProvider';
 
 interface Props {
   visible: boolean;
@@ -17,123 +25,271 @@ interface Props {
   onClose: () => void;
 }
 
-const STAR_COUNT = 5;
+type WebFocusable = {
+  focus?: () => void;
+  isConnected?: boolean;
+};
+
+type WebDocumentLike = {
+  activeElement?: WebFocusable | null;
+  body?: WebFocusable | null;
+};
+
+function getWebDocument(): WebDocumentLike | undefined {
+  return (globalThis as unknown as { document?: WebDocumentLike }).document;
+}
+
+const MOTIF_COUNT = 3;
+const MOTIF_ICONS: React.ComponentProps<typeof Ionicons>['name'][] = [
+  'leaf-outline',
+  'sparkles-outline',
+  'compass-outline',
+];
 
 export function LevelUpModal({ visible, level, title, onClose }: Props) {
-  const cardScale = useRef(new Animated.Value(0)).current;
-  const levelScale = useRef(new Animated.Value(0.3)).current;
-  const starAnims = useRef(
-    Array.from({ length: STAR_COUNT }, () => ({
+  const theme = useTheme();
+  const reduceMotion = useReduceMotion();
+  const { height, fontScale } = useWindowDimensions();
+  const compactLayout = height < 650 || fontScale >= 1.3;
+  // The overlay itself reserves 16pt above and below. Never give the card a
+  // max-height taller than that remaining viewport, including short web
+  // windows and device split/landscape configurations.
+  const cardMaxHeight = Math.max(1, height - 32);
+  const cardScale = useRef(new Animated.Value(0.97)).current;
+  const cardOpacity = useRef(new Animated.Value(0)).current;
+  const levelScale = useRef(new Animated.Value(0.9)).current;
+  const contextHeadingRef = useRef<React.ElementRef<typeof Text>>(null);
+  const continueButtonRef = useRef<React.ElementRef<typeof Pressable>>(null);
+  const previousWebFocusRef = useRef<WebFocusable | null>(null);
+  const wasVisibleRef = useRef(false);
+  const motifAnims = useRef(
+    Array.from({ length: MOTIF_COUNT }, () => ({
       opacity: new Animated.Value(0),
-      translateY: new Animated.Value(24),
+      translateY: new Animated.Value(10),
     }))
   ).current;
 
   useEffect(() => {
-    if (visible) {
-      // Reset
-      cardScale.setValue(0);
-      levelScale.setValue(0.3);
-      starAnims.forEach((a) => {
-        a.opacity.setValue(0);
-        a.translateY.setValue(24);
-      });
+    if (!visible) return;
 
-      // Card entrance
+    cardScale.setValue(reduceMotion ? 1 : 0.97);
+    cardOpacity.setValue(1);
+    levelScale.setValue(reduceMotion ? 1 : 0.9);
+    motifAnims.forEach((animation) => {
+      animation.opacity.setValue(reduceMotion ? 1 : 0);
+      animation.translateY.setValue(reduceMotion ? 0 : 10);
+    });
+
+    if (reduceMotion) return;
+
+    const cardAnimation = Animated.parallel([
       Animated.spring(cardScale, {
         toValue: 1,
-        tension: 50,
-        friction: 5,
+        tension: 72,
+        friction: 10,
         useNativeDriver: true,
-      }).start();
+      }),
+      Animated.timing(cardOpacity, {
+        toValue: 1,
+        duration: theme.motion.stateChange,
+        useNativeDriver: true,
+      }),
+    ]);
 
-      // Stars staggered
-      starAnims.forEach((a, i) => {
-        Animated.sequence([
-          Animated.delay(150 + i * 80),
-          Animated.parallel([
-            Animated.timing(a.opacity, {
-              toValue: 1,
-              duration: 350,
-              useNativeDriver: true,
-            }),
-            Animated.spring(a.translateY, {
-              toValue: 0,
-              tension: 70,
-              friction: 6,
-              useNativeDriver: true,
-            }),
-          ]),
-        ]).start();
-      });
-
-      // Level number bounce
+    const motifAnimations = motifAnims.map((animation, index) =>
       Animated.sequence([
-        Animated.delay(300),
-        Animated.spring(levelScale, {
-          toValue: 1,
-          tension: 40,
-          friction: 4,
-          useNativeDriver: true,
-        }),
-      ]).start();
+        Animated.delay(110 + index * 80),
+        Animated.parallel([
+          Animated.timing(animation.opacity, {
+            toValue: 1,
+            duration: 220,
+            useNativeDriver: true,
+          }),
+          Animated.spring(animation.translateY, {
+            toValue: 0,
+            tension: 68,
+            friction: 9,
+            useNativeDriver: true,
+          }),
+        ]),
+      ])
+    );
 
-      // Auto-dismiss after 4.5 s
-      const timer = setTimeout(onClose, 4500);
-      return () => clearTimeout(timer);
+    const levelAnimation = Animated.sequence([
+      Animated.delay(180),
+      Animated.spring(levelScale, {
+        toValue: 1,
+        tension: 60,
+        friction: 8,
+        useNativeDriver: true,
+      }),
+    ]);
+
+    cardAnimation.start();
+    motifAnimations.forEach((animation) => animation.start());
+    levelAnimation.start();
+
+    return () => {
+      cardAnimation.stop();
+      motifAnimations.forEach((animation) => animation.stop());
+      levelAnimation.stop();
+    };
+  }, [visible, reduceMotion, cardScale, cardOpacity, levelScale, motifAnims, theme.motion.stateChange]);
+
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+
+    if (visible && !wasVisibleRef.current) {
+      if (Platform.OS === 'web') {
+        const doc = getWebDocument();
+        const active = doc?.activeElement;
+        if (active && active !== doc?.body) previousWebFocusRef.current = active;
+        timer = setTimeout(() => {
+          const target = continueButtonRef.current as unknown as WebFocusable | null;
+          target?.focus?.();
+        }, 0);
+      } else {
+        const delay = reduceMotion ? 60 : theme.motion.stateChange + 100;
+        timer = setTimeout(() => {
+          const node = findNodeHandle(contextHeadingRef.current);
+          if (node) AccessibilityInfo.setAccessibilityFocus(node);
+        }, delay);
+      }
+    } else if (!visible && wasVisibleRef.current && Platform.OS === 'web') {
+      const target = previousWebFocusRef.current;
+      previousWebFocusRef.current = null;
+      timer = setTimeout(() => {
+        if (target?.isConnected !== false) target?.focus?.();
+      }, 0);
     }
-  }, [visible]);
+
+    wasVisibleRef.current = visible;
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [visible, reduceMotion, theme.motion.stateChange]);
+
+  function handleContinue() {
+    Haptics.selectionAsync();
+    onClose();
+  }
 
   return (
     <Modal
       visible={visible}
       transparent
-      animationType="fade"
+      animationType={reduceMotion ? 'none' : 'fade'}
       statusBarTranslucent
       onRequestClose={onClose}
     >
-      <Pressable style={styles.overlay} onPress={onClose}>
+      <View style={[styles.overlay, { backgroundColor: theme.colors.overlay }]}>
+        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessible={false} />
+
         <Animated.View
-          style={[styles.card, { transform: [{ scale: cardScale }] }]}
+          accessibilityViewIsModal
+          onAccessibilityEscape={onClose}
+          style={[
+            styles.card,
+            {
+              maxHeight: cardMaxHeight,
+              backgroundColor: theme.colors.surfacePrimary,
+              borderColor: theme.colors.borderSubtle,
+              shadowColor: theme.colors.shadow,
+              opacity: cardOpacity,
+              transform: [{ scale: cardScale }],
+            },
+          ]}
         >
           <LinearGradient
-            colors={['#E65100', '#FF8F00', '#FFB300']}
-            style={styles.gradient}
+            colors={theme.mode === 'dark'
+              ? ['#102A1A', '#1A4028', '#2B5834']
+              : ['#17472A', '#28623A', '#4C7543']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.gradientShell}
           >
-            {/* Stars row */}
-            <View style={styles.starsRow}>
-              {starAnims.map((a, i) => (
-                <Animated.View
-                  key={i}
-                  style={[
-                    {
-                      opacity: a.opacity,
-                      transform: [{ translateY: a.translateY }],
-                    },
-                  ]}
-                >
-                  <Ionicons name="star" size={24} color="#FFD700" />
-                </Animated.View>
-              ))}
-            </View>
-
-            <Text style={styles.levelUpText}>LEVEL UP!</Text>
-
-            <Animated.Text
-              style={[
-                styles.levelNum,
-                { transform: [{ scale: levelScale }] },
-              ]}
+            <Pressable
+              style={({ pressed }) => [styles.closeButton, pressed && styles.pressed]}
+              onPress={onClose}
+              accessibilityRole="button"
+              accessibilityLabel="成長の記録を閉じる"
             >
-              Lv.{level}
-            </Animated.Text>
+              <Ionicons name="close" size={21} color="#FFFFFF" />
+            </Pressable>
 
-            <Text style={styles.titleText}>{title}</Text>
+            <ScrollView
+              style={styles.scroll}
+              contentContainerStyle={[
+                styles.content,
+                compactLayout && styles.contentCompact,
+              ]}
+              showsVerticalScrollIndicator={false}
+              bounces={false}
+            >
+              <View
+                style={[styles.motifsRow, compactLayout && styles.motifsRowCompact]}
+                accessibilityElementsHidden
+                importantForAccessibility="no-hide-descendants"
+              >
+                {motifAnims.map((animation, index) => (
+                  <Animated.View
+                    key={MOTIF_ICONS[index]}
+                    style={[
+                      styles.motifCircle,
+                      {
+                        opacity: animation.opacity,
+                        transform: [{ translateY: animation.translateY }],
+                      },
+                    ]}
+                  >
+                    <Ionicons name={MOTIF_ICONS[index]} size={20} color="#DCE6A1" />
+                  </Animated.View>
+                ))}
+              </View>
 
-            <Text style={styles.tapHint}>タップして閉じる</Text>
+              <Text
+                ref={contextHeadingRef}
+                style={styles.eyebrow}
+                accessibilityRole="header"
+                accessibilityLabel={`成長の記録。レベル${level}。${title}`}
+              >
+                成長の記録
+              </Text>
+
+              <Animated.Text
+                style={[styles.levelNum, { transform: [{ scale: levelScale }] }]}
+                accessibilityLabel={`レベル${level}`}
+              >
+                Level {level}
+              </Animated.Text>
+
+              <Text style={styles.titleText}>{title}</Text>
+              <Text style={styles.messageText}>
+                観察の積み重ねが、新しい段階に届きました。
+              </Text>
+
+              <View style={[styles.growthLine, compactLayout && styles.growthLineCompact]} accessibilityElementsHidden>
+                <View style={styles.growthDot} />
+                <View style={styles.growthRule} />
+                <View style={styles.growthDot} />
+              </View>
+            </ScrollView>
+
+            <View style={styles.footer}>
+              <Pressable
+                ref={continueButtonRef}
+                style={({ pressed }) => [styles.continueButton, pressed && styles.continuePressed]}
+                onPress={handleContinue}
+                accessibilityRole="button"
+                accessibilityLabel="観察を続ける"
+              >
+                <Text style={styles.continueText}>観察を続ける</Text>
+                <Ionicons name="arrow-forward" size={18} color="#21472B" />
+              </Pressable>
+            </View>
           </LinearGradient>
         </Animated.View>
-      </Pressable>
+      </View>
     </Modal>
   );
 }
@@ -141,57 +297,149 @@ export function LevelUpModal({ visible, level, title, onClose }: Props) {
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.65)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 32,
+    paddingHorizontal: 24,
+    paddingVertical: 16,
   },
   card: {
     width: '100%',
+    maxWidth: 420,
     borderRadius: 28,
     overflow: 'hidden',
-    shadowColor: '#FF8F00',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.55,
-    shadowRadius: 20,
-    elevation: 20,
+    borderWidth: StyleSheet.hairlineWidth,
+    shadowOffset: { width: 0, height: 14 },
+    shadowOpacity: 0.25,
+    shadowRadius: 28,
+    elevation: 18,
   },
-  gradient: {
-    paddingVertical: 44,
-    paddingHorizontal: 28,
+  gradientShell: {
+    flexShrink: 1,
+  },
+  scroll: {
+    flexShrink: 1,
+  },
+  content: {
+    paddingTop: 54,
+    paddingHorizontal: 24,
+    paddingBottom: 8,
     alignItems: 'center',
   },
-  starsRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 18,
+  contentCompact: {
+    paddingTop: 48,
+    paddingBottom: 2,
   },
-  levelUpText: {
-    fontSize: 20,
-    fontWeight: '900',
-    color: 'rgba(255,255,255,0.92)',
-    letterSpacing: 4,
-    marginBottom: 6,
+  closeButton: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 2,
+  },
+  pressed: { opacity: 0.72 },
+  motifsRow: {
+    flexDirection: 'row',
+    gap: 9,
+    marginBottom: 16,
+  },
+  motifsRowCompact: {
+    marginBottom: 10,
+  },
+  motifCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.09)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.16)',
+  },
+  eyebrow: {
+    fontSize: 12,
+    lineHeight: 17,
+    fontWeight: '800',
+    color: '#F4F8F4',
+    letterSpacing: 1.1,
+    marginBottom: 7,
   },
   levelNum: {
-    fontSize: 80,
+    fontSize: 52,
+    lineHeight: 61,
     fontWeight: '900',
     color: '#FFFFFF',
-    lineHeight: 88,
-    textShadowColor: 'rgba(0,0,0,0.25)',
-    textShadowOffset: { width: 0, height: 3 },
+    letterSpacing: -1.2,
+    textAlign: 'center',
+    textShadowColor: 'rgba(0,0,0,0.14)',
+    textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 8,
   },
   titleText: {
-    fontSize: 18,
+    fontSize: 19,
+    lineHeight: 25,
     fontWeight: '800',
-    color: 'rgba(255,255,255,0.95)',
-    marginTop: 10,
+    color: '#FFFFFF',
+    marginTop: 7,
     textAlign: 'center',
   },
-  tapHint: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.55)',
-    marginTop: 28,
+  messageText: {
+    fontSize: 14,
+    lineHeight: 21,
+    color: '#EEF8EF',
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  growthLine: {
+    width: 96,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 22,
+  },
+  growthLineCompact: {
+    marginVertical: 14,
+  },
+  growthRule: {
+    flex: 1,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: 'rgba(221,232,163,0.58)',
+  },
+  growthDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: '#DCE6A1',
+  },
+  footer: {
+    paddingHorizontal: 24,
+    paddingTop: 8,
+    paddingBottom: 24,
+  },
+  continueButton: {
+    minHeight: 54,
+    width: '100%',
+    borderRadius: 16,
+    backgroundColor: '#F4F8EF',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+  },
+  continuePressed: {
+    opacity: 0.86,
+    transform: [{ scale: 0.99 }],
+  },
+  continueText: {
+    color: '#21472B',
+    fontSize: 16,
+    lineHeight: 22,
+    fontWeight: '800',
+    textAlign: 'center',
   },
 });

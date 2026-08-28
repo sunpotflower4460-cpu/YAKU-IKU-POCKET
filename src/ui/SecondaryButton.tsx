@@ -9,29 +9,43 @@ interface Props extends PressableProps {
 }
 
 /** Level B secondary action — paired with a PrimaryButton, never alone as the loudest element. */
-export function SecondaryButton({ label, fullWidth, disabled, style, ...rest }: Props) {
+export function SecondaryButton({
+  label,
+  fullWidth,
+  disabled,
+  accessibilityLabel,
+  accessibilityState,
+  style,
+  ...rest
+}: Props) {
   const theme = useTheme();
   return (
     <Pressable
+      {...rest}
       accessibilityRole="button"
-      accessibilityLabel={label}
-      accessibilityState={{ disabled: !!disabled }}
+      accessibilityLabel={accessibilityLabel ?? label}
+      accessibilityState={{ ...accessibilityState, disabled: !!disabled }}
       disabled={disabled}
-      style={({ pressed }) => [
+      style={(state) => [
         styles.base,
         {
           minHeight: theme.minTapTarget,
           borderRadius: theme.radius.pill,
           paddingHorizontal: theme.space[5],
-          backgroundColor: pressed ? theme.colors.surfaceTertiary : theme.colors.surfaceSecondary,
+          paddingVertical: theme.space[2],
+          backgroundColor: state.pressed ? theme.colors.surfaceTertiary : theme.colors.surfaceSecondary,
           opacity: disabled ? 0.5 : 1,
           alignSelf: fullWidth ? 'stretch' : 'flex-start',
         },
-        typeof style === 'function' ? undefined : style,
+        typeof style === 'function' ? style(state) : style,
       ]}
-      {...rest}
     >
-      <DynamicText variant="callout" weight="secondary" color={theme.colors.textPrimary}>
+      <DynamicText
+        variant="callout"
+        weight="secondary"
+        color={theme.colors.textPrimary}
+        style={styles.label}
+      >
         {label}
       </DynamicText>
     </Pressable>
@@ -39,5 +53,13 @@ export function SecondaryButton({ label, fullWidth, disabled, style, ...rest }: 
 }
 
 const styles = StyleSheet.create({
-  base: { alignItems: 'center', justifyContent: 'center' },
+  base: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    maxWidth: '100%',
+  },
+  label: {
+    flexShrink: 1,
+    textAlign: 'center',
+  },
 });

@@ -1,52 +1,76 @@
 import { Tabs } from 'expo-router';
 import { useState, useEffect, useRef } from 'react';
-import { View, AppState } from 'react-native';
+import { View, AppState, StyleSheet, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from '../../src/utils/haptics';
-import { Colors } from '../../src/constants/colors';
 import { useGameStore, XP_PER_LEVEL } from '../../src/store/useGameStore';
 import { LevelUpModal } from '../../src/components/LevelUpModal';
 import { getPlayerTitle } from '../../src/utils/playerTitle';
+import { useTheme } from '../../src/theme/ThemeProvider';
 
 export default function TabLayout() {
-  const startSession = useGameStore((s) => s.startSession);
-  const hasHydrated = useGameStore((s) => s._hasHydrated);
-  const sessionDate = useGameStore((s) => s.todayDate);
-  const xp = useGameStore((s) => s.xp);
+  const theme = useTheme();
+  const insets = useSafeAreaInsets();
+  const { fontScale } = useWindowDimensions();
+  const startSession = useGameStore((state) => state.startSession);
+  const hasHydrated = useGameStore((state) => state._hasHydrated);
+  const xp = useGameStore((state) => state.xp);
 
   const currentLevel = Math.floor(xp / XP_PER_LEVEL) + 1;
   const prevLevelRef = useRef<number | null>(null);
-
   const [levelUpVisible, setLevelUpVisible] = useState(false);
   const [levelUpData, setLevelUpData] = useState({ level: 1, title: '' });
 
-  // One-time session init — wait until persisted state has loaded so streak /
-  // daily-quest resets never run against default (empty) state.
+  const tabBottomInset = Math.max(insets.bottom, theme.space[2]);
+  // Navigation labels follow Dynamic Type. Scale the bar far enough for the
+  // largest accessibility categories instead of capping growth while the
+  // label itself keeps growing. Normal text remains at the original height.
+  const dynamicTypeExtra = Math.min(Math.max((fontScale - 1) * 24, 0), 40);
+  const tabBarHeight = 56 + tabBottomInset + dynamicTypeExtra;
+
   useEffect(() => {
     if (hasHydrated) startSession();
-  }, [hasHydrated]);
-
-  // Re-check the date when the app returns to the foreground, so leaving the
-  // app open across midnight still resets daily/monthly quests and streaks.
-  useEffect(() => {
-    const sub = AppState.addEventListener('change', (next) => {
-      if (next === 'active' && hasHydrated) startSession();
-    });
-    return () => sub.remove();
   }, [hasHydrated, startSession]);
 
-  // Detect level-up whenever xp changes
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'active' && hasHydrated) startSession();
+    });
+    return () => subscription.remove();
+  }, [hasHydrated, startSession]);
+
+  useEffect(() => {
+    if (!hasHydrated) return;
+
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const scheduleNextLocalDay = () => {
+      const now = new Date();
+      const nextDay = new Date(now);
+      // Run just after the next local midnight. This refreshes daily quests,
+      // counters and calendar data without remounting the tab navigator or
+      // discarding the user's current tab / in-progress screen state.
+      nextDay.setHours(24, 0, 1, 0);
+      const delay = Math.max(1000, nextDay.getTime() - now.getTime());
+      timer = setTimeout(() => {
+        startSession();
+        scheduleNextLocalDay();
+      }, delay);
+    };
+
+    scheduleNextLocalDay();
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [hasHydrated, startSession]);
+
   useEffect(() => {
     if (prevLevelRef.current === null) {
-      // First mount — just record current level, don't celebrate
       prevLevelRef.current = currentLevel;
       return;
     }
     if (currentLevel > prevLevelRef.current) {
-      setLevelUpData({
-        level: currentLevel,
-        title: getPlayerTitle(currentLevel),
-      });
+      setLevelUpData({ level: currentLevel, title: getPlayerTitle(currentLevel) });
       setLevelUpVisible(true);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
@@ -56,33 +80,29 @@ export default function TabLayout() {
   return (
     <>
       <Tabs
-        // Several screens intentionally memoize "current month/day" UI data.
-        // When startSession observes a date rollover after foregrounding, remount
-        // the screen subtree once so those mount-time calendars cannot remain
-        // stuck on yesterday / the previous month.
-        key={sessionDate || 'hydrating'}
         screenOptions={{
-          tabBarActiveTintColor: Colors.tabActive,
-          tabBarInactiveTintColor: Colors.tabInactive,
+          headerShown: false,
+          tabBarActiveTintColor: theme.colors.accentPrimary,
+          tabBarInactiveTintColor: theme.colors.textTertiary,
+          tabBarHideOnKeyboard: true,
           tabBarStyle: {
-            backgroundColor: Colors.tabBar,
-            borderTopWidth: 0,
-            shadowColor: Colors.shadow,
+            backgroundColor: theme.colors.canvasElevated,
+            borderTopWidth: StyleSheet.hairlineWidth,
+            borderTopColor: theme.colors.borderSubtle,
+            shadowColor: theme.colors.shadow,
             shadowOffset: { width: 0, height: -3 },
-            shadowOpacity: 0.08,
+            shadowOpacity: theme.mode === 'dark' ? 0.22 : 0.08,
             shadowRadius: 10,
             elevation: 12,
-            height: 68,
-            paddingBottom: 10,
-            paddingTop: 6,
+            height: tabBarHeight,
+            paddingBottom: tabBottomInset,
+            paddingTop: theme.space[2],
           },
+          tabBarItemStyle: { minHeight: theme.minTapTarget },
           tabBarLabelStyle: {
-            fontSize: 12,
-            fontWeight: '700',
+            fontSize: theme.type.caption1,
+            fontWeight: theme.weight.secondary,
           },
-          headerStyle: { backgroundColor: Colors.primaryDark },
-          headerTintColor: Colors.textWhite,
-          headerTitleStyle: { fontWeight: '800', fontSize: 18 },
         }}
       >
         <Tabs.Screen
@@ -101,23 +121,29 @@ export default function TabLayout() {
             tabBarIcon: ({ focused }) => (
               <View
                 style={{
-                  backgroundColor: focused ? Colors.primaryDark : Colors.primary,
+                  backgroundColor: focused
+                    ? theme.colors.accentPrimaryPressed
+                    : theme.colors.accentPrimary,
                   width: 52,
-                  height: 32,
-                  borderRadius: 16,
+                  height: 34,
+                  borderRadius: theme.radius.pill,
                   justifyContent: 'center',
                   alignItems: 'center',
-                  shadowColor: Colors.primary,
-                  shadowOffset: { width: 0, height: 3 },
-                  shadowOpacity: 0.45,
-                  shadowRadius: 6,
-                  elevation: 6,
+                  shadowColor: theme.colors.shadow,
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: focused ? 0.22 : 0.12,
+                  shadowRadius: 5,
+                  elevation: focused ? 5 : 2,
                 }}
               >
-                <Ionicons name={focused ? 'camera' : 'camera-outline'} size={20} color="#FFFFFF" />
+                <Ionicons
+                  name={focused ? 'camera' : 'camera-outline'}
+                  size={20}
+                  color={theme.colors.textOnAccent}
+                />
               </View>
             ),
-            tabBarActiveTintColor: Colors.primary,
+            tabBarActiveTintColor: theme.colors.accentPrimary,
           }}
         />
         <Tabs.Screen
@@ -134,7 +160,7 @@ export default function TabLayout() {
           options={{
             title: '記録',
             tabBarIcon: ({ color, focused, size }) => (
-              <Ionicons name={focused ? 'person' : 'person-outline'} size={size} color={color} />
+              <Ionicons name={focused ? 'journal' : 'journal-outline'} size={size} color={color} />
             ),
           }}
         />

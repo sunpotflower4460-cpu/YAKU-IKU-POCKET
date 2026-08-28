@@ -1,16 +1,16 @@
 export const PLAYER_TITLES = [
-  { minLevel: 1,  label: '見習いハーバリスト 🌱' },
-  { minLevel: 3,  label: 'ハーブ採取師 🌿' },
-  { minLevel: 5,  label: '野草マスター 🍃' },
-  { minLevel: 8,  label: '薬草鑑定士 🔬' },
-  { minLevel: 12, label: '養生の達人 🏆' },
-  { minLevel: 20, label: '伝説の薬育師 ⭐' },
+  { minLevel: 1, label: 'はじめの観察者' },
+  { minLevel: 3, label: '野の観察者' },
+  { minLevel: 5, label: '季節の記録者' },
+  { minLevel: 8, label: '植物の探求者' },
+  { minLevel: 12, label: 'フィールドナチュラリスト' },
+  { minLevel: 20, label: '薬育の案内人' },
 ];
 
 export function getPlayerTitle(level: number): string {
   let title = PLAYER_TITLES[0].label;
-  for (const t of PLAYER_TITLES) {
-    if (level >= t.minLevel) title = t.label;
+  for (const candidate of PLAYER_TITLES) {
+    if (level >= candidate.minLevel) title = candidate.label;
   }
   return title;
 }

@@ -50,7 +50,9 @@ export const lightColors: AppColors = {
 
   textPrimary: '#16241A',
   textSecondary: '#4B6350',
-  textTertiary: '#6E8874',
+  // Dark enough to remain >= 4.5:1 even on surfaceTertiary while preserving
+  // a clear visual step below textSecondary.
+  textTertiary: '#58705C',
   textOnAccent: '#FFFFFF',
 
   borderSubtle: '#DCE8DC',

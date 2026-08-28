@@ -1,24 +1,23 @@
-/**
- * ShareCard.tsx
- *
- * A visually rich achievement card that is rendered inside a Modal.
- * The user can preview it and then share a formatted text card via
- * the native Share sheet (no native image-capture modules required).
- */
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  Modal,
-  Pressable,
-  Share,
+  AccessibilityInfo,
   Alert,
+  findNodeHandle,
+  Modal,
+  Platform,
+  Pressable,
   ScrollView,
+  Share,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '../constants/colors';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTheme } from '../theme/ThemeProvider';
+import { useReduceMotion } from '../utils/reduceMotion';
 
 interface Achievement {
   icon: string;
@@ -29,7 +28,7 @@ interface ShareCardProps {
   visible: boolean;
   onClose: () => void;
   playerName: string;
-  title: string;       // player title / 称号
+  title: string;
   level: number;
   xp: number;
   discoveredCount: number;
@@ -40,175 +39,294 @@ interface ShareCardProps {
   seasonIcon: string;
 }
 
-/** Build the ASCII-art style text card that gets shared. */
+type WebFocusable = {
+  focus?: () => void;
+  isConnected?: boolean;
+};
+
+type WebDocumentLike = {
+  activeElement?: WebFocusable | null;
+  body?: WebFocusable | null;
+};
+
+function getWebDocument(): WebDocumentLike | undefined {
+  return (globalThis as unknown as { document?: WebDocumentLike }).document;
+}
+
 function buildShareText(props: Omit<ShareCardProps, 'visible' | 'onClose'>): string {
   const {
-    playerName, title, level, xp,
-    discoveredCount, totalCount, streak,
-    unlockedAchievements, season,
+    playerName,
+    title,
+    level,
+    xp,
+    discoveredCount,
+    totalCount,
+    streak,
+    unlockedAchievements,
+    season,
   } = props;
+  const pct = totalCount > 0 ? Math.round(Math.min(discoveredCount / totalCount, 1) * 100) : 0;
+  const achievements = unlockedAchievements.slice(0, 3).map((achievement) => achievement.label);
 
-  const pct = Math.round((discoveredCount / totalCount) * 100);
-  const bar = '█'.repeat(Math.round(pct / 10)) + '░'.repeat(10 - Math.round(pct / 10));
-
-  const achieveLines = unlockedAchievements
-    .slice(0, 5)
-    .map((a) => `  [${a.label}]`)
-    .join('\n');
-
-  const streakLine = streak >= 2 ? `${streak}日連続ログイン！\n` : '';
-
-  return (
-    `╔══════════════════════════╗\n` +
-    `║  薬育ポケット 実績カード  ║\n` +
-    `╠══════════════════════════╣\n` +
-    `║ プレイヤー: ${playerName}\n` +
-    `║ 称号: ${title}\n` +
-    `║ Lv.${level}  総XP: ${xp}\n` +
-    `╠══════════════════════════╣\n` +
-    `║ 図鑑: ${discoveredCount}/${totalCount}種 (${pct}%)\n` +
-    `║ [${bar}]\n` +
-    `║ 現在のシーズン: ${season}\n` +
-    (streakLine ? `║ ${streakLine}` : '') +
-    `╠══════════════════════════╣\n` +
-    (achieveLines ? `║ 解放済み実績:\n${achieveLines}\n` : '') +
-    `╚══════════════════════════╝\n` +
-    `\n#薬育ポケット #野草図鑑 #養生ライフ`
-  );
+  return [
+    '薬育ポケット｜観察サマリー',
+    '',
+    `${playerName} — ${title}`,
+    `🌿 植物の記録 ${discoveredCount}/${totalCount}種（${pct}%）`,
+    `📓 Level ${level} · ${xp.toLocaleString()} XP`,
+    `🍃 ${season}のフィールドノート`,
+    ...(streak >= 2 ? [`🗓️ ${streak}日連続で継続中`] : []),
+    ...(achievements.length > 0 ? [`🏷️ ${achievements.join(' / ')}`] : []),
+    '',
+    '#薬育ポケット #植物観察 #フィールドノート',
+  ].join('\n');
 }
 
 export function ShareCard(props: ShareCardProps) {
   const { visible, onClose, unlockedAchievements, ...rest } = props;
   const {
-    playerName, title, level, xp,
-    discoveredCount, totalCount, streak,
+    playerName,
+    title,
+    level,
+    xp,
+    discoveredCount,
+    totalCount,
+    streak,
     season,
+    seasonIcon,
   } = rest;
+  const theme = useTheme();
+  const reduceMotion = useReduceMotion();
+  const insets = useSafeAreaInsets();
+  const { width, fontScale } = useWindowDimensions();
+  const compactCard = width < 360 || fontScale >= 1.3;
+  const titleRef = useRef<React.ElementRef<typeof Text>>(null);
+  const closeButtonRef = useRef<React.ElementRef<typeof Pressable>>(null);
+  const previousWebFocusRef = useRef<WebFocusable | null>(null);
+  const wasVisibleRef = useRef(false);
+  const pct = totalCount > 0 ? Math.min(discoveredCount / totalCount, 1) : 0;
+  const spokenSummary = [
+    `${playerName}の観察サマリー`,
+    `称号 ${title}`,
+    `植物の記録 ${discoveredCount}/${totalCount}種類`,
+    `レベル${level}`,
+    `${xp.toLocaleString()}XP`,
+    `${season}のフィールドノート`,
+    ...(streak >= 2 ? [`${streak}日継続`] : []),
+  ].join('。');
 
-  const pct = totalCount > 0 ? discoveredCount / totalCount : 0;
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+
+    if (visible && !wasVisibleRef.current) {
+      if (Platform.OS === 'web') {
+        const doc = getWebDocument();
+        const active = doc?.activeElement;
+        if (active && active !== doc?.body) previousWebFocusRef.current = active;
+
+        timer = setTimeout(() => {
+          const target = closeButtonRef.current as unknown as WebFocusable | null;
+          target?.focus?.();
+        }, 0);
+      } else {
+        timer = setTimeout(() => {
+          const node = findNodeHandle(titleRef.current);
+          if (node) AccessibilityInfo.setAccessibilityFocus(node);
+        }, reduceMotion ? 70 : 260);
+      }
+    } else if (!visible && wasVisibleRef.current && Platform.OS === 'web') {
+      const target = previousWebFocusRef.current;
+      previousWebFocusRef.current = null;
+      timer = setTimeout(() => {
+        if (target?.isConnected !== false) target?.focus?.();
+      }, 0);
+    }
+
+    wasVisibleRef.current = visible;
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [visible, reduceMotion]);
 
   async function handleShare() {
-    const msg = buildShareText({ ...rest, unlockedAchievements });
+    const message = buildShareText({ ...rest, unlockedAchievements });
     try {
-      await Share.share({ message: msg });
-    } catch (e) {
-      console.error('Share failed:', e);
-      Alert.alert('シェアできませんでした');
+      await Share.share({ message });
+    } catch (error) {
+      console.error('Share failed:', error);
+      Alert.alert('共有できませんでした', 'もう一度お試しください。');
     }
   }
 
   return (
     <Modal
       visible={visible}
-      animationType="slide"
+      animationType={reduceMotion ? 'none' : 'slide'}
       transparent
+      statusBarTranslucent
       onRequestClose={onClose}
     >
-      <View style={styles.overlay}>
-        <View style={styles.sheet}>
-          {/* Handle bar */}
-          <View style={styles.handle} />
+      <View style={[styles.overlay, { backgroundColor: theme.colors.overlay }]}>
+        <Pressable
+          style={StyleSheet.absoluteFill}
+          onPress={onClose}
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+        />
+        <View
+          style={[
+            styles.sheet,
+            {
+              backgroundColor: theme.colors.canvasElevated,
+              borderColor: theme.colors.borderSubtle,
+              paddingBottom: Math.max(insets.bottom, 16) + 8,
+              shadowColor: theme.colors.shadow,
+            },
+          ]}
+          accessibilityViewIsModal
+          onAccessibilityEscape={onClose}
+        >
+          <View style={[styles.handle, { backgroundColor: theme.colors.borderStrong }]} accessibilityElementsHidden />
 
-          <ScrollView showsVerticalScrollIndicator={false}>
-            {/* ── Card preview ── */}
-            <LinearGradient
-              colors={['#1B5E20', '#2E7D32', '#43A047']}
-              style={styles.card}
+          <View style={styles.sheetTitleRow}>
+            <View
+              style={[styles.sheetTitleIcon, { backgroundColor: theme.colors.surfaceSecondary }]}
+              accessibilityElementsHidden
+              importantForAccessibility="no-hide-descendants"
             >
-              {/* Header */}
-              <View style={styles.cardHeaderRow}>
-                <Ionicons name="leaf-outline" size={18} color="#A5D6A7" />
+              <Ionicons name="leaf-outline" size={20} color={theme.colors.accentPrimary} />
+            </View>
+            <View style={styles.sheetTitleText}>
+              <Text
+                ref={titleRef}
+                style={[styles.sheetTitle, { color: theme.colors.textPrimary }]}
+                accessibilityRole="header"
+                accessibilityLabel="観察サマリー"
+              >
+                観察サマリー
+              </Text>
+              <Text style={[styles.sheetSubtitle, { color: theme.colors.textTertiary }]}>
+                今までの記録を、ひとつのカードに
+              </Text>
+            </View>
+            <Pressable
+              ref={closeButtonRef}
+              style={({ pressed }) => [styles.iconClose, pressed && styles.pressed]}
+              onPress={onClose}
+              accessibilityRole="button"
+              accessibilityLabel="観察サマリーを閉じる"
+            >
+              <Ionicons name="close" size={22} color={theme.colors.textSecondary} />
+            </Pressable>
+          </View>
+
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.scrollContent}
+          >
+            <LinearGradient
+              colors={theme.mode === 'dark'
+                ? ['#0D2A19', '#17442A', '#1F5432']
+                : ['#174F2A', '#245C32', '#2B6436']}
+              style={styles.card}
+              accessible
+              accessibilityRole="summary"
+              accessibilityLabel={spokenSummary}
+            >
+              <View style={[styles.cardBrandRow, compactCard && styles.cardBrandRowCompact]}>
+                <View style={styles.brandMark} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+                  <Ionicons name="leaf" size={16} color="#E4F4E6" />
+                </View>
                 <Text style={styles.cardAppName}>薬育ポケット</Text>
+                <Text style={[styles.cardEyebrow, compactCard && styles.cardEyebrowCompact]}>FIELD NOTE</Text>
               </View>
-              <Text style={styles.cardSubtitle}>実績カード</Text>
 
-              {/* Divider */}
-              <View style={styles.divider} />
+              <View style={styles.cardIdentity}>
+                <Text style={styles.cardPlayerName} numberOfLines={2}>{playerName}</Text>
+                <Text style={styles.cardTitle}>{title}</Text>
+              </View>
 
-              {/* Player info */}
-              <Text style={styles.cardPlayerName}>{playerName}</Text>
-              <Text style={styles.cardTitle}>{title}</Text>
+              <View style={[styles.cardStatRow, compactCard && styles.cardStatRowStacked]}>
+                <CardStat value={`${discoveredCount}/${totalCount}`} label="植物の記録" compact={compactCard} />
+                <View style={[styles.cardStatDivider, compactCard && styles.cardStatDividerStacked]} />
+                <CardStat value={`Lv.${level}`} label="レベル" compact={compactCard} />
+                <View style={[styles.cardStatDivider, compactCard && styles.cardStatDividerStacked]} />
+                <CardStat value={xp.toLocaleString()} label="XP" compact={compactCard} />
+              </View>
 
-              <View style={styles.cardRow}>
-                <View style={styles.cardStat}>
-                  <Text style={styles.cardStatValue}>Lv.{level}</Text>
-                  <Text style={styles.cardStatLabel}>レベル</Text>
+              <View style={styles.progressBlock}>
+                <View style={styles.progressHeader}>
+                  <Text style={styles.progressLabel}>図鑑の記録</Text>
+                  <Text style={styles.progressPct}>{Math.round(pct * 100)}%</Text>
                 </View>
-                <View style={styles.cardStatDivider} />
-                <View style={styles.cardStat}>
-                  <Text style={styles.cardStatValue}>{xp.toLocaleString()}</Text>
-                  <Text style={styles.cardStatLabel}>総XP</Text>
-                </View>
-                <View style={styles.cardStatDivider} />
-                <View style={styles.cardStat}>
-                  <Text style={styles.cardStatValue}>{streak}</Text>
-                  <Text style={styles.cardStatLabel}>連続日数</Text>
+                <View style={styles.progressTrack}>
+                  <View style={[styles.progressFill, { width: `${pct * 100}%` }]} />
                 </View>
               </View>
 
-              {/* Divider */}
-              <View style={styles.divider} />
-
-              {/* Collection progress */}
-              <View style={styles.cardProgSection}>
-                <Ionicons name="book-outline" size={13} color="rgba(255,255,255,0.8)" />
-                <Text style={styles.cardProgLabel}>
-                  図鑑コレクション
-                </Text>
-                <Text style={styles.cardProgCount}>
-                  {discoveredCount} / {totalCount} 種
-                </Text>
-              </View>
-              <View style={styles.cardBarBg}>
-                <View style={[styles.cardBarFill, { width: `${pct * 100}%` }]} />
-              </View>
-              <Text style={styles.cardBarPct}>{Math.round(pct * 100)}% 達成</Text>
-
-              {/* Season */}
-              <View style={styles.cardSeasonRow}>
-                <Text style={styles.cardSeasonText}>
-                  {season}の養生シーズン
-                </Text>
+              <View style={[styles.seasonRow, compactCard && styles.seasonRowCompact]}>
+                <Ionicons
+                  name={seasonIcon as React.ComponentProps<typeof Ionicons>['name']}
+                  size={17}
+                  color="#CBE7CF"
+                />
+                <Text style={styles.seasonText}>{season}のフィールドノート</Text>
+                {streak >= 2 && (
+                  <View style={[styles.streakPill, compactCard && styles.streakPillCompact]}>
+                    <Ionicons name="calendar-outline" size={13} color="#E8F3E9" />
+                    <Text style={styles.streakText}>{streak}日継続</Text>
+                  </View>
+                )}
               </View>
 
-              {/* Achievements */}
               {unlockedAchievements.length > 0 && (
-                <>
-                  <View style={styles.divider} />
-                  <Text style={styles.cardAchieveTitle}>解放済み実績</Text>
-                  <View style={styles.cardAchieveRow}>
-                    {unlockedAchievements.slice(0, 6).map((a) => (
-                      <View key={a.label} style={styles.cardAchieveBadge}>
-                        <Ionicons name={a.icon as React.ComponentProps<typeof Ionicons>['name']} size={18} color="#A5D6A7" />
-                        <Text style={styles.cardAchieveLabel} numberOfLines={1}>
-                          {a.label}
-                        </Text>
+                <View style={styles.achievementBlock}>
+                  <Text style={styles.achievementTitle}>これまでの記録</Text>
+                  <View style={styles.achievementRow}>
+                    {unlockedAchievements.slice(0, 4).map((achievement) => (
+                      <View key={achievement.label} style={styles.achievementPill}>
+                        <Ionicons
+                          name={achievement.icon as React.ComponentProps<typeof Ionicons>['name']}
+                          size={14}
+                          color="#D4EBD7"
+                        />
+                        <Text style={styles.achievementLabel} numberOfLines={2}>{achievement.label}</Text>
                       </View>
                     ))}
                   </View>
-                </>
+                </View>
               )}
 
-              {/* Bar codes style dots */}
-              <View style={styles.divider} />
-              <Text style={styles.cardHashtags}>
-                #薬育ポケット  #野草図鑑  #養生ライフ
-              </Text>
+              <View style={styles.cardFooter}>
+                <View style={styles.cardFooterLine} />
+                <Text style={styles.cardFooterText}>自然を見るほど、世界は少し深くなる。</Text>
+              </View>
             </LinearGradient>
 
-            {/* Hint */}
-            <Text style={styles.hint}>
-              📸 スクリーンショットして投稿 / テキストでシェア
-            </Text>
+            <View style={[styles.shareNote, { backgroundColor: theme.colors.surfaceSecondary }]}>
+              <Ionicons name="information-circle-outline" size={17} color={theme.colors.textTertiary} />
+              <Text style={[styles.shareNoteText, { color: theme.colors.textSecondary }]}>
+                共有ボタンでは、読みやすいテキスト版の観察サマリーを送れます。カード画像として残したい場合はスクリーンショットも使えます。
+              </Text>
+            </View>
 
-            {/* Buttons */}
-            <Pressable style={styles.shareBtn} onPress={handleShare}>
-              <Ionicons name="share-social" size={20} color="#FFFFFF" />
-              <Text style={styles.shareBtnText}>テキストでシェア</Text>
+            <Pressable
+              style={({ pressed }) => [styles.shareBtn, { backgroundColor: theme.colors.accentPrimary }, pressed && styles.pressed]}
+              onPress={handleShare}
+              accessibilityRole="button"
+              accessibilityLabel="観察サマリーを共有"
+            >
+              <Ionicons name="share-outline" size={20} color={theme.colors.textOnAccent} />
+              <Text style={[styles.shareBtnText, { color: theme.colors.textOnAccent }]}>観察サマリーを共有</Text>
             </Pressable>
 
-            <Pressable style={styles.closeBtn} onPress={onClose}>
-              <Text style={styles.closeBtnText}>閉じる</Text>
+            <Pressable
+              style={({ pressed }) => [styles.closeBtn, { backgroundColor: theme.colors.surfaceSecondary, borderColor: theme.colors.borderSubtle }, pressed && styles.pressed]}
+              onPress={onClose}
+              accessibilityRole="button"
+              accessibilityLabel="閉じる"
+            >
+              <Text style={[styles.closeBtnText, { color: theme.colors.textSecondary }]}>閉じる</Text>
             </Pressable>
           </ScrollView>
         </View>
@@ -217,190 +335,79 @@ export function ShareCard(props: ShareCardProps) {
   );
 }
 
+function CardStat({ value, label, compact }: { value: string; label: string; compact: boolean }) {
+  return (
+    <View style={[styles.cardStat, compact && styles.cardStatStacked]}>
+      <Text style={styles.cardStatValue} numberOfLines={compact ? 2 : 1}>{value}</Text>
+      <Text style={styles.cardStatLabel}>{label}</Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
-  },
+  overlay: { flex: 1, justifyContent: 'flex-end' },
   sheet: {
-    backgroundColor: Colors.bg,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingHorizontal: 20,
-    paddingBottom: 40,
-    maxHeight: '92%',
+    maxHeight: '94%',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: 18,
+    shadowOffset: { width: 0, height: -6 },
+    shadowOpacity: 0.16,
+    shadowRadius: 18,
+    elevation: 20,
   },
-  handle: {
-    width: 40,
-    height: 4,
-    backgroundColor: '#BDBDBD',
-    borderRadius: 2,
-    alignSelf: 'center',
-    marginTop: 12,
-    marginBottom: 16,
-  },
-
-  // Card
-  card: {
-    borderRadius: 20,
-    padding: 20,
-    marginBottom: 14,
-  },
-  cardHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    marginBottom: 2,
-  },
-  cardAppName: {
-    fontSize: 18,
-    fontWeight: '900',
-    color: '#FFFFFF',
-    letterSpacing: 1,
-  },
-  cardSubtitle: {
-    fontSize: 11,
-    color: '#A5D6A7',
-    textAlign: 'center',
-    marginTop: 2,
-    fontWeight: '700',
-    letterSpacing: 3,
-    textTransform: 'uppercase',
-  },
-  divider: {
-    height: 1,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    marginVertical: 14,
-  },
-  cardPlayerName: {
-    fontSize: 22,
-    fontWeight: '900',
-    color: '#FFFFFF',
-    textAlign: 'center',
-  },
-  cardTitle: {
-    fontSize: 13,
-    color: '#FFD54F',
-    textAlign: 'center',
-    fontWeight: '700',
-    marginTop: 4,
-    marginBottom: 14,
-  },
-  cardRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-  },
-  cardStat: { alignItems: 'center' },
-  cardStatValue: { fontSize: 20, fontWeight: '900', color: '#FFFFFF' },
-  cardStatLabel: { fontSize: 12, color: '#A5D6A7', marginTop: 2, fontWeight: '600' },
-  cardStatDivider: {
-    width: 1,
-    height: 32,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-  },
-
-  // Progress
-  cardProgSection: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  cardProgLabel: { fontSize: 12, color: '#C8E6C9', fontWeight: '700' },
-  cardProgCount: { fontSize: 14, fontWeight: '900', color: '#FFFFFF' },
-  cardBarBg: {
-    height: 12,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    borderRadius: 6,
-    overflow: 'hidden',
-    marginBottom: 5,
-  },
-  cardBarFill: {
-    height: '100%',
-    backgroundColor: '#FFEB3B',
-    borderRadius: 6,
-  },
-  cardBarPct: {
-    fontSize: 11,
-    color: '#A5D6A7',
-    textAlign: 'right',
-    fontWeight: '700',
-  },
-
-  // Season
-  cardSeasonRow: {
-    marginTop: 12,
-    alignItems: 'center',
-  },
-  cardSeasonText: {
-    fontSize: 12,
-    color: '#C8E6C9',
-    fontWeight: '700',
-  },
-
-  // Achievements
-  cardAchieveTitle: {
-    fontSize: 11,
-    color: '#A5D6A7',
-    fontWeight: '800',
-    letterSpacing: 1,
-    marginBottom: 10,
-    textTransform: 'uppercase',
-  },
-  cardAchieveRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  cardAchieveBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    borderRadius: 10,
-    paddingHorizontal: 8,
-    paddingVertical: 5,
-  },
-  cardAchieveLabel: {
-    fontSize: 12,
-    color: '#E8F5E9',
-    fontWeight: '700',
-    maxWidth: 80,
-  },
-
-  cardHashtags: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.6)',
-    textAlign: 'center',
-    fontWeight: '600',
-  },
-
-  // Bottom UI
-  hint: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-    textAlign: 'center',
-    marginBottom: 14,
-  },
-  shareBtn: {
-    backgroundColor: Colors.primary,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 16,
-    borderRadius: 14,
-    marginBottom: 10,
-  },
-  shareBtnText: { color: '#FFFFFF', fontWeight: '800', fontSize: 15 },
-  closeBtn: {
-    paddingVertical: 14,
-    borderRadius: 14,
-    backgroundColor: '#EEEEEE',
-    alignItems: 'center',
-  },
-  closeBtnText: { color: Colors.textSecondary, fontWeight: '700', fontSize: 14 },
+  handle: { width: 38, height: 4, borderRadius: 2, alignSelf: 'center', marginTop: 10, marginBottom: 13 },
+  sheetTitleRow: { minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 },
+  sheetTitleIcon: { width: 40, height: 40, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
+  sheetTitleText: { flex: 1, minWidth: 0 },
+  sheetTitle: { fontSize: 18, lineHeight: 24, fontWeight: '800' },
+  sheetSubtitle: { fontSize: 12, lineHeight: 17, marginTop: 1 },
+  iconClose: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  scrollContent: { paddingBottom: 4 },
+  card: { borderRadius: 22, padding: 18, overflow: 'hidden' },
+  cardBrandRow: { flexDirection: 'row', alignItems: 'center' },
+  cardBrandRowCompact: { flexWrap: 'wrap', rowGap: 6 },
+  brandMark: { width: 30, height: 30, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.11)', alignItems: 'center', justifyContent: 'center', marginRight: 8 },
+  cardAppName: { fontSize: 14, lineHeight: 20, fontWeight: '800', color: '#FFFFFF' },
+  cardEyebrow: { marginLeft: 'auto', fontSize: 9, lineHeight: 12, fontWeight: '800', letterSpacing: 1.6, color: '#CBE7CF' },
+  cardEyebrowCompact: { width: '100%', marginLeft: 38 },
+  cardIdentity: { paddingVertical: 22, alignItems: 'center' },
+  cardPlayerName: { maxWidth: '100%', fontSize: 24, lineHeight: 31, fontWeight: '900', color: '#FFFFFF', textAlign: 'center' },
+  cardTitle: { fontSize: 13, lineHeight: 19, fontWeight: '700', color: '#CBE7CF', textAlign: 'center', marginTop: 4 },
+  cardStatRow: { minHeight: 70, flexDirection: 'row', alignItems: 'center', borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.22)' },
+  cardStatRowStacked: { flexDirection: 'column', alignItems: 'stretch', paddingVertical: 7 },
+  cardStat: { flex: 1, minWidth: 0, alignItems: 'center', paddingHorizontal: 3 },
+  cardStatStacked: { flex: 0, minHeight: 48, justifyContent: 'center', paddingVertical: 5 },
+  cardStatValue: { maxWidth: '100%', fontSize: 17, lineHeight: 23, fontWeight: '900', color: '#FFFFFF', textAlign: 'center' },
+  cardStatLabel: { fontSize: 10, lineHeight: 14, fontWeight: '600', color: '#CBE7CF', marginTop: 2, textAlign: 'center' },
+  cardStatDivider: { width: StyleSheet.hairlineWidth, height: 32, backgroundColor: 'rgba(255,255,255,0.22)' },
+  cardStatDividerStacked: { width: '100%', height: StyleSheet.hairlineWidth },
+  progressBlock: { marginTop: 17 },
+  progressHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 7 },
+  progressLabel: { fontSize: 12, lineHeight: 17, fontWeight: '700', color: '#CBE7CF' },
+  progressPct: { fontSize: 12, lineHeight: 17, fontWeight: '800', color: '#FFFFFF' },
+  progressTrack: { height: 7, borderRadius: 4, overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.18)' },
+  progressFill: { height: '100%', borderRadius: 4, backgroundColor: '#D9DD73' },
+  seasonRow: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 13 },
+  seasonRowCompact: { flexWrap: 'wrap', alignItems: 'flex-start' },
+  seasonText: { flex: 1, minWidth: 130, fontSize: 12, lineHeight: 17, fontWeight: '700', color: '#CBE7CF' },
+  streakPill: { minHeight: 28, flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.12)', paddingHorizontal: 9 },
+  streakPillCompact: { marginLeft: 24 },
+  streakText: { fontSize: 10, lineHeight: 14, fontWeight: '700', color: '#E8F3E9' },
+  achievementBlock: { marginTop: 12 },
+  achievementTitle: { fontSize: 11, lineHeight: 16, fontWeight: '800', color: '#CBE7CF', marginBottom: 8 },
+  achievementRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  achievementPill: { maxWidth: '100%', minHeight: 34, flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.11)', paddingHorizontal: 9, paddingVertical: 4 },
+  achievementLabel: { flexShrink: 1, fontSize: 10, lineHeight: 14, fontWeight: '700', color: '#E5F2E7' },
+  cardFooter: { marginTop: 17 },
+  cardFooterLine: { height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(255,255,255,0.22)', marginBottom: 12 },
+  cardFooterText: { fontSize: 11, lineHeight: 17, color: '#CBE7CF', textAlign: 'center' },
+  shareNote: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, borderRadius: 14, padding: 12, marginTop: 12, marginBottom: 12 },
+  shareNoteText: { flex: 1, fontSize: 12, lineHeight: 18 },
+  shareBtn: { minHeight: 54, borderRadius: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 10 },
+  shareBtnText: { fontSize: 15, lineHeight: 21, fontWeight: '800', textAlign: 'center' },
+  closeBtn: { minHeight: 48, borderRadius: 15, borderWidth: StyleSheet.hairlineWidth, alignItems: 'center', justifyContent: 'center', marginTop: 9, paddingVertical: 8 },
+  closeBtnText: { fontSize: 14, lineHeight: 20, fontWeight: '700' },
+  pressed: { opacity: 0.72 },
 });

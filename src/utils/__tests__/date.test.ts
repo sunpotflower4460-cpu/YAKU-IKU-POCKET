@@ -16,6 +16,11 @@ describe('date helpers (local / JST-aware)', () => {
     expect(localDayFromISO(iso)).toBe('2026-03-15');
   });
 
+  it('returns an empty day for invalid timestamps instead of NaN-shaped UI data', () => {
+    expect(toLocalDateStr(new Date('not-a-date'))).toBe('');
+    expect(localDayFromISO('not-a-date')).toBe('');
+  });
+
   it('todayLocalStr matches toLocalDateStr(now)', () => {
     expect(todayLocalStr()).toBe(toLocalDateStr(new Date()));
   });

@@ -1,5 +1,5 @@
 import { lightColors, darkColors } from '../colors';
-import { space, radius, type as typeScale, minTapTarget } from '../tokens';
+import { lineHeight, space, radius, type as typeScale, minTapTarget } from '../tokens';
 
 describe('theme tokens', () => {
   it('light and dark palettes define the same keys', () => {
@@ -32,5 +32,12 @@ describe('theme tokens', () => {
     expect(typeScale.display).toBeGreaterThan(typeScale.title1);
     expect(typeScale.title1).toBeGreaterThan(typeScale.body);
     expect(typeScale.body).toBeGreaterThan(typeScale.caption2);
+  });
+
+  it('pairs every type size with a usable semantic line height', () => {
+    expect(Object.keys(lineHeight).sort()).toEqual(Object.keys(typeScale).sort());
+    for (const variant of Object.keys(typeScale) as (keyof typeof typeScale)[]) {
+      expect(lineHeight[variant]).toBeGreaterThanOrEqual(typeScale[variant]);
+    }
   });
 });

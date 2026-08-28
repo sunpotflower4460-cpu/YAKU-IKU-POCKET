@@ -1,5 +1,7 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import {
+  AccessibilityInfo,
+  findNodeHandle,
   View,
   Text,
   StyleSheet,
@@ -8,7 +10,11 @@ import {
   Pressable,
   TextInput,
   Modal,
+  Platform,
+  ScrollView,
+  useWindowDimensions,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from '../../src/utils/haptics';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,12 +24,13 @@ import { hasDangerousLookalike } from '../../src/data/safety';
 import { useGameStore } from '../../src/store/useGameStore';
 import { PlantCard } from '../../src/components/PlantCard';
 import { RarityStars } from '../../src/components/RarityStars';
-import { DangerBadge, DANGER_LABEL, DANGER_DOT_COLOR } from '../../src/components/DangerBadge';
+import { DangerBadge, DANGER_LABEL } from '../../src/components/DangerBadge';
 import { DisclaimerBanner } from '../../src/components/DisclaimerBanner';
-import { Colors } from '../../src/constants/colors';
+import { useTheme } from '../../src/theme/ThemeProvider';
 import { DangerLevel, Plant, PlantCategory } from '../../src/types';
 import { getCurrentSeason, SEASON_CONFIG, isPlantInSeason } from '../../src/utils/season';
 import { normalizeForSearch } from '../../src/utils/kana';
+import { useReduceMotion } from '../../src/utils/reduceMotion';
 
 type FilterDiscovered = 'all' | 'discovered' | 'undiscovered' | 'favorites' | 'noted';
 type FilterDanger = 'all' | DangerLevel;
@@ -33,6 +40,20 @@ type SortRarity = 'none' | 'desc' | 'asc';
 type FilterRarity = 'all' | '3up' | '4up' | '5only';
 type ViewMode = 'grid' | 'list' | 'family';
 
+type WebFocusable = {
+  focus?: () => void;
+  isConnected?: boolean;
+};
+
+type WebDocumentLike = {
+  activeElement?: WebFocusable | null;
+  body?: WebFocusable | null;
+};
+
+function getWebDocument(): WebDocumentLike | undefined {
+  return (globalThis as unknown as { document?: WebDocumentLike }).document;
+}
+
 /** Every family present in the dataset, sorted — powers the "科で探す" filter (§7.6). */
 const FAMILY_OPTIONS: string[] = Array.from(
   new Set(PLANT_DEFINITIONS.map((d) => d.taxonomy.family).filter((f): f is string => !!f))
@@ -40,16 +61,29 @@ const FAMILY_OPTIONS: string[] = Array.from(
 
 export default function ZukanScreen() {
   const router = useRouter();
+  const theme = useTheme();
+  const insets = useSafeAreaInsets();
+  const reduceMotion = useReduceMotion();
+  const { width, fontScale } = useWindowDimensions();
   const { filterEffect: initialFilterEffect } = useLocalSearchParams<{ filterEffect?: string }>();
   const { discoveredPlantIds, scanHistory, favoritePlantIds, toggleFavorite, plantNotes } = useGameStore();
 
-  // plantId → 最新スキャンの imageUri マップ（scanHistory は新しい順）
+  const gridColumns =
+    fontScale >= 1.6 || (width < 360 && fontScale >= 1.3)
+      ? 1
+      : fontScale >= 1.3
+        ? 2
+        : width >= 900
+          ? 4
+          : width >= 540
+            ? 3
+            : 2;
+  const gridItemWidth = Math.max(0, (width - 24) / gridColumns);
+
   const imageUriMap = useMemo(() => {
     const map: Record<string, string> = {};
     for (const record of scanHistory) {
-      if (record.imageUri && !map[record.plantId]) {
-        map[record.plantId] = record.imageUri;
-      }
+      if (record.imageUri && !map[record.plantId]) map[record.plantId] = record.imageUri;
     }
     return map;
   }, [scanHistory]);
@@ -57,12 +91,10 @@ export default function ZukanScreen() {
   const [hintPlant, setHintPlant] = useState<Plant | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [statsOpen, setStatsOpen] = useState(false);
-
   const [search, setSearch] = useState('');
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
-  const [filterDiscovered, setFilterDiscovered] =
-    useState<FilterDiscovered>('all');
+  const [filterDiscovered, setFilterDiscovered] = useState<FilterDiscovered>('all');
   const [filterDanger, setFilterDanger] = useState<FilterDanger>('all');
   const [filterCategory, setFilterCategory] = useState<FilterCategory>('all');
   const [filterSeason, setFilterSeason] = useState<FilterSeason>('all');
@@ -72,14 +104,48 @@ export default function ZukanScreen() {
   const [filterRarity, setFilterRarity] = useState<FilterRarity>('all');
   const decodedInitialEffect = initialFilterEffect ? decodeURIComponent(initialFilterEffect) : null;
   const [filterEffect, setFilterEffect] = useState<string | null>(decodedInitialEffect);
-  // Track which URL param value the user has already seen, so we only apply new ones
   const appliedEffectParam = useRef<string | undefined>(initialFilterEffect);
+  const hintTitleRef = useRef<React.ElementRef<typeof Text>>(null);
+  const hintCloseButtonRef = useRef<React.ElementRef<typeof Pressable>>(null);
+  const previousWebFocusRef = useRef<WebFocusable | null>(null);
+  const hintWasVisibleRef = useRef(false);
 
-  // Apply effect filter when URL param changes to a new value (e.g., deep-link from plant detail)
-  if (initialFilterEffect && initialFilterEffect !== appliedEffectParam.current) {
-    appliedEffectParam.current = initialFilterEffect;
-    setFilterEffect(decodeURIComponent(initialFilterEffect));
-  }
+  useEffect(() => {
+    if (initialFilterEffect && initialFilterEffect !== appliedEffectParam.current) {
+      appliedEffectParam.current = initialFilterEffect;
+      setFilterEffect(decodeURIComponent(initialFilterEffect));
+    }
+  }, [initialFilterEffect]);
+
+  useEffect(() => {
+    const visible = hintPlant !== null;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+
+    if (visible && !hintWasVisibleRef.current) {
+      if (Platform.OS === 'web') {
+        timer = setTimeout(() => {
+          const target = hintCloseButtonRef.current as unknown as WebFocusable | null;
+          target?.focus?.();
+        }, 0);
+      } else {
+        timer = setTimeout(() => {
+          const node = findNodeHandle(hintTitleRef.current);
+          if (node) AccessibilityInfo.setAccessibilityFocus(node);
+        }, reduceMotion ? 70 : 320);
+      }
+    } else if (!visible && hintWasVisibleRef.current && Platform.OS === 'web') {
+      const target = previousWebFocusRef.current;
+      previousWebFocusRef.current = null;
+      timer = setTimeout(() => {
+        if (target?.isConnected !== false) target?.focus?.();
+      }, 0);
+    }
+
+    hintWasVisibleRef.current = visible;
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [hintPlant, reduceMotion]);
 
   const activeFilterCount = [
     filterDiscovered !== 'all',
@@ -92,6 +158,7 @@ export default function ZukanScreen() {
     filterRarity !== 'all',
     filterEffect !== null,
   ].filter(Boolean).length;
+  const hasActiveDiscoveryQuery = search.trim().length > 0 || activeFilterCount > 0;
 
   function resetFilters() {
     setFilterDiscovered('all');
@@ -106,14 +173,40 @@ export default function ZukanScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
   }
 
+  function resetSearchAndFilters() {
+    setSearch('');
+    resetFilters();
+  }
+
   function commitSearch(q: string) {
     const trimmed = q.trim();
     if (!trimmed) return;
     setRecentSearches((prev) => [trimmed, ...prev.filter((s) => s !== trimmed)].slice(0, 5));
   }
 
+  function openHint(item: Plant) {
+    if (Platform.OS === 'web') {
+      const doc = getWebDocument();
+      const active = doc?.activeElement;
+      if (active && active !== doc?.body) previousWebFocusRef.current = active;
+    }
+    setHintPlant(item);
+  }
+
+  function closeHint() {
+    setHintPlant(null);
+  }
+
   const currentSeason = getCurrentSeason();
   const seasonCfg = SEASON_CONFIG[currentSeason];
+  const seasonAccent = theme.mode === 'dark' ? theme.colors.accentPrimary : seasonCfg.color;
+  const rarityColors = [
+    theme.colors.rarityCommon,
+    theme.colors.rarityUncommon,
+    theme.colors.rarityRare,
+    theme.colors.rarityEpic,
+    theme.colors.rarityLegendary,
+  ];
 
   const filtered = useMemo(() => {
     let result = PLANTS.filter((plant) => {
@@ -126,22 +219,15 @@ export default function ZukanScreen() {
       if (filterDiscovered === 'favorites' && !isFav) return false;
       if (filterDiscovered === 'noted' && !hasNote) return false;
       if (filterDanger !== 'all' && plant.danger !== filterDanger) return false;
-      if (filterCategory !== 'all' && plant.category !== filterCategory)
-        return false;
-      if (filterSeason === 'current' && !isPlantInSeason(plant.season, currentSeason))
-        return false;
+      if (filterCategory !== 'all' && plant.category !== filterCategory) return false;
+      if (filterSeason === 'current' && !isPlantInSeason(plant.season, currentSeason)) return false;
       if (filterRarity === '3up' && plant.rarity < 3) return false;
       if (filterRarity === '4up' && plant.rarity < 4) return false;
       if (filterRarity === '5only' && plant.rarity !== 5) return false;
       if (filterEffect && !plant.effects.includes(filterEffect)) return false;
-      if (filterFamily !== 'all' && getPlantDefinitionById(plant.id)?.taxonomy.family !== filterFamily)
-        return false;
+      if (filterFamily !== 'all' && getPlantDefinitionById(plant.id)?.taxonomy.family !== filterFamily) return false;
       if (onlyLookalikeRisk && !hasDangerousLookalike(plant.id)) return false;
 
-      // Search: undiscovered plants have hidden ("???") names, so a search query
-      // can only match discovered plants. Hide undiscovered cards while searching
-      // so the grid actually narrows to matches. Kana-normalized so hiragana
-      // input matches katakana names and vice versa (§7.6).
       if (search) {
         if (!isDiscovered) return false;
         const q = normalizeForSearch(search);
@@ -149,19 +235,13 @@ export default function ZukanScreen() {
           !normalizeForSearch(plant.name).includes(q) &&
           !normalizeForSearch(plant.nameEn).includes(q) &&
           !normalizeForSearch(plant.nameLatin).includes(q)
-        )
-          return false;
+        ) return false;
       }
-
       return true;
     });
 
-    if (sortRarity === 'desc') {
-      result = [...result].sort((a, b) => b.rarity - a.rarity);
-    } else if (sortRarity === 'asc') {
-      result = [...result].sort((a, b) => a.rarity - b.rarity);
-    }
-
+    if (sortRarity === 'desc') result = [...result].sort((a, b) => b.rarity - a.rarity);
+    else if (sortRarity === 'asc') result = [...result].sort((a, b) => a.rarity - b.rarity);
     return result;
   }, [
     discoveredPlantIds, favoritePlantIds, plantNotes, filterDiscovered, filterDanger,
@@ -169,9 +249,6 @@ export default function ZukanScreen() {
     filterRarity, filterEffect, search, currentSeason,
   ]);
 
-  // Grouped by family for the "科でまとめる" view (§7.6). Sections follow
-  // FAMILY_OPTIONS order; plants without a resolved family are omitted from
-  // this view (none currently, since PR11 populates family for all 50).
   const familySections = useMemo(() => {
     if (viewMode !== 'family') return [];
     const byFamily = new Map<string, Plant[]>();
@@ -186,1040 +263,377 @@ export default function ZukanScreen() {
   }, [filtered, viewMode]);
 
   const discoveredCount = discoveredPlantIds.length;
-
-  // Stats for dashboard
-  const statsGreen  = PLANTS.filter(p => p.danger === 'GREEN'  && discoveredPlantIds.includes(p.id)).length;
-  const statsYellow = PLANTS.filter(p => p.danger === 'YELLOW' && discoveredPlantIds.includes(p.id)).length;
-  const statsRed    = PLANTS.filter(p => p.danger === 'RED'    && discoveredPlantIds.includes(p.id)).length;
-  const statsWild   = PLANTS.filter(p => p.category === '野草' && discoveredPlantIds.includes(p.id)).length;
-  const statsHerb   = PLANTS.filter(p => p.category === 'スパイス・ハーブ' && discoveredPlantIds.includes(p.id)).length;
+  const statsGreen = PLANTS.filter((p) => p.danger === 'GREEN' && discoveredPlantIds.includes(p.id)).length;
+  const statsYellow = PLANTS.filter((p) => p.danger === 'YELLOW' && discoveredPlantIds.includes(p.id)).length;
+  const statsRed = PLANTS.filter((p) => p.danger === 'RED' && discoveredPlantIds.includes(p.id)).length;
+  const statsWild = PLANTS.filter((p) => p.category === '野草' && discoveredPlantIds.includes(p.id)).length;
+  const statsHerb = PLANTS.filter((p) => p.category === 'スパイス・ハーブ' && discoveredPlantIds.includes(p.id)).length;
 
   function handlePlantPress(item: Plant) {
-    if (discoveredPlantIds.includes(item.id)) {
-      router.push(`/plant/${item.id}`);
-    } else {
+    if (discoveredPlantIds.includes(item.id)) router.push(`/plant/${item.id}`);
+    else {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      setHintPlant(item);
+      openHint(item);
     }
   }
 
   return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
+    <View style={[styles.container, { backgroundColor: theme.colors.canvas }]}>
+      <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
         <View style={styles.headerTitleRow}>
-          <Ionicons name="leaf-outline" size={20} color="#FFFFFF" />
-          <Text style={styles.headerTitle}>薬草図鑑</Text>
+          <Ionicons name="leaf-outline" size={20} color="#FFFFFF" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" />
+          <Text style={styles.headerTitle}>観察図鑑</Text>
         </View>
-        <Text style={styles.headerSub}>
-          {discoveredCount}/{PLANTS.length} 種類発見
-        </Text>
+        <Text style={styles.headerSub}>{discoveredCount}/{PLANTS.length} 種類を記録</Text>
 
-        {/* Rarity completion bars */}
         <View style={styles.rarityRow}>
           {([1, 2, 3, 4, 5] as const).map((rarity) => {
-            const rarityColor = [Colors.rarity1, Colors.rarity2, Colors.rarity3, Colors.rarity4, Colors.rarity5][rarity - 1];
+            const rarityColor = rarityColors[rarity - 1];
             const total = PLANTS.filter((p) => p.rarity === rarity).length;
-            const found = PLANTS.filter(
-              (p) => p.rarity === rarity && discoveredPlantIds.includes(p.id)
-            ).length;
+            const found = PLANTS.filter((p) => p.rarity === rarity && discoveredPlantIds.includes(p.id)).length;
             const pct = total > 0 ? found / total : 0;
             return (
-              <View key={rarity} style={styles.rarityItem}>
-                <View style={styles.rarityStarsRow}>
-                  {Array.from({ length: rarity }, (_, i) => (
-                    <Ionicons key={i} name="star" size={9} color={rarityColor} />
-                  ))}
+              <View key={rarity} style={styles.rarityItem} accessible accessibilityRole="text" accessibilityLabel={`珍しさ5段階中${rarity}、${total}種類中${found}種類を記録`}>
+                <View style={styles.rarityStarsRow} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+                  {Array.from({ length: rarity }, (_, i) => <Ionicons key={i} name="star" size={9} color={rarityColor} />)}
                 </View>
-                <View style={styles.rarityMiniBar}>
-                  <View
-                    style={[
-                      styles.rarityMiniFill,
-                      { width: `${pct * 100}%`, backgroundColor: rarityColor },
-                    ]}
-                  />
+                <View style={styles.rarityMiniBar} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+                  <View style={[styles.rarityMiniFill, { width: `${pct * 100}%`, backgroundColor: rarityColor }]} />
                 </View>
-                <Text style={styles.rarityCount}>{found}/{total}</Text>
+                <Text maxFontSizeMultiplier={1.5} style={styles.rarityCount} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">{found}/{total}</Text>
               </View>
             );
           })}
         </View>
 
-        {/* Search — ひらがな/カタカナ/英名/学名すべてに対応（§7.6） */}
         <View style={styles.searchBox}>
-          <Ionicons name="search-outline" size={16} color={Colors.textMuted} />
+          <Ionicons name="search-outline" size={18} color="rgba(255,255,255,0.84)" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" />
           <TextInput
             style={styles.searchInput}
-            placeholder="発見済みの植物を検索（和名・英名・学名）..."
-            placeholderTextColor={Colors.textMuted}
+            placeholder="記録済みの植物を検索"
+            placeholderTextColor="rgba(255,255,255,0.78)"
             value={search}
             onChangeText={setSearch}
             onSubmitEditing={() => commitSearch(search)}
             returnKeyType="search"
+            accessibilityLabel="記録済みの植物を検索。和名、英名、学名に対応"
           />
           {search.length > 0 && (
-            <Pressable
-              onPress={() => setSearch('')}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              accessibilityRole="button"
-              accessibilityLabel="検索文字をクリア"
-            >
-              <Ionicons name="close-circle" size={16} color={Colors.textMuted} />
+            <Pressable style={({ pressed }) => [styles.searchClearBtn, pressed && styles.headerPressed]} onPress={() => setSearch('')} accessibilityRole="button" accessibilityLabel="検索文字をクリア">
+              <Ionicons name="close" size={18} color="#FFFFFF" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" />
             </Pressable>
           )}
         </View>
 
-        {/* Recent searches — session-local (§7.6 "最近の検索") */}
         {search.length === 0 && recentSearches.length > 0 && (
           <View style={styles.recentSearchRow}>
-            <Ionicons name="time-outline" size={12} color="rgba(255,255,255,0.7)" />
+            <Ionicons name="time-outline" size={13} color="rgba(255,255,255,0.84)" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" />
             {recentSearches.map((q) => (
-              <Pressable
-                key={q}
-                style={styles.recentSearchChip}
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  setSearch(q);
-                }}
-              >
-                <Text style={styles.recentSearchChipText} numberOfLines={1}>
-                  {q}
-                </Text>
+              <Pressable key={q} style={({ pressed }) => [styles.recentSearchChip, pressed && styles.headerPressed]} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setSearch(q); }} accessibilityRole="button" accessibilityLabel={`最近の検索 ${q}`}>
+                <Text style={styles.recentSearchChipText} numberOfLines={2}>{q}</Text>
               </Pressable>
             ))}
           </View>
         )}
       </View>
 
-      {/* Statistics Dashboard */}
-      <View style={styles.statsContainer}>
-        <Pressable
-          style={styles.statsToggleRow}
-          onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            setStatsOpen(v => !v);
-          }}
-        >
-          <Ionicons name={statsOpen ? 'chevron-up' : 'chevron-down'} size={12} color={Colors.primaryDark} />
-          <Ionicons name="stats-chart-outline" size={14} color={Colors.primaryDark} />
-          <Text style={styles.statsToggleText}>コレクション統計</Text>
+      <View style={[styles.statsContainer, { backgroundColor: theme.colors.surfacePrimary, borderBottomColor: theme.colors.borderSubtle }]}>
+        <Pressable style={({ pressed }) => [styles.statsToggleRow, pressed && styles.rowPressed]} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setStatsOpen((v) => !v); }} accessibilityRole="button" accessibilityLabel="観察の内訳" accessibilityState={{ expanded: statsOpen }}>
+          <Ionicons name="stats-chart-outline" size={17} color={theme.colors.accentPrimary} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" />
+          <Text style={[styles.statsToggleText, { color: theme.colors.textPrimary }]}>観察の内訳</Text>
+          <Ionicons name={statsOpen ? 'chevron-up' : 'chevron-down'} size={16} color={theme.colors.textTertiary} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" />
         </Pressable>
         {statsOpen && (
           <View style={styles.statsGrid}>
-            <StatMini label="一般食用" value={`${statsGreen}`} color={Colors.dangerGreen} dotColor={DANGER_DOT_COLOR.GREEN} />
-            <StatMini label="要注意" value={`${statsYellow}`} color={Colors.dangerYellow} dotColor={DANGER_DOT_COLOR.YELLOW} />
-            <StatMini label="危険"   value={`${statsRed}`}    color={Colors.dangerRed} dotColor={DANGER_DOT_COLOR.RED} />
-            <StatMini label="野草"     value={`${statsWild}/${PLANTS.filter(p => p.category === '野草').length}`} color={Colors.primary} />
-            <StatMini label="ハーブ"   value={`${statsHerb}/${PLANTS.filter(p => p.category === 'スパイス・ハーブ').length}`} color="#FF8F00" />
-            {([1,2,3,4,5] as const).map(r => {
-              const total = PLANTS.filter(p => p.rarity === r).length;
-              const found = PLANTS.filter(p => p.rarity === r && discoveredPlantIds.includes(p.id)).length;
-              const col = [Colors.rarity1,Colors.rarity2,Colors.rarity3,Colors.rarity4,Colors.rarity5][r-1];
-              return <StatMini key={r} label={`★${r}`} value={`${found}/${total}`} color={col} />;
+            <StatMini label="一般食用区分" value={`${statsGreen}`} color={theme.colors.statusObserved} />
+            <StatMini label="要注意" value={`${statsYellow}`} color={theme.colors.statusCaution} />
+            <StatMini label="危険" value={`${statsRed}`} color={theme.colors.statusDanger} />
+            <StatMini label="野草" value={`${statsWild}/${PLANTS.filter((p) => p.category === '野草').length}`} color={theme.colors.accentPrimary} />
+            <StatMini label="ハーブ" value={`${statsHerb}/${PLANTS.filter((p) => p.category === 'スパイス・ハーブ').length}`} color={theme.colors.rarityLegendary} />
+            {([1, 2, 3, 4, 5] as const).map((r) => {
+              const total = PLANTS.filter((p) => p.rarity === r).length;
+              const found = PLANTS.filter((p) => p.rarity === r && discoveredPlantIds.includes(p.id)).length;
+              return <StatMini key={r} label={`珍しさ ${r}`} value={`${found}/${total}`} color={rarityColors[r - 1]} />;
             })}
           </View>
         )}
       </View>
 
-      {/* Filters */}
-      <View style={styles.filtersContainer}>
-        {/* Toggle row */}
+      <View style={[styles.filtersContainer, { backgroundColor: theme.colors.surfacePrimary, borderBottomColor: theme.colors.borderSubtle }]}>
         <View style={styles.filterToggleRow}>
-          <Pressable
-            style={styles.filterToggleBtn}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              setFiltersOpen((v) => !v);
-            }}
-          >
-            <View style={styles.filterToggleBtnInner}>
-              <Ionicons name={filtersOpen ? 'chevron-up' : 'chevron-down'} size={14} color={Colors.primaryDark} />
-              <Ionicons name="options-outline" size={14} color={Colors.primaryDark} />
-              <Text style={styles.filterToggleText}>フィルター</Text>
-            </View>
-            {activeFilterCount > 0 && (
-              <View style={styles.filterBadge}>
-                <Text style={styles.filterBadgeText}>{activeFilterCount}</Text>
-              </View>
-            )}
+          <Pressable style={({ pressed }) => [styles.filterToggleBtn, pressed && styles.rowPressed]} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setFiltersOpen((v) => !v); }} accessibilityRole="button" accessibilityLabel="フィルター" accessibilityState={{ expanded: filtersOpen }}>
+            <Ionicons name="options-outline" size={17} color={theme.colors.accentPrimary} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" />
+            <Text style={[styles.filterToggleText, { color: theme.colors.textPrimary }]}>フィルター</Text>
+            {activeFilterCount > 0 && <View style={[styles.filterBadge, { backgroundColor: theme.colors.accentPrimary }]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants"><Text style={[styles.filterBadgeText, { color: theme.colors.textOnAccent }]}>{activeFilterCount}</Text></View>}
+            <Ionicons name={filtersOpen ? 'chevron-up' : 'chevron-down'} size={16} color={theme.colors.textTertiary} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" />
           </Pressable>
           {activeFilterCount > 0 && (
-            <Pressable style={styles.filterResetBtn} onPress={resetFilters}>
-              <Text style={styles.filterResetText}>リセット</Text>
+            <Pressable style={({ pressed }) => [styles.filterResetBtn, { backgroundColor: theme.colors.surfaceSecondary, borderColor: theme.colors.borderSubtle }, pressed && styles.rowPressed]} onPress={resetFilters} accessibilityRole="button" accessibilityLabel="すべてのフィルターをリセット">
+              <Text style={[styles.filterResetText, { color: theme.colors.textSecondary }]}>リセット</Text>
             </Pressable>
           )}
         </View>
 
-        {/* Collapsible filter rows */}
         {filtersOpen && (
-          <>
-        {/* Discovery filter */}
-        <FilterRow label="状態">
-          {(
-            [
-              ['all', 'すべて'],
-              ['discovered', '発見済み'],
-              ['undiscovered', '未発見'],
-              ['favorites', '❤️ お気に入り'],
-              ['noted', '✏️ メモあり'],
-            ] as [FilterDiscovered, string][]
-          ).map(([val, label]) => (
-            <FilterChip
-              key={val}
-              label={label}
-              active={filterDiscovered === val}
-              onPress={() => setFilterDiscovered(val)}
-              activeColor={val === 'favorites' ? '#E91E63' : val === 'noted' ? '#795548' : Colors.primary}
-            />
-          ))}
-        </FilterRow>
-
-        <FilterRow label="危険度">
-          {(
-            [
-              ['all', 'すべて'],
-              ['GREEN', '安全'],
-              ['YELLOW', '注意'],
-              ['RED', '危険'],
-            ] as [FilterDanger, string][]
-          ).map(([val, label]) => (
-            <FilterChip
-              key={val}
-              label={label}
-              active={filterDanger === val}
-              onPress={() => setFilterDanger(val)}
-              activeColor={
-                val === 'RED'
-                  ? Colors.dangerRed
-                  : val === 'YELLOW'
-                  ? Colors.dangerYellow
-                  : Colors.dangerGreen
-              }
-            />
-          ))}
-        </FilterRow>
-
-        <FilterRow label="種類">
-          {(
-            [
-              ['all', 'すべて'],
-              ['野草', '野草'],
-              ['スパイス・ハーブ', 'ハーブ'],
-            ] as [FilterCategory, string][]
-          ).map(([val, label]) => (
-            <FilterChip
-              key={val}
-              label={label}
-              active={filterCategory === val}
-              onPress={() => setFilterCategory(val)}
-              activeColor="#FF8F00"
-            />
-          ))}
-        </FilterRow>
-
-        <FilterRow label="季節">
-          <FilterChip
-            label="すべて"
-            active={filterSeason === 'all'}
-            onPress={() => setFilterSeason('all')}
-            activeColor={Colors.primary}
-          />
-          <FilterChip
-            label={`${currentSeason}の季節`}
-            active={filterSeason === 'current'}
-            onPress={() => setFilterSeason('current')}
-            activeColor={seasonCfg.color}
-          />
-        </FilterRow>
-
-        <FilterRow label="科">
-          <FilterChip
-            label="すべて"
-            active={filterFamily === 'all'}
-            onPress={() => setFilterFamily('all')}
-            activeColor={Colors.primary}
-          />
-          {FAMILY_OPTIONS.map((family) => (
-            <FilterChip
-              key={family}
-              label={family.split(' ')[0]}
-              active={filterFamily === family}
-              onPress={() => setFilterFamily(family)}
-              activeColor="#6A1B9A"
-            />
-          ))}
-        </FilterRow>
-
-        <FilterRow label="注意">
-          <FilterChip
-            label="危険な類似植物あり"
-            active={onlyLookalikeRisk}
-            onPress={() => setOnlyLookalikeRisk((v) => !v)}
-            activeColor={Colors.dangerRed}
-          />
-        </FilterRow>
-
-        <FilterRow label="並び順">
-          <FilterChip
-            label="デフォルト"
-            active={sortRarity === 'none'}
-            onPress={() => setSortRarity('none')}
-            activeColor={Colors.primaryDark}
-          />
-          <FilterChip
-            label="★ 多い順"
-            active={sortRarity === 'desc'}
-            onPress={() => setSortRarity('desc')}
-            activeColor="#FF8F00"
-          />
-          <FilterChip
-            label="★ 少ない順"
-            active={sortRarity === 'asc'}
-            onPress={() => setSortRarity('asc')}
-            activeColor={Colors.rarity1}
-          />
-        </FilterRow>
-
-        <FilterRow label="レア度">
-          {(
-            [
-              ['all',    'すべて'],
-              ['3up',   '★3以上'],
-              ['4up',   '★4以上'],
-              ['5only', '★5のみ'],
-            ] as [FilterRarity, string][]
-          ).map(([val, label]) => (
-            <FilterChip
-              key={val}
-              label={label}
-              active={filterRarity === val}
-              onPress={() => setFilterRarity(val)}
-              activeColor={Colors.rarity5}
-            />
-          ))}
-        </FilterRow>
-          </>
+          <View style={styles.filterPanel}>
+            <FilterRow label="状態">
+              {([['all', 'すべて'], ['discovered', '記録済み'], ['undiscovered', '未記録'], ['favorites', 'お気に入り'], ['noted', 'メモあり']] as [FilterDiscovered, string][]).map(([val, label]) => <FilterChip key={val} label={label} active={filterDiscovered === val} onPress={() => setFilterDiscovered(val)} activeColor={val === 'favorites' ? '#C03568' : val === 'noted' ? '#795548' : theme.colors.accentPrimary} />)}
+            </FilterRow>
+            <FilterRow label="注意区分">
+              {([['all', 'すべて'], ['GREEN', '一般食用区分'], ['YELLOW', '要注意'], ['RED', '危険・有毒']] as [FilterDanger, string][]).map(([val, label]) => <FilterChip key={val} label={label} active={filterDanger === val} onPress={() => setFilterDanger(val)} activeColor={val === 'RED' ? theme.colors.statusDanger : val === 'YELLOW' ? theme.colors.statusCaution : val === 'GREEN' ? theme.colors.statusObserved : theme.colors.accentPrimary} />)}
+            </FilterRow>
+            <FilterRow label="種類">
+              {([['all', 'すべて'], ['野草', '野草'], ['スパイス・ハーブ', 'ハーブ']] as [FilterCategory, string][]).map(([val, label]) => <FilterChip key={val} label={label} active={filterCategory === val} onPress={() => setFilterCategory(val)} activeColor={theme.colors.rarityLegendary} />)}
+            </FilterRow>
+            <FilterRow label="季節"><FilterChip label="すべて" active={filterSeason === 'all'} onPress={() => setFilterSeason('all')} activeColor={theme.colors.accentPrimary} /><FilterChip label={`${currentSeason}の季節`} active={filterSeason === 'current'} onPress={() => setFilterSeason('current')} activeColor={seasonAccent} /></FilterRow>
+            <FilterRow label="科"><FilterChip label="すべて" active={filterFamily === 'all'} onPress={() => setFilterFamily('all')} activeColor={theme.colors.accentPrimary} />{FAMILY_OPTIONS.map((family) => <FilterChip key={family} label={family.split(' ')[0]} active={filterFamily === family} onPress={() => setFilterFamily(family)} activeColor={theme.colors.rarityEpic} />)}</FilterRow>
+            <FilterRow label="注意"><FilterChip label="危険な類似植物あり" active={onlyLookalikeRisk} onPress={() => setOnlyLookalikeRisk((v) => !v)} activeColor={theme.colors.statusDanger} /></FilterRow>
+            <FilterRow label="並び順"><FilterChip label="デフォルト" active={sortRarity === 'none'} onPress={() => setSortRarity('none')} activeColor={theme.colors.accentPrimary} /><FilterChip label="珍しい順" active={sortRarity === 'desc'} onPress={() => setSortRarity('desc')} activeColor={theme.colors.rarityLegendary} /><FilterChip label="見つけやすい順" active={sortRarity === 'asc'} onPress={() => setSortRarity('asc')} activeColor={theme.colors.rarityCommon} /></FilterRow>
+            <FilterRow label="珍しさ">{([['all', 'すべて'], ['3up', 'やや珍しい以上'], ['4up', '珍しい以上'], ['5only', 'とても珍しい']] as [FilterRarity, string][]).map(([val, label]) => <FilterChip key={val} label={label} active={filterRarity === val} onPress={() => setFilterRarity(val)} activeColor={theme.colors.rarityLegendary} />)}</FilterRow>
+          </View>
         )}
       </View>
 
-      {/* Count + view mode (§7.6 表示切替) */}
       <View style={styles.countRow}>
-        <Text style={styles.countText}>{filtered.length}種類を表示</Text>
-        <View style={styles.viewModeRow}>
+        <Text style={[styles.countText, { color: theme.colors.textTertiary }]}>{filtered.length}種類を表示</Text>
+        <View style={[styles.viewModeRow, { backgroundColor: theme.colors.surfaceSecondary, borderColor: theme.colors.borderSubtle }]} accessibilityRole="tablist">
           <ViewModeBtn icon="grid-outline" active={viewMode === 'grid'} onPress={() => setViewMode('grid')} label="グリッド" />
           <ViewModeBtn icon="list-outline" active={viewMode === 'list'} onPress={() => setViewMode('list')} label="リスト" />
-          <ViewModeBtn icon="git-branch-outline" active={viewMode === 'family'} onPress={() => setViewMode('family')} label="科でまとめる" />
+          <ViewModeBtn icon="git-branch-outline" active={viewMode === 'family'} onPress={() => setViewMode('family')} label="科別" />
         </View>
       </View>
 
-      {/* Active effect filter chip */}
       {filterEffect && (
         <View style={styles.activeEffectRow}>
-          <Ionicons name="medical-outline" size={14} color={Colors.primaryDark} />
-          <Text style={styles.activeEffectLabel}>効果: </Text>
-          <View style={styles.activeEffectChip}>
-            <Text style={styles.activeEffectText}>{filterEffect}</Text>
-            <Pressable
-              onPress={() => {
-                setFilterEffect(null);
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              }}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              accessibilityRole="button"
-              accessibilityLabel="効果フィルターを解除"
-            >
-              <Ionicons name="close-circle" size={14} color={Colors.primaryDark} />
+          <Ionicons name="medical-outline" size={15} color={theme.colors.accentPrimary} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" />
+          <Text style={[styles.activeEffectLabel, { color: theme.colors.textSecondary }]}>用途:</Text>
+          <View style={[styles.activeEffectChip, { backgroundColor: theme.colors.surfaceSecondary, borderColor: theme.colors.borderSubtle }]}>
+            <Text style={[styles.activeEffectText, { color: theme.colors.textPrimary }]}>{filterEffect}</Text>
+            <Pressable style={({ pressed }) => [styles.activeEffectClose, pressed && styles.rowPressed]} onPress={() => { setFilterEffect(null); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }} accessibilityRole="button" accessibilityLabel="用途フィルターを解除">
+              <Ionicons name="close" size={16} color={theme.colors.textSecondary} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" />
             </Pressable>
           </View>
         </View>
       )}
 
-      {/* Hint Modal — undiscovered plant clue */}
-      <Modal
-        visible={hintPlant !== null}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setHintPlant(null)}
-      >
-        <Pressable style={styles.hintOverlay} onPress={() => setHintPlant(null)}>
-          {/* Inner card — stop propagation so tapping card doesn't close */}
-          <Pressable style={styles.hintCard} onPress={() => {}}>
+      <Modal visible={hintPlant !== null} transparent animationType={reduceMotion ? 'none' : 'slide'} onRequestClose={closeHint}>
+        <View style={[styles.hintOverlay, { backgroundColor: theme.colors.overlay }]}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={closeHint} accessible={false} />
+          <View style={[styles.hintCard, { backgroundColor: theme.colors.surfacePrimary, shadowColor: theme.colors.shadow, paddingBottom: Math.max(insets.bottom + 20, 32) }]} accessibilityViewIsModal onAccessibilityEscape={closeHint}>
             {hintPlant && (
               <>
-                <View style={styles.hintTitleRow}>
-                  <Ionicons name="search-outline" size={16} color={Colors.text} />
-                  <Text style={styles.hintTitle}>ミステリー植物のヒント</Text>
-                </View>
-
-                {/* Mystery silhouette */}
-                <View style={styles.hintMystery}>
-                  <Text style={styles.hintQuestion}>？</Text>
-                </View>
-
-                {/* Hint rows */}
-                <View style={styles.hintRows}>
-                  {getPlantDefinitionById(hintPlant.id)?.taxonomy.family && (
-                    <HintRow
-                      icon="git-branch-outline"
-                      label="科"
-                      value={getPlantDefinitionById(hintPlant.id)!.taxonomy.family!}
-                    />
-                  )}
-                  <HintRow icon="calendar-outline" label="旬の時期" value={hintPlant.season} />
-                  <HintRow
-                    icon="folder-outline"
-                    label="カテゴリ"
-                    value={hintPlant.category === '野草' ? '野草' : 'スパイス・ハーブ'}
-                  />
-                  <HintRow
-                    icon="warning-outline"
-                    label="危険度"
-                    value={DANGER_LABEL[hintPlant.danger]}
-                  />
-                  <View style={styles.hintRowItem}>
-                    <View style={styles.hintLabelRow}>
-                      <Ionicons name="star-outline" size={12} color={Colors.textSecondary} />
-                      <Text style={styles.hintLabel}>レアリティ</Text>
-                    </View>
-                    <RarityStars rarity={hintPlant.rarity} size="sm" />
+                <View style={styles.hintHandle} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" />
+                <ScrollView style={styles.hintScroll} contentContainerStyle={styles.hintScrollContent} showsVerticalScrollIndicator={false} bounces={false}>
+                  <View style={styles.hintTitleRow}>
+                    <Ionicons name="search-outline" size={18} color={theme.colors.textSecondary} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" />
+                    <Text ref={hintTitleRef} style={[styles.hintTitle, { color: theme.colors.textPrimary }]} accessibilityRole="header" accessibilityLabel="未記録の植物のヒント">未記録の植物のヒント</Text>
                   </View>
-                </View>
-
-                <View style={styles.hintFooterRow}>
-                  <Ionicons name="camera-outline" size={13} color={Colors.primaryDark} />
-                  <Text style={styles.hintFooter}>
-                    スキャンして発見しよう！
-                  </Text>
-                </View>
-
-                <Pressable
-                  style={styles.hintCloseBtn}
-                  onPress={() => setHintPlant(null)}
-                >
-                  <Text style={styles.hintCloseBtnText}>閉じる</Text>
-                </Pressable>
+                  <View style={[styles.hintMystery, { backgroundColor: theme.colors.surfaceSecondary, borderColor: theme.colors.borderStrong }]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants"><Text style={[styles.hintQuestion, { color: theme.colors.textTertiary }]}>？</Text></View>
+                  <View style={[styles.hintRows, { backgroundColor: theme.colors.surfaceSecondary }]}>
+                    {getPlantDefinitionById(hintPlant.id)?.taxonomy.family && <HintRow icon="git-branch-outline" label="科" value={getPlantDefinitionById(hintPlant.id)!.taxonomy.family!} />}
+                    <HintRow icon="calendar-outline" label="旬の時期" value={hintPlant.season} />
+                    <HintRow icon="folder-outline" label="カテゴリ" value={hintPlant.category === '野草' ? '野草' : 'スパイス・ハーブ'} />
+                    <HintRow icon="warning-outline" label="注意区分" value={DANGER_LABEL[hintPlant.danger]} />
+                    <View style={[styles.hintRowItem, { borderBottomColor: theme.colors.borderSubtle }]}>
+                      <View style={styles.hintLabelRow} accessibilityElementsHidden importantForAccessibility="no-hide-descendants"><Ionicons name="star-outline" size={14} color={theme.colors.textTertiary} /><Text style={[styles.hintLabel, { color: theme.colors.textSecondary }]}>珍しさ</Text></View>
+                      <RarityStars rarity={hintPlant.rarity} size="sm" />
+                    </View>
+                  </View>
+                  <View style={styles.hintFooterRow}><Ionicons name="camera-outline" size={16} color={theme.colors.accentPrimary} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" /><Text style={[styles.hintFooter, { color: theme.colors.textSecondary }]}>観察して特徴を見比べよう</Text></View>
+                </ScrollView>
+                <Pressable ref={hintCloseButtonRef} style={({ pressed }) => [styles.hintCloseBtn, { backgroundColor: theme.colors.accentPrimary }, pressed && styles.buttonPressed]} onPress={closeHint} accessibilityRole="button" accessibilityLabel="ヒントを閉じる"><Text style={[styles.hintCloseBtnText, { color: theme.colors.textOnAccent }]}>閉じる</Text></Pressable>
               </>
             )}
-          </Pressable>
-        </Pressable>
+          </View>
+        </View>
       </Modal>
 
-      {/* Results — grid (default), compact list, or grouped by family (§7.6 表示切替) */}
       {viewMode === 'family' ? (
         <SectionList
           sections={familySections}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.grid}
           keyboardShouldPersistTaps="handled"
-          renderSectionHeader={({ section }) => (
-            <View style={styles.familySectionHeader}>
-              <Text style={styles.familySectionTitle}>{section.title}</Text>
-              <Text style={styles.familySectionCount}>{section.data.length}種</Text>
-            </View>
-          )}
-          renderItem={({ item }) => (
-            <PlantListRow
-              plant={item}
-              discovered={discoveredPlantIds.includes(item.id)}
-              isFavorite={favoritePlantIds.includes(item.id)}
-              onPress={() => handlePlantPress(item)}
-            />
-          )}
-          ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Ionicons name="leaf-outline" size={48} color={Colors.textMuted} />
-              <Text style={styles.emptyText}>条件に一致する植物がありません</Text>
-            </View>
-          }
-          ListFooterComponent={
-            <View style={styles.footerPad}>
-              <DisclaimerBanner compact />
-            </View>
-          }
+          renderSectionHeader={({ section }) => <View style={[styles.familySectionHeader, { backgroundColor: theme.colors.canvas }]}><Text style={[styles.familySectionTitle, { color: theme.colors.textPrimary }]} accessibilityRole="header">{section.title}</Text><Text style={[styles.familySectionCount, { color: theme.colors.textTertiary }]}>{section.data.length}種</Text></View>}
+          renderItem={({ item }) => <PlantListRow plant={item} discovered={discoveredPlantIds.includes(item.id)} isFavorite={favoritePlantIds.includes(item.id)} onPress={() => handlePlantPress(item)} />}
+          ListEmptyComponent={<EmptyState canReset={hasActiveDiscoveryQuery} onReset={resetSearchAndFilters} />}
+          ListFooterComponent={<View style={styles.footerPad}><DisclaimerBanner compact /></View>}
         />
       ) : (
         <FlatList
           data={filtered}
           keyExtractor={(item) => item.id}
-          numColumns={viewMode === 'list' ? 1 : 3}
-          key={viewMode} // numColumns can't change without remounting FlatList
+          numColumns={viewMode === 'list' ? 1 : gridColumns}
+          key={`${viewMode}-${gridColumns}`}
           contentContainerStyle={styles.grid}
+          columnWrapperStyle={viewMode === 'grid' && gridColumns > 1 ? styles.gridRow : undefined}
           keyboardShouldPersistTaps="handled"
-          removeClippedSubviews={true}
+          removeClippedSubviews
           maxToRenderPerBatch={15}
           windowSize={10}
-          renderItem={({ item }) =>
-            viewMode === 'list' ? (
-              <PlantListRow
-                plant={item}
-                discovered={discoveredPlantIds.includes(item.id)}
-                isFavorite={favoritePlantIds.includes(item.id)}
-                onPress={() => handlePlantPress(item)}
-              />
-            ) : (
-              <PlantCard
-                plant={item}
-                discovered={discoveredPlantIds.includes(item.id)}
-                imageUri={imageUriMap[item.id]}
-                isFavorite={favoritePlantIds.includes(item.id)}
-                hasNote={!!plantNotes[item.id]}
-                familyHint={getPlantDefinitionById(item.id)?.taxonomy.family}
-                onPress={() => handlePlantPress(item)}
-                onFavorite={() => toggleFavorite(item.id)}
-              />
-            )
-          }
-          ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Ionicons name="leaf-outline" size={48} color={Colors.textMuted} />
-              <Text style={styles.emptyText}>
-                条件に一致する植物がありません
-              </Text>
-            </View>
-          }
-          ListFooterComponent={
-            <View style={styles.footerPad}>
-              <DisclaimerBanner compact />
-            </View>
-          }
+          renderItem={({ item }) => viewMode === 'list' ? <PlantListRow plant={item} discovered={discoveredPlantIds.includes(item.id)} isFavorite={favoritePlantIds.includes(item.id)} onPress={() => handlePlantPress(item)} /> : <View style={{ width: gridItemWidth }}><PlantCard plant={item} discovered={discoveredPlantIds.includes(item.id)} imageUri={imageUriMap[item.id]} isFavorite={favoritePlantIds.includes(item.id)} hasNote={!!plantNotes[item.id]} familyHint={getPlantDefinitionById(item.id)?.taxonomy.family} onPress={() => handlePlantPress(item)} onFavorite={() => toggleFavorite(item.id)} /></View>}
+          ListEmptyComponent={<EmptyState canReset={hasActiveDiscoveryQuery} onReset={resetSearchAndFilters} />}
+          ListFooterComponent={<View style={styles.footerPad}><DisclaimerBanner compact /></View>}
         />
       )}
     </View>
   );
 }
 
-function ViewModeBtn({
-  icon,
-  active,
-  onPress,
-  label,
-}: {
-  icon: React.ComponentProps<typeof Ionicons>['name'];
-  active: boolean;
-  onPress: () => void;
-  label: string;
-}) {
+function EmptyState({ canReset, onReset }: { canReset: boolean; onReset: () => void }) {
+  const theme = useTheme();
   return (
-    <Pressable
-      style={[styles.viewModeBtn, active && styles.viewModeBtnActive]}
-      onPress={() => {
-        Haptics.selectionAsync();
-        onPress();
-      }}
-      accessibilityRole="button"
-      accessibilityLabel={`表示切替: ${label}`}
-      accessibilityState={{ selected: active }}
-    >
-      <Ionicons name={icon} size={15} color={active ? '#FFFFFF' : Colors.textMuted} />
+    <View style={styles.emptyContainer}>
+      <View style={[styles.emptyIconWrap, { backgroundColor: theme.colors.surfaceSecondary }]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants"><Ionicons name="leaf-outline" size={30} color={theme.colors.textTertiary} /></View>
+      <Text style={[styles.emptyTitle, { color: theme.colors.textPrimary }]} accessibilityRole="header" accessibilityLiveRegion="polite">条件に一致する植物がありません</Text>
+      <Text style={[styles.emptyText, { color: theme.colors.textTertiary }]}>検索語やフィルターを少し広げてみてください。</Text>
+      {canReset && <Pressable style={({ pressed }) => [styles.emptyResetBtn, { backgroundColor: theme.colors.surfaceSecondary, borderColor: theme.colors.borderSubtle }, pressed && styles.rowPressed]} onPress={onReset} accessibilityRole="button" accessibilityLabel="検索とフィルターをすべて解除"><Ionicons name="refresh-outline" size={17} color={theme.colors.accentPrimary} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" /><Text style={[styles.emptyResetText, { color: theme.colors.accentPrimary }]}>条件をすべて解除</Text></Pressable>}
+    </View>
+  );
+}
+
+function ViewModeBtn({ icon, active, onPress, label }: { icon: React.ComponentProps<typeof Ionicons>['name']; active: boolean; onPress: () => void; label: string }) {
+  const theme = useTheme();
+  return (
+    <Pressable style={({ pressed }) => [styles.viewModeBtn, active && { backgroundColor: theme.colors.accentPrimary }, pressed && styles.rowPressed]} onPress={() => { Haptics.selectionAsync(); onPress(); }} accessibilityRole="tab" accessibilityLabel={`表示切替: ${label}`} accessibilityState={{ selected: active }}>
+      <Ionicons name={icon} size={16} color={active ? theme.colors.textOnAccent : theme.colors.textTertiary} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" />
+      <Text style={[styles.viewModeBtnText, { color: active ? theme.colors.textOnAccent : theme.colors.textSecondary }]}>{label}</Text>
     </Pressable>
   );
 }
 
 /** Compact row used by the "リスト" and "科でまとめる" view modes (§7.6). */
-function PlantListRow({
-  plant,
-  discovered,
-  isFavorite,
-  onPress,
-}: {
-  plant: Plant;
-  discovered: boolean;
-  isFavorite: boolean;
-  onPress: () => void;
-}) {
+function PlantListRow({ plant, discovered, isFavorite, onPress }: { plant: Plant; discovered: boolean; isFavorite: boolean; onPress: () => void }) {
+  const theme = useTheme();
   const family = getPlantDefinitionById(plant.id)?.taxonomy.family;
+  const accessibilityLabel = discovered
+    ? `${plant.name}。珍しさ5段階中${plant.rarity}。${DANGER_LABEL[plant.danger]}${isFavorite ? '。お気に入り' : ''}。詳細を見る`
+    : `未記録の植物。${family ?? 'ヒントなし'}。珍しさ5段階中${plant.rarity}。ヒントを見る`;
   return (
-    <Pressable style={styles.listRow} onPress={onPress}>
-      <View style={styles.listEmojiWrap}>
-        <Text style={styles.listEmoji}>{discovered ? plant.emoji : '？'}</Text>
-      </View>
-      <View style={styles.listInfo}>
-        <Text style={styles.listName} numberOfLines={1}>
-          {discovered ? plant.name : '？？？'}
-        </Text>
-        <Text style={styles.listSub} numberOfLines={1}>
-          {discovered ? plant.nameLatin : (family ?? '未発見')}
-        </Text>
-      </View>
-      <RarityStars rarity={plant.rarity} size="sm" />
-      {discovered && <DangerBadge danger={plant.danger} size="sm" />}
-      {discovered && isFavorite && <Ionicons name="heart" size={14} color="#E53935" />}
+    <Pressable style={({ pressed }) => [styles.listRow, { backgroundColor: theme.colors.surfacePrimary, borderColor: theme.colors.borderSubtle }, pressed && styles.cardPressed]} onPress={onPress} accessibilityRole="button" accessibilityLabel={accessibilityLabel}>
+      <View style={[styles.listEmojiWrap, { backgroundColor: theme.colors.surfaceSecondary }]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants"><Text style={styles.listEmoji}>{discovered ? plant.emoji : '？'}</Text></View>
+      <View style={styles.listInfo} accessibilityElementsHidden importantForAccessibility="no-hide-descendants"><Text style={[styles.listName, { color: theme.colors.textPrimary }]} numberOfLines={2}>{discovered ? plant.name : '？？？'}</Text><Text style={[styles.listSub, { color: theme.colors.textTertiary }]} numberOfLines={2}>{discovered ? plant.nameLatin : (family ?? '未記録')}</Text></View>
+      <RarityStars rarity={plant.rarity} size="sm" accessible={false} />
+      {discovered && <DangerBadge danger={plant.danger} size="sm" accessible={false} />}
+      {discovered && isFavorite && <Ionicons name="heart" size={16} color="#D9363E" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" />}
+      <Ionicons name="chevron-forward" size={16} color={theme.colors.textTertiary} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" />
     </Pressable>
   );
 }
 
-function StatMini({ label, value, color, dotColor }: { label: string; value: string; color: string; dotColor?: string }) {
-  return (
-    <View style={[styles.statMiniCard, { borderTopColor: color }]}>
-      {dotColor && <View style={[styles.statMiniDot, { backgroundColor: dotColor }]} />}
-      <Text style={[styles.statMiniValue, { color }]}>{value}</Text>
-      <Text style={styles.statMiniLabel}>{label}</Text>
-    </View>
-  );
+function StatMini({ label, value, color }: { label: string; value: string; color: string }) {
+  const theme = useTheme();
+  return <View style={[styles.statMiniCard, { backgroundColor: theme.colors.surfaceSecondary, borderColor: theme.colors.borderSubtle }]} accessible accessibilityRole="text" accessibilityLabel={`${label} ${value}`}><View style={[styles.statMiniDot, { backgroundColor: color }]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" /><Text style={[styles.statMiniValue, { color: theme.colors.textPrimary }]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">{value}</Text><Text style={[styles.statMiniLabel, { color: theme.colors.textTertiary }]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">{label}</Text></View>;
 }
 
 function HintRow({ icon, label, value }: { icon: React.ComponentProps<typeof Ionicons>['name']; label: string; value: string }) {
-  return (
-    <View style={styles.hintRowItem}>
-      <View style={styles.hintLabelRow}>
-        <Ionicons name={icon} size={12} color={Colors.textSecondary} />
-        <Text style={styles.hintLabel}>{label}</Text>
-      </View>
-      <Text style={styles.hintValue}>{value}</Text>
-    </View>
-  );
+  const theme = useTheme();
+  return <View style={[styles.hintRowItem, { borderBottomColor: theme.colors.borderSubtle }]} accessible accessibilityRole="text" accessibilityLabel={`${label} ${value}`}><View style={styles.hintLabelRow} accessibilityElementsHidden importantForAccessibility="no-hide-descendants"><Ionicons name={icon} size={14} color={theme.colors.textTertiary} /><Text style={[styles.hintLabel, { color: theme.colors.textSecondary }]}>{label}</Text></View><Text style={[styles.hintValue, { color: theme.colors.textPrimary }]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">{value}</Text></View>;
 }
 
-function FilterRow({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <View style={styles.filterRow}>
-      <Text style={styles.filterLabel}>{label}</Text>
-      <View style={styles.filterChips}>{children}</View>
-    </View>
-  );
+function FilterRow({ label, children }: { label: string; children: React.ReactNode }) {
+  const theme = useTheme();
+  return <View style={styles.filterRow}><Text style={[styles.filterLabel, { color: theme.colors.textTertiary }]}>{label}</Text><View style={styles.filterChips}>{children}</View></View>;
 }
 
-function FilterChip({
-  label,
-  active,
-  onPress,
-  activeColor,
-}: {
-  label: string;
-  active: boolean;
-  onPress: () => void;
-  activeColor: string;
-}) {
+function FilterChip({ label, active, onPress, activeColor }: { label: string; active: boolean; onPress: () => void; activeColor: string }) {
+  const theme = useTheme();
   return (
-    <Pressable
-      style={[
-        styles.chip,
-        active && { backgroundColor: activeColor, borderColor: activeColor },
-      ]}
-      onPress={() => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        onPress();
-      }}
-    >
-      <Text style={[styles.chipText, active && styles.chipTextActive]}>
-        {label}
-      </Text>
+    <Pressable style={({ pressed }) => [styles.chip, { backgroundColor: active ? theme.colors.surfacePrimary : theme.colors.surfaceSecondary, borderColor: active ? activeColor : theme.colors.borderSubtle, borderWidth: active ? 2 : StyleSheet.hairlineWidth }, pressed && styles.rowPressed]} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onPress(); }} accessibilityRole="button" accessibilityState={{ selected: active }} accessibilityLabel={`${label}${active ? '、選択中' : ''}`}>
+      {active && <Ionicons name="checkmark" size={14} color={theme.colors.textPrimary} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" />}
+      <Text style={[styles.chipText, { color: active ? theme.colors.textPrimary : theme.colors.textSecondary }]}>{label}</Text>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.bg },
-  header: {
-    backgroundColor: Colors.primaryDark,
-    paddingTop: 56,
-    paddingBottom: 16,
-    paddingHorizontal: 16,
-  },
-  headerTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  headerTitle: { fontSize: 22, fontWeight: '900', color: '#FFFFFF' },
-  headerSub: { fontSize: 13, color: '#A5D6A7', marginTop: 2, marginBottom: 12 },
-  rarityRow: {
-    flexDirection: 'row',
-    gap: 6,
-    marginBottom: 12,
-  },
-  rarityItem: {
-    flex: 1,
-    alignItems: 'center',
-    gap: 3,
-  },
-  rarityStarsRow: {
-    flexDirection: 'row',
-    gap: 1,
-  },
-  rarityMiniBar: {
-    width: '100%',
-    height: 4,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    borderRadius: 2,
-    overflow: 'hidden',
-  },
-  rarityMiniFill: {
-    height: '100%',
-    borderRadius: 2,
-  },
-  rarityCount: {
-    fontSize: 11,
-    color: 'rgba(255,255,255,0.85)',
-    fontWeight: '700',
-  },
-  searchBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    height: 40,
-    gap: 8,
-  },
-  searchInput: { flex: 1, color: '#FFFFFF', fontSize: 14 },
-
-  // Recent searches
-  recentSearchRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 6,
-    marginTop: 8,
-  },
-  recentSearchChip: {
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    borderRadius: 10,
-    paddingHorizontal: 9,
-    paddingVertical: 4,
-    maxWidth: 120,
-  },
-  recentSearchChipText: { fontSize: 11, color: '#FFFFFF', fontWeight: '600' },
-
-  filtersContainer: {
-    backgroundColor: Colors.bgCard,
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-    gap: 6,
-  },
-  filterToggleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingBottom: 2,
-  },
-  filterToggleBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: 4,
-  },
-  filterToggleBtnInner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    flex: 1,
-  },
-  filterToggleText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: Colors.primaryDark,
-  },
-  filterBadge: {
-    backgroundColor: Colors.primary,
-    borderRadius: 8,
-    minWidth: 16,
-    height: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 4,
-  },
-  filterBadgeText: {
-    fontSize: 9,
-    fontWeight: '900',
-    color: '#FFFFFF',
-  },
-  filterResetBtn: {
-    backgroundColor: Colors.bg,
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  filterResetText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: Colors.textSecondary,
-  },
-  filterRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  filterLabel: {
-    fontSize: 11,
-    color: Colors.textMuted,
-    fontWeight: '700',
-    width: 36,
-  },
+  container: { flex: 1 },
+  header: { backgroundColor: '#174F2A', paddingBottom: 16, paddingHorizontal: 16 },
+  headerTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  headerTitle: { fontSize: 22, lineHeight: 29, fontWeight: '900', color: '#FFFFFF' },
+  headerSub: { fontSize: 13, lineHeight: 18, color: '#D9E9DA', marginTop: 2, marginBottom: 12 },
+  rarityRow: { flexDirection: 'row', gap: 6, marginBottom: 12 },
+  rarityItem: { flex: 1, alignItems: 'center', gap: 3 },
+  rarityStarsRow: { flexDirection: 'row', gap: 1 },
+  rarityMiniBar: { width: '100%', height: 4, backgroundColor: 'rgba(255,255,255,0.18)', borderRadius: 2, overflow: 'hidden' },
+  rarityMiniFill: { height: '100%', borderRadius: 2 },
+  rarityCount: { fontSize: 11, lineHeight: 14, color: '#E7F3E8', fontWeight: '700' },
+  searchBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.24)', borderRadius: 15, paddingLeft: 13, minHeight: 48, gap: 8 },
+  searchInput: { flex: 1, color: '#FFFFFF', fontSize: 15, paddingVertical: 0 },
+  searchClearBtn: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
+  headerPressed: { backgroundColor: 'rgba(255,255,255,0.16)' },
+  recentSearchRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginTop: 8 },
+  recentSearchChip: { minHeight: 44, backgroundColor: 'rgba(255,255,255,0.10)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.22)', borderRadius: 999, paddingHorizontal: 11, paddingVertical: 6, justifyContent: 'center', maxWidth: 220 },
+  recentSearchChipText: { fontSize: 12, lineHeight: 17, color: '#FFFFFF', fontWeight: '600' },
+  statsContainer: { paddingHorizontal: 16, paddingBottom: 8, borderBottomWidth: StyleSheet.hairlineWidth },
+  statsToggleRow: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 7 },
+  statsToggleText: { flex: 1, fontSize: 13, lineHeight: 18, fontWeight: '700' },
+  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 7, paddingBottom: 6 },
+  statMiniCard: { minWidth: 68, minHeight: 58, borderRadius: 13, borderWidth: StyleSheet.hairlineWidth, paddingVertical: 8, paddingHorizontal: 9, alignItems: 'center', justifyContent: 'center', flexGrow: 1 },
+  statMiniDot: { width: 7, height: 7, borderRadius: 4, marginBottom: 3 },
+  statMiniValue: { fontSize: 15, lineHeight: 19, fontWeight: '900' },
+  statMiniLabel: { fontSize: 11, lineHeight: 14, fontWeight: '600', marginTop: 2, textAlign: 'center' },
+  filtersContainer: { paddingHorizontal: 16, paddingBottom: 8, borderBottomWidth: StyleSheet.hairlineWidth },
+  filterToggleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
+  filterToggleBtn: { flex: 1, minWidth: 190, minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 7 },
+  filterToggleText: { flex: 1, fontSize: 13, lineHeight: 18, fontWeight: '700' },
+  filterBadge: { borderRadius: 999, minWidth: 20, height: 20, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 5 },
+  filterBadgeText: { fontSize: 10, fontWeight: '900' },
+  filterResetBtn: { minHeight: 44, borderRadius: 13, paddingHorizontal: 12, justifyContent: 'center', borderWidth: StyleSheet.hairlineWidth },
+  filterResetText: { fontSize: 12, lineHeight: 17, fontWeight: '700' },
+  filterPanel: { paddingTop: 4, paddingBottom: 6, gap: 9 },
+  filterRow: { gap: 5 },
+  filterLabel: { fontSize: 12, lineHeight: 17, fontWeight: '700' },
   filterChips: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
-  chip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    backgroundColor: Colors.bg,
-  },
-  chipText: { fontSize: 12, color: Colors.textSecondary, fontWeight: '600' },
-  chipTextActive: { color: '#FFFFFF' },
-
-  countRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingTop: 10,
-    paddingBottom: 4,
-  },
-  countText: {
-    fontSize: 12,
-    color: Colors.textMuted,
-  },
-  viewModeRow: {
-    flexDirection: 'row',
-    gap: 4,
-    backgroundColor: Colors.bg,
-    borderRadius: 10,
-    padding: 2,
-  },
-  viewModeBtn: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  viewModeBtnActive: {
-    backgroundColor: Colors.primary,
-  },
-
-  // Compact list row (list / family view modes)
-  listRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    backgroundColor: Colors.bgCard,
-    borderRadius: 12,
-    padding: 10,
-    marginHorizontal: 4,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: Colors.cardBorder,
-  },
-  listEmojiWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: Colors.bg,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  listEmoji: { fontSize: 20 },
-  listInfo: { flex: 1 },
-  listName: { fontSize: 13, fontWeight: '700', color: Colors.text },
-  listSub: { fontSize: 11, color: Colors.textMuted, marginTop: 1 },
-
-  // Family-grouped section headers
-  familySectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: Colors.bg,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    marginTop: 6,
-  },
-  familySectionTitle: { fontSize: 13, fontWeight: '800', color: Colors.primaryDark },
-  familySectionCount: { fontSize: 11, color: Colors.textMuted, fontWeight: '600' },
-
-  activeEffectRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingBottom: 6,
-  },
-  activeEffectLabel: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-    fontWeight: '700',
-  },
-  activeEffectChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.primaryPale,
-    borderRadius: 12,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderWidth: 1,
-    borderColor: Colors.primaryLight,
-  },
-  activeEffectText: {
-    fontSize: 12,
-    color: Colors.primaryDark,
-    fontWeight: '700',
-  },
+  chip: { minHeight: 44, paddingHorizontal: 12, paddingVertical: 5, borderRadius: 999, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5 },
+  chipText: { fontSize: 12, lineHeight: 17, fontWeight: '700' },
+  countRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 9, paddingBottom: 5, gap: 8, flexWrap: 'wrap' },
+  countText: { fontSize: 12, lineHeight: 17, flexShrink: 1 },
+  viewModeRow: { flexDirection: 'row', gap: 2, borderRadius: 14, padding: 2, borderWidth: StyleSheet.hairlineWidth, maxWidth: '100%', flexShrink: 1 },
+  viewModeBtn: { minWidth: 72, minHeight: 44, borderRadius: 12, justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 5, paddingHorizontal: 10, paddingVertical: 6 },
+  viewModeBtnText: { flexShrink: 1, fontSize: 12, lineHeight: 16, fontWeight: '700', textAlign: 'center' },
+  listRow: { minHeight: 68, flexDirection: 'row', alignItems: 'center', gap: 9, borderRadius: 14, paddingHorizontal: 10, paddingVertical: 9, marginHorizontal: 4, marginBottom: 8, borderWidth: StyleSheet.hairlineWidth, flexWrap: 'wrap' },
+  listEmojiWrap: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
+  listEmoji: { fontSize: 22 },
+  listInfo: { flex: 1, minWidth: 120 },
+  listName: { fontSize: 14, lineHeight: 20, fontWeight: '700' },
+  listSub: { fontSize: 12, lineHeight: 17, marginTop: 1 },
+  familySectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 8, paddingVertical: 10, marginTop: 5, gap: 8, flexWrap: 'wrap' },
+  familySectionTitle: { fontSize: 14, lineHeight: 20, fontWeight: '800', flexShrink: 1 },
+  familySectionCount: { fontSize: 12, lineHeight: 17, fontWeight: '600' },
+  activeEffectRow: { minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingBottom: 6, flexWrap: 'wrap' },
+  activeEffectLabel: { fontSize: 12, lineHeight: 17, fontWeight: '700' },
+  activeEffectChip: { minHeight: 44, maxWidth: '100%', flexDirection: 'row', alignItems: 'center', borderRadius: 999, paddingLeft: 11, borderWidth: StyleSheet.hairlineWidth },
+  activeEffectText: { fontSize: 12, lineHeight: 17, fontWeight: '700', flexShrink: 1 },
+  activeEffectClose: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
   grid: { paddingHorizontal: 12, paddingBottom: 16 },
-  emptyContainer: { padding: 40, alignItems: 'center', gap: 12 },
-  emptyText: { fontSize: 14, color: Colors.textMuted, textAlign: 'center' },
+  gridRow: { alignItems: 'stretch' },
+  emptyContainer: { paddingHorizontal: 32, paddingVertical: 52, alignItems: 'center' },
+  emptyIconWrap: { width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
+  emptyTitle: { fontSize: 15, lineHeight: 21, fontWeight: '800', textAlign: 'center' },
+  emptyText: { fontSize: 13, lineHeight: 20, textAlign: 'center', marginTop: 5, maxWidth: 320 },
+  emptyResetBtn: { minHeight: 48, marginTop: 16, paddingHorizontal: 16, paddingVertical: 7, borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, maxWidth: '100%' },
+  emptyResetText: { fontSize: 13, lineHeight: 18, fontWeight: '800', textAlign: 'center', flexShrink: 1 },
   footerPad: { paddingTop: 16 },
-
-  // Stats dashboard
-  statsContainer: {
-    backgroundColor: Colors.bgCard,
-    paddingHorizontal: 16,
-    paddingTop: 6,
-    paddingBottom: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-  },
-  statsToggleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: 6,
-  },
-  statsToggleText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: Colors.primaryDark,
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-    paddingTop: 6,
-  },
-  statMiniCard: {
-    backgroundColor: Colors.bgCard,
-    borderRadius: 10,
-    borderTopWidth: 2,
-    paddingVertical: 6,
-    paddingHorizontal: 8,
-    alignItems: 'center',
-    minWidth: 52,
-  },
-  statMiniDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    marginBottom: 2,
-  },
-  statMiniValue: {
-    fontSize: 14,
-    fontWeight: '900',
-  },
-  statMiniLabel: {
-    fontSize: 11,
-    color: Colors.textMuted,
-    fontWeight: '600',
-    marginTop: 2,
-  },
-
-  // ── Hint Modal ───────────────────────────────────────────────────────────
-  hintOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.55)',
-    justifyContent: 'flex-end',
-  },
-  hintCard: {
-    backgroundColor: Colors.bgCard,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    padding: 24,
-    paddingBottom: 40,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 16,
-  },
-  hintTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    marginBottom: 18,
-  },
-  hintTitle: {
-    fontSize: 18,
-    fontWeight: '900',
-    color: Colors.text,
-    textAlign: 'center',
-  },
-  hintMystery: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#E0E0E0',
-    alignSelf: 'center',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 20,
-    borderWidth: 3,
-    borderColor: '#BDBDBD',
-  },
-  hintQuestion: {
-    fontSize: 36,
-    fontWeight: '900',
-    color: '#9E9E9E',
-  },
-  hintRows: {
-    backgroundColor: Colors.bg,
-    borderRadius: 14,
-    paddingVertical: 6,
-    marginBottom: 18,
-    overflow: 'hidden',
-  },
-  hintRowItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-  },
-  hintLabelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-  },
-  hintLabel: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-    fontWeight: '600',
-  },
-  hintValue: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: Colors.text,
-    textAlign: 'right',
-    flex: 1,
-    marginLeft: 12,
-  },
-  hintFooterRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    marginBottom: 16,
-  },
-  hintFooter: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: Colors.primaryDark,
-  },
-  hintCloseBtn: {
-    backgroundColor: Colors.primaryPale,
-    borderRadius: 14,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  hintCloseBtnText: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: Colors.primaryDark,
-  },
+  hintOverlay: { flex: 1, justifyContent: 'flex-end' },
+  hintCard: { maxHeight: '90%', borderTopLeftRadius: 30, borderTopRightRadius: 30, paddingHorizontal: 20, paddingTop: 10, shadowOffset: { width: 0, height: -6 }, shadowOpacity: 0.18, shadowRadius: 18, elevation: 18 },
+  hintHandle: { width: 36, height: 4, borderRadius: 2, backgroundColor: 'rgba(128,128,128,0.45)', alignSelf: 'center', marginBottom: 10 },
+  hintScroll: { flexShrink: 1 },
+  hintScrollContent: { paddingTop: 4, paddingBottom: 4 },
+  hintTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 17 },
+  hintTitle: { fontSize: 18, lineHeight: 25, fontWeight: '900', textAlign: 'center', flexShrink: 1 },
+  hintMystery: { width: 76, height: 76, borderRadius: 38, alignSelf: 'center', justifyContent: 'center', alignItems: 'center', marginBottom: 18, borderWidth: 2 },
+  hintQuestion: { fontSize: 34, fontWeight: '900' },
+  hintRows: { borderRadius: 16, paddingVertical: 4, marginBottom: 16, overflow: 'hidden' },
+  hintRowItem: { minHeight: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth, gap: 8, flexWrap: 'wrap' },
+  hintLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 0 },
+  hintLabel: { fontSize: 13, lineHeight: 19, fontWeight: '600' },
+  hintValue: { fontSize: 13, lineHeight: 19, fontWeight: '700', textAlign: 'right', flex: 1, minWidth: '50%' },
+  hintFooterRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, marginBottom: 15 },
+  hintFooter: { fontSize: 13, lineHeight: 19, fontWeight: '700', flexShrink: 1, textAlign: 'center' },
+  hintCloseBtn: { minHeight: 52, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginTop: 8, paddingHorizontal: 16, paddingVertical: 8 },
+  hintCloseBtnText: { fontSize: 16, lineHeight: 21, fontWeight: '800', textAlign: 'center' },
+  rowPressed: { opacity: 0.68 },
+  cardPressed: { opacity: 0.78, transform: [{ scale: 0.995 }] },
+  buttonPressed: { opacity: 0.82, transform: [{ scale: 0.99 }] },
 });

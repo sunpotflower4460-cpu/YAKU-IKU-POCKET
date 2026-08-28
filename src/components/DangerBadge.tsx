@@ -1,78 +1,60 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { DangerLevel } from '../types';
-import { Colors } from '../constants/colors';
+import { useTheme } from '../theme/ThemeProvider';
 
 interface Props {
   danger: DangerLevel;
   size?: 'sm' | 'md';
+  /** Set false when a parent control already includes the attention category. */
+  accessible?: boolean;
 }
 
-const DANGER_CONFIG: Record<
-  DangerLevel,
-  { dotColor: string; label: string; bg: string; text: string; border: string }
-> = {
-  GREEN: {
-    dotColor: '#43A047',
-    // Describe the species generally — never assert the *scanned* specimen is
-    // safe to eat (identification is not guaranteed reliable).
-    label: '一般に食用とされる',
-    bg: Colors.dangerGreenBg,
-    text: Colors.dangerGreen,
-    border: '#A5D6A7',
-  },
-  YELLOW: {
-    dotColor: '#F9A825',
-    label: '要注意',
-    bg: Colors.dangerYellowBg,
-    text: Colors.dangerYellow,
-    border: '#FFE082',
-  },
-  RED: {
-    dotColor: '#E53935',
-    label: '危険・有毒',
-    bg: Colors.dangerRedBg,
-    text: Colors.dangerRed,
-    border: '#EF9A9A',
-  },
+const DANGER_LABELS: Record<DangerLevel, string> = {
+  // Describe the species generally — never assert the scanned specimen is
+  // safe to eat because identification remains provisional.
+  GREEN: '一般に食用とされる',
+  YELLOW: '要注意',
+  RED: '危険・有毒',
 };
 
-/** Same Japanese danger-level labels as the badge itself — for other UI (e.g. related-plant cards) that needs the text without the visual badge. */
-export const DANGER_LABEL: Record<DangerLevel, string> = {
-  GREEN: DANGER_CONFIG.GREEN.label,
-  YELLOW: DANGER_CONFIG.YELLOW.label,
-  RED: DANGER_CONFIG.RED.label,
-};
+export const DANGER_LABEL: Record<DangerLevel, string> = DANGER_LABELS;
 
-/**
- * Same dot colors as the badge itself — for other UI (stat chips, related-
- * plant cards, recent-observation cards) that draws its own small danger-dot
- * instead of rendering a full DangerBadge. Only `dotColor` is exposed here,
- * not the full DANGER_CONFIG: several call sites use `bg`/`border` accent
- * shades that intentionally differ per screen, so exporting those wholesale
- * would invite an unreviewed blanket replacement of colors that were never
- * meant to match this badge's exact palette.
- */
+/** Stable colors for legacy call sites that draw a small status dot. */
 export const DANGER_DOT_COLOR: Record<DangerLevel, string> = {
-  GREEN: DANGER_CONFIG.GREEN.dotColor,
-  YELLOW: DANGER_CONFIG.YELLOW.dotColor,
-  RED: DANGER_CONFIG.RED.dotColor,
+  GREEN: '#43A047',
+  YELLOW: '#F9A825',
+  RED: '#E53935',
 };
 
-export function DangerBadge({ danger, size = 'md' }: Props) {
-  const config = DANGER_CONFIG[danger];
+export function DangerBadge({ danger, size = 'md', accessible = true }: Props) {
+  const theme = useTheme();
   const isSmall = size === 'sm';
-  const dotSize = isSmall ? 8 : 10;
+  const dotSize = isSmall ? 7 : 9;
+  const statusColor = danger === 'RED'
+    ? theme.colors.statusDanger
+    : danger === 'YELLOW'
+      ? theme.colors.statusCaution
+      : theme.colors.statusObserved;
+  // Preserve the semantic status colour in the dot/border, but keep small
+  // label text comfortably above AA contrast in light mode rather than
+  // depending on a status colour that may sit close to the 4.5:1 threshold.
+  const labelColor = theme.mode === 'dark' ? statusColor : theme.colors.textPrimary;
 
   return (
     <View
+      accessible={accessible}
+      accessibilityElementsHidden={!accessible}
+      importantForAccessibility={accessible ? 'auto' : 'no-hide-descendants'}
+      accessibilityRole={accessible ? 'text' : undefined}
+      accessibilityLabel={accessible ? `植物情報の注意区分、${DANGER_LABELS[danger]}` : undefined}
       style={[
         styles.badge,
         {
-          backgroundColor: config.bg,
-          borderColor: config.border,
-          paddingHorizontal: isSmall ? 6 : 10,
-          paddingVertical: isSmall ? 2 : 5,
+          backgroundColor: `${statusColor}${theme.mode === 'dark' ? '22' : '12'}`,
+          borderColor: `${statusColor}55`,
+          paddingHorizontal: isSmall ? 7 : 10,
+          paddingVertical: isSmall ? 3 : 5,
         },
       ]}
     >
@@ -83,17 +65,24 @@ export function DangerBadge({ danger, size = 'md' }: Props) {
             width: dotSize,
             height: dotSize,
             borderRadius: dotSize / 2,
-            backgroundColor: config.dotColor,
+            backgroundColor: statusColor,
           },
         ]}
+        accessibilityElementsHidden
       />
       <Text
         style={[
           styles.label,
-          { color: config.text, fontSize: isSmall ? 10 : 12 },
+          {
+            color: labelColor,
+            fontSize: isSmall ? 11 : 13,
+            lineHeight: isSmall ? 15 : 18,
+          },
         ]}
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
       >
-        {config.label}
+        {DANGER_LABELS[danger]}
       </Text>
     </View>
   );
@@ -101,15 +90,14 @@ export function DangerBadge({ danger, size = 'md' }: Props) {
 
 const styles = StyleSheet.create({
   badge: {
+    maxWidth: '100%',
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    borderRadius: 20,
-    borderWidth: 1,
+    gap: 5,
+    borderRadius: 999,
+    borderWidth: StyleSheet.hairlineWidth,
     alignSelf: 'flex-start',
   },
-  dot: {},
-  label: {
-    fontWeight: '700',
-  },
+  dot: { flexShrink: 0 },
+  label: { flexShrink: 1, fontWeight: '700' },
 });
