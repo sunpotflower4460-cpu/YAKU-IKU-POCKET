@@ -29,6 +29,11 @@ const RECENT_COPY_TTL_MS = 10_000;
 // getInfo(false) and try to create the same directory simultaneously.
 let ensureDirPromise: Promise<void> | null = null;
 
+// Full-directory cleanup is asynchronous. New-generation saves must wait for it
+// to finish, otherwise a photo saved *after* reset could still be erased by the
+// tail end of the reset's directory deletion.
+let clearPromise: Promise<void> | null = null;
+
 // Incremented by clearObservationPhotos(). A copy started in an older generation
 // must never become a valid durable photo after the user has requested a full
 // data reset; if it finishes late we delete that stale result again.
@@ -48,6 +53,13 @@ const MANAGED_PHOTO_NAME = /^\d+_(?:[a-z0-9]{1,16}|[a-z0-9]{1,12}_[a-z0-9]{6})\.
 
 async function ensureObservationsDir(): Promise<void> {
   if (!OBSERVATIONS_DIR) return;
+
+  // Snapshot the current cleanup. If another reset starts later, generation
+  // checks still invalidate this save; this wait specifically prevents the
+  // already-requested cleanup from deleting a new-generation file afterward.
+  const cleanupInProgress = clearPromise;
+  if (cleanupInProgress) await cleanupInProgress;
+
   if (ensureDirPromise) return ensureDirPromise;
 
   const operation = (async () => {
@@ -181,6 +193,7 @@ export async function clearObservationPhotos(): Promise<void> {
   inFlightCopies.clear();
   recentCopies.clear();
   ensureDirPromise = null;
+
   if (
     Platform.OS === 'web' ||
     !OBSERVATIONS_DIR ||
@@ -189,11 +202,24 @@ export async function clearObservationPhotos(): Promise<void> {
     return;
   }
 
+  // Queue multiple reset requests rather than racing directory deletions. New
+  // saves wait for the latest queued cleanup before recreating the folder.
+  const previousClear = clearPromise;
+  const operation = (async () => {
+    if (previousClear) await previousClear;
+    try {
+      await FileSystem.deleteAsync(OBSERVATIONS_DIR, { idempotent: true });
+    } catch (err) {
+      // The in-memory/user-data reset should still succeed if filesystem cleanup
+      // fails (e.g. an already-missing directory or transient OS error).
+      console.warn('[observationPhotoStorage] clear failed:', err);
+    }
+  })();
+
+  clearPromise = operation;
   try {
-    await FileSystem.deleteAsync(OBSERVATIONS_DIR, { idempotent: true });
-  } catch (err) {
-    // The in-memory/user-data reset should still succeed if filesystem cleanup
-    // fails (e.g. an already-missing directory or transient OS error).
-    console.warn('[observationPhotoStorage] clear failed:', err);
+    await operation;
+  } finally {
+    if (clearPromise === operation) clearPromise = null;
   }
 }
