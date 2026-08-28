@@ -23,6 +23,36 @@ const SOURCE_ORIGINS = new Set<SourceOrigin>([
   'unknown',
 ]);
 
+export interface PersistedUserData {
+  discoveredPlantIds: string[];
+  scanHistory: ScanRecord[];
+  playerName: string;
+  xp: number;
+  streak: number;
+  lastLoginDate: string;
+  todayDate: string;
+  todayScanCount: number;
+  todayNewCount: number;
+  todayMaxRarity: number;
+  todayDangers: string[];
+  todayCategories: string[];
+  claimedChallengeIds: string[];
+  hasOnboarded: boolean;
+  lastCelebrated: number;
+  favoritePlantIds: string[];
+  plantNotes: Record<string, string>;
+  claimedSeasonalQuestIds: string[];
+  seasonalQuestMonth: string;
+  themeOverride: 'system' | 'light' | 'dark';
+  aiConsentGiven: boolean;
+  viewedSafetyCardPlantIds: string[];
+  hasComparedCandidates: boolean;
+  unidentifiedObservations: UnidentifiedObservation[];
+  practiceRecords: PracticeRecord[];
+}
+
+export type SanitizedPersistedUserData = Partial<PersistedUserData>;
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
@@ -158,9 +188,9 @@ function sanitizePlantNotes(value: unknown): Record<string, string> | undefined 
  * old/broken app versions). Returning only validated fields lets Zustand merge
  * them over today's safe defaults instead of hydrating crash-prone values.
  */
-export function sanitizePersistedGameState(value: unknown): Record<string, unknown> {
+export function sanitizePersistedGameState(value: unknown): SanitizedPersistedUserData {
   if (!isRecord(value)) return {};
-  const out: Record<string, unknown> = {};
+  const out: SanitizedPersistedUserData = {};
 
   const discoveredPlantIds = uniqueStrings(value.discoveredPlantIds, (id) => KNOWN_PLANT_IDS.has(id));
   if (discoveredPlantIds) out.discoveredPlantIds = discoveredPlantIds;
@@ -168,17 +198,22 @@ export function sanitizePersistedGameState(value: unknown): Record<string, unkno
   if (scanHistory) out.scanHistory = scanHistory;
   if (typeof value.playerName === 'string') out.playerName = value.playerName;
 
-  const numericFields = [
-    'xp', 'streak', 'todayScanCount', 'todayNewCount', 'todayMaxRarity', 'lastCelebrated',
-  ] as const;
-  for (const field of numericFields) {
-    const safe = finiteNonNegativeInteger(value[field]);
-    if (safe !== undefined) out[field] = safe;
-  }
+  const xp = finiteNonNegativeInteger(value.xp);
+  if (xp !== undefined) out.xp = xp;
+  const streak = finiteNonNegativeInteger(value.streak);
+  if (streak !== undefined) out.streak = streak;
+  const todayScanCount = finiteNonNegativeInteger(value.todayScanCount);
+  if (todayScanCount !== undefined) out.todayScanCount = todayScanCount;
+  const todayNewCount = finiteNonNegativeInteger(value.todayNewCount);
+  if (todayNewCount !== undefined) out.todayNewCount = todayNewCount;
+  const todayMaxRarity = finiteNonNegativeInteger(value.todayMaxRarity);
+  if (todayMaxRarity !== undefined) out.todayMaxRarity = todayMaxRarity;
+  const lastCelebrated = finiteNonNegativeInteger(value.lastCelebrated);
+  if (lastCelebrated !== undefined) out.lastCelebrated = lastCelebrated;
 
-  for (const field of ['lastLoginDate', 'todayDate', 'seasonalQuestMonth'] as const) {
-    if (typeof value[field] === 'string') out[field] = value[field];
-  }
+  if (typeof value.lastLoginDate === 'string') out.lastLoginDate = value.lastLoginDate;
+  if (typeof value.todayDate === 'string') out.todayDate = value.todayDate;
+  if (typeof value.seasonalQuestMonth === 'string') out.seasonalQuestMonth = value.seasonalQuestMonth;
 
   const todayDangers = uniqueStrings(value.todayDangers, (item) => DANGER_LEVELS.has(item), 3);
   if (todayDangers) out.todayDangers = todayDangers;
@@ -198,9 +233,9 @@ export function sanitizePersistedGameState(value: unknown): Record<string, unkno
   );
   if (claimedSeasonalQuestIds) out.claimedSeasonalQuestIds = claimedSeasonalQuestIds;
 
-  for (const field of ['hasOnboarded', 'aiConsentGiven', 'hasComparedCandidates'] as const) {
-    if (typeof value[field] === 'boolean') out[field] = value[field];
-  }
+  if (typeof value.hasOnboarded === 'boolean') out.hasOnboarded = value.hasOnboarded;
+  if (typeof value.aiConsentGiven === 'boolean') out.aiConsentGiven = value.aiConsentGiven;
+  if (typeof value.hasComparedCandidates === 'boolean') out.hasComparedCandidates = value.hasComparedCandidates;
 
   const favoritePlantIds = uniqueStrings(value.favoritePlantIds, (id) => KNOWN_PLANT_IDS.has(id));
   if (favoritePlantIds) out.favoritePlantIds = favoritePlantIds;
@@ -213,7 +248,7 @@ export function sanitizePersistedGameState(value: unknown): Record<string, unkno
   const plantNotes = sanitizePlantNotes(value.plantNotes);
   if (plantNotes) out.plantNotes = plantNotes;
   if (typeof value.themeOverride === 'string' && THEME_MODES.has(value.themeOverride)) {
-    out.themeOverride = value.themeOverride;
+    out.themeOverride = value.themeOverride as PersistedUserData['themeOverride'];
   }
 
   const unidentifiedObservations = sanitizeUnidentified(value.unidentifiedObservations);
