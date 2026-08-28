@@ -16,8 +16,15 @@ export function EmptyState({ icon, title, description, action }: Props) {
   const theme = useTheme();
   return (
     <View style={[styles.container, { paddingVertical: theme.space[10] }]}>
-      <Ionicons name={icon} size={40} color={theme.colors.textTertiary} />
-      <DynamicText variant="headline" weight="secondary" style={{ marginTop: theme.space[3] }}>
+      <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+        <Ionicons name={icon} size={40} color={theme.colors.textTertiary} />
+      </View>
+      <DynamicText
+        variant="headline"
+        weight="secondary"
+        accessibilityRole="header"
+        style={{ marginTop: theme.space[3], textAlign: 'center' }}
+      >
         {title}
       </DynamicText>
       {description && (
@@ -29,7 +36,7 @@ export function EmptyState({ icon, title, description, action }: Props) {
           {description}
         </DynamicText>
       )}
-      {action && <View style={{ marginTop: theme.space[4] }}>{action}</View>}
+      {action && <View style={{ marginTop: theme.space[4], maxWidth: '100%' }}>{action}</View>}
     </View>
   );
 }
