@@ -11,6 +11,7 @@ import {
   Image,
   Platform,
   Share,
+  useWindowDimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -46,11 +47,11 @@ const RARITY_GRADIENT_ALPHA: Record<number, [string, string, string]> = {
 };
 
 const RARITY_LABEL: Record<number, string> = {
-  1: 'コモン',
-  2: 'アンコモン',
-  3: 'レア',
-  4: 'スーパーレア',
-  5: 'レジェンダリー',
+  1: 'よく見かける',
+  2: '比較的見つけやすい',
+  3: 'やや珍しい',
+  4: '珍しい',
+  5: 'とても珍しい',
 };
 
 interface Props {
@@ -87,6 +88,8 @@ export function ScanResultModal({
   onScanAgain,
 }: Props) {
   const theme = useTheme();
+  const { width } = useWindowDimensions();
+  const stackActions = width < 380;
   const showCompare = !!candidates && candidates.length > 1;
   const candidateSafety = candidates ? assessCandidateSafety(candidates) : null;
   const reduceMotion = useReduceMotion();
@@ -135,8 +138,6 @@ export function ScanResultModal({
         entry.start();
       }
 
-      // Keep the rare-discovery delight subtle and optional. The information
-      // hierarchy should not depend on motion.
       if (plant.rarity >= 4 && isNewDiscovery && !reduceMotion) {
         shimmerLoop = Animated.loop(
           Animated.sequence([
@@ -175,16 +176,16 @@ export function ScanResultModal({
     const rarityStars = '★'.repeat(plant.rarity) + '☆'.repeat(5 - plant.rarity);
     const dangerLabel = DANGER_LABEL[plant.danger];
     const msg =
-      `植物を観察しました\n\n` +
+      `植物候補を観察しました\n\n` +
       `${plant.emoji} ${plant.name} (${plant.nameEn})\n` +
-      `レアリティ: ${rarityStars}\n` +
-      `分類: ${dangerLabel}\n\n` +
-      `薬育ポケットで野草・ハーブを観察中！\n` +
-      `※採取・摂取は必ず専門家にご確認ください。\n` +
+      `見つけやすさの目安: ${rarityStars}\n` +
+      `注意区分: ${dangerLabel}\n\n` +
+      `薬育ポケットのフィールドノートから\n` +
+      `※AIの候補は参考情報です。採取・摂取はアプリだけで判断せず、専門家に確認してください。\n` +
       `#薬育ポケット #植物観察 #${plant.name}`;
     try {
       await Share.share({ message: msg });
-    } catch { /* ignore */ }
+    } catch { /* user cancellation */ }
   }
 
   const isDangerous = plant.danger === 'RED';
@@ -213,8 +214,8 @@ export function ScanResultModal({
   const discoveryLabel = plant.rarity === 5
     ? 'とても珍しい発見'
     : plant.rarity >= 4
-    ? '珍しい発見'
-    : '新しい発見';
+      ? '珍しい発見'
+      : '新しい発見';
 
   return (
     <Modal
@@ -239,7 +240,6 @@ export function ScanResultModal({
             },
           ]}
         >
-          {/* ── Gradient header ── */}
           <View style={styles.gradientHeader}>
             {imageUri && (
               <Image
@@ -307,7 +307,6 @@ export function ScanResultModal({
             )}
           </View>
 
-          {/* ── Scrollable content ── */}
           <ScrollView
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.content}
@@ -334,11 +333,11 @@ export function ScanResultModal({
                 )}
 
                 <View style={styles.candidateList}>
-                  {candidates.map((c) => {
-                    const selected = c.plant.id === selectedPlantId;
+                  {candidates.map((candidate) => {
+                    const selected = candidate.plant.id === selectedPlantId;
                     return (
                       <Pressable
-                        key={c.plant.id}
+                        key={candidate.plant.id}
                         style={({ pressed }) => [
                           styles.candidateCard,
                           {
@@ -347,26 +346,26 @@ export function ScanResultModal({
                           },
                           pressed && styles.cardPressed,
                         ]}
-                        onPress={() => onSelectCandidate?.(c)}
+                        onPress={() => onSelectCandidate?.(candidate)}
                         accessibilityRole="button"
                         accessibilityState={{ selected }}
-                        accessibilityLabel={`候補${c.score.overallRank}: ${c.plant.name}、画像との一致度${c.score.visionScore ?? '不明'}${selected ? '、選択中' : ''}`}
+                        accessibilityLabel={`候補${candidate.score.overallRank}: ${candidate.plant.name}、画像との一致度${candidate.score.visionScore ?? '不明'}${selected ? '、選択中' : ''}`}
                       >
                         <View style={[styles.candidateEmojiWrap, { backgroundColor: theme.colors.surfaceSecondary }]}>
-                          <Text style={styles.candidateEmoji}>{c.plant.emoji}</Text>
+                          <Text style={styles.candidateEmoji}>{candidate.plant.emoji}</Text>
                         </View>
                         <View style={{ flex: 1 }}>
                           <View style={styles.candidateNameRow}>
-                            <Text style={[styles.candidateRank, { color: theme.colors.textTertiary }]}>候補{c.score.overallRank}</Text>
-                            <Text style={[styles.candidateName, { color: theme.colors.textPrimary }]}>{c.plant.name}</Text>
+                            <Text style={[styles.candidateRank, { color: theme.colors.textTertiary }]}>候補{candidate.score.overallRank}</Text>
+                            <Text style={[styles.candidateName, { color: theme.colors.textPrimary }]}>{candidate.plant.name}</Text>
                           </View>
-                          <Text style={[styles.candidateLatin, { color: theme.colors.textTertiary }]}>{c.plant.nameLatin}</Text>
+                          <Text style={[styles.candidateLatin, { color: theme.colors.textTertiary }]}>{candidate.plant.nameLatin}</Text>
                           <View style={styles.candidateMetaRow}>
-                            <DangerBadge danger={c.plant.danger} size="sm" />
-                            {c.score.visionScore !== undefined && (
-                              <Text style={[styles.candidateScore, { color: theme.colors.textSecondary }]}>画像一致 {c.score.visionScore}%</Text>
+                            <DangerBadge danger={candidate.plant.danger} size="sm" />
+                            {candidate.score.visionScore !== undefined && (
+                              <Text style={[styles.candidateScore, { color: theme.colors.textSecondary }]}>画像一致 {candidate.score.visionScore}%</Text>
                             )}
-                            {c.score.seasonScore === 1 && (
+                            {candidate.score.seasonScore === 1 && (
                               <View style={[styles.candidateSeasonChip, { backgroundColor: theme.colors.surfaceSecondary }]}>
                                 <Ionicons name="leaf-outline" size={11} color={theme.colors.accentPrimary} />
                                 <Text style={[styles.candidateSeasonChipText, { color: theme.colors.accentPrimary }]}>季節が合う</Text>
@@ -419,28 +418,28 @@ export function ScanResultModal({
                             { key: 'mismatch', label: '違う' },
                             { key: 'unknown', label: '分からない' },
                           ] as { key: TraitCheckState; label: string }[]
-                        ).map((opt) => {
-                          const selected = state === opt.key;
+                        ).map((option) => {
+                          const selected = state === option.key;
                           return (
                             <Pressable
-                              key={opt.key}
+                              key={option.key}
                               style={({ pressed }) => [
                                 styles.traitItemBtn,
                                 {
-                                  backgroundColor: selected ? traitStateColor(opt.key) : theme.colors.surfaceSecondary,
-                                  borderColor: selected ? traitStateColor(opt.key) : theme.colors.borderSubtle,
+                                  backgroundColor: selected ? traitStateColor(option.key) : theme.colors.surfaceSecondary,
+                                  borderColor: selected ? traitStateColor(option.key) : theme.colors.borderSubtle,
                                 },
                                 pressed && styles.cardPressed,
                               ]}
                               onPress={() => {
                                 Haptics.selectionAsync();
-                                setTraitStates((prev) => ({ ...prev, [item.id]: opt.key }));
+                                setTraitStates((prev) => ({ ...prev, [item.id]: option.key }));
                               }}
                               accessibilityRole="button"
                               accessibilityState={{ selected }}
-                              accessibilityLabel={`${item.label}: ${opt.label}`}
+                              accessibilityLabel={`${item.label}: ${option.label}`}
                             >
-                              <Text style={[styles.traitItemBtnText, { color: selected ? '#FFFFFF' : theme.colors.textSecondary }]}>{opt.label}</Text>
+                              <Text style={[styles.traitItemBtnText, { color: selected ? '#FFFFFF' : theme.colors.textSecondary }]}>{option.label}</Text>
                             </Pressable>
                           );
                         })}
@@ -579,7 +578,6 @@ export function ScanResultModal({
             </View>
           </ScrollView>
 
-          {/* ── Actions ── */}
           <View style={[styles.actions, { borderTopColor: theme.colors.borderSubtle, backgroundColor: theme.colors.surfacePrimary }]}>
             {isDemo ? (
               <Pressable
@@ -608,7 +606,7 @@ export function ScanResultModal({
                     <Text style={[styles.btnShareText, { color: theme.colors.accentPrimary }]}>観察をシェア</Text>
                   </Pressable>
                 )}
-                <View style={styles.actionRow}>
+                <View style={[styles.actionRow, stackActions && styles.actionRowStacked]}>
                   <Pressable
                     style={({ pressed }) => [
                       styles.btn,
@@ -662,7 +660,6 @@ const styles = StyleSheet.create({
     shadowRadius: 24,
     elevation: 18,
   },
-
   gradientHeader: { paddingTop: 18, paddingBottom: 18, paddingHorizontal: 20, alignItems: 'center', position: 'relative', overflow: 'hidden' },
   sparkleOverlay: { position: 'absolute', inset: 0, backgroundColor: '#FFFFFF' },
   closeBtn: { position: 'absolute', top: 10, right: 10, width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(0,0,0,0.24)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.22)', justifyContent: 'center', alignItems: 'center', zIndex: 2 },
@@ -681,10 +678,8 @@ const styles = StyleSheet.create({
   headerStarsWrap: { backgroundColor: 'rgba(255,255,255,0.84)', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 4 },
   photoLabel: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 8, backgroundColor: 'rgba(0,0,0,0.30)', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
   photoLabelText: { color: 'rgba(255,255,255,0.88)', fontSize: 10, lineHeight: 14, fontWeight: '600' },
-
   content: { padding: 16, alignItems: 'center' },
   badgeRow: { flexDirection: 'row', gap: 10, alignItems: 'center', marginBottom: 14, justifyContent: 'center' },
-
   compareContainer: { width: '100%', marginBottom: 16 },
   compareHeadline: { fontSize: 17, lineHeight: 22, fontWeight: '800', textAlign: 'center' },
   compareSubtext: { fontSize: 13, lineHeight: 19, textAlign: 'center', marginTop: 4, marginBottom: 12 },
@@ -703,7 +698,6 @@ const styles = StyleSheet.create({
   candidateSeasonChip: { flexDirection: 'row', alignItems: 'center', gap: 3, borderRadius: 999, paddingHorizontal: 7, paddingVertical: 3 },
   candidateSeasonChipText: { fontSize: 10, lineHeight: 13, fontWeight: '700' },
   compareBelowNote: { fontSize: 11, lineHeight: 16, textAlign: 'center', marginTop: 11 },
-
   traitCheckContainer: { width: '100%', borderWidth: StyleSheet.hairlineWidth, borderRadius: 16, padding: 13, marginBottom: 16 },
   traitCheckHeadline: { fontSize: 15, lineHeight: 20, fontWeight: '800' },
   traitCheckSubtext: { fontSize: 13, lineHeight: 19, marginTop: 4, marginBottom: 9 },
@@ -714,10 +708,8 @@ const styles = StyleSheet.create({
   traitItemBtnRow: { flexDirection: 'row', gap: 7 },
   traitItemBtn: { flex: 1, minHeight: 44, borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
   traitItemBtnText: { fontSize: 12, lineHeight: 16, fontWeight: '700', textAlign: 'center' },
-
   alertBox: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, borderWidth: StyleSheet.hairlineWidth, borderRadius: 14, padding: 11, marginBottom: 12, width: '100%' },
   alertText: { flex: 1, fontWeight: '700', fontSize: 13, lineHeight: 19 },
-
   confidenceContainer: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12, width: '100%' },
   confidenceLabel: { fontSize: 11, lineHeight: 15, width: 52 },
   confidenceBar: { flex: 1, height: 7, borderRadius: 4, overflow: 'hidden' },
@@ -742,15 +734,14 @@ const styles = StyleSheet.create({
   warningBox: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 14, padding: 11, marginBottom: 11, width: '100%' },
   warningText: { fontSize: 12, lineHeight: 18, fontWeight: '600' },
   disclaimerWrap: { width: '100%', borderRadius: 15, overflow: 'hidden' },
-
   actions: { gap: 8, padding: 12, borderTopWidth: StyleSheet.hairlineWidth },
   actionRow: { flexDirection: 'row', gap: 9 },
+  actionRowStacked: { flexDirection: 'column' },
   btn: { flex: 1, minHeight: 52, flexDirection: 'row', paddingHorizontal: 12, borderRadius: 15, alignItems: 'center', justifyContent: 'center', gap: 6 },
   btnShare: { backgroundColor: 'transparent', borderWidth: StyleSheet.hairlineWidth },
   btnPrimaryText: { fontWeight: '800', fontSize: 13, lineHeight: 18, textAlign: 'center' },
   btnSecondaryText: { fontWeight: '700', fontSize: 13, lineHeight: 18 },
   btnShareText: { fontWeight: '800', fontSize: 13, lineHeight: 18 },
-
   cardPressed: { opacity: 0.76, transform: [{ scale: 0.995 }] },
   buttonPressed: { opacity: 0.82, transform: [{ scale: 0.99 }] },
 });
