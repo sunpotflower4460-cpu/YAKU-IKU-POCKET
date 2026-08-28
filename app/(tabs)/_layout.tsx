@@ -15,7 +15,6 @@ export default function TabLayout() {
   const { fontScale } = useWindowDimensions();
   const startSession = useGameStore((state) => state.startSession);
   const hasHydrated = useGameStore((state) => state._hasHydrated);
-  const sessionDate = useGameStore((state) => state.todayDate);
   const xp = useGameStore((state) => state.xp);
 
   const currentLevel = Math.floor(xp / XP_PER_LEVEL) + 1;
@@ -57,7 +56,6 @@ export default function TabLayout() {
   return (
     <>
       <Tabs
-        key={sessionDate || 'hydrating'}
         screenOptions={{
           headerShown: false,
           tabBarActiveTintColor: theme.colors.accentPrimary,
