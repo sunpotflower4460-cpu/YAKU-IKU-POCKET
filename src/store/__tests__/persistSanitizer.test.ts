@@ -66,11 +66,12 @@ describe('sanitizePersistedGameState', () => {
     }));
 
     const safe = sanitizePersistedGameState({ scanHistory });
-    const scans = safe.scanHistory as Array<Record<string, unknown>>;
+    const scans = safe.scanHistory;
 
+    expect(scans).toBeDefined();
     expect(scans).toHaveLength(100);
-    expect(scans[0].sourceOrigin).toBeUndefined();
-    expect(scans[1].sourceOrigin).toBe('wild_observed');
-    expect(scans[0].traitChecks).toEqual([{ traitId: 'leaf', state: 'match', userNote: 'ok' }]);
+    expect(scans?.[0].sourceOrigin).toBeUndefined();
+    expect(scans?.[1].sourceOrigin).toBe('wild_observed');
+    expect(scans?.[0].traitChecks).toEqual([{ traitId: 'leaf', state: 'match', userNote: 'ok' }]);
   });
 });
