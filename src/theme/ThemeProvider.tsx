@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useMemo } from 'react';
 import { useColorScheme } from 'react-native';
 import { AppColors, lightColors, darkColors } from './colors';
-import { space, radius, type, weight, motion, minTapTarget } from './tokens';
+import { space, radius, type, lineHeight, weight, motion, minTapTarget } from './tokens';
 import { useGameStore } from '../store/useGameStore';
 
 export type ThemeMode = 'light' | 'dark';
@@ -12,6 +12,7 @@ export interface Theme {
   space: typeof space;
   radius: typeof radius;
   type: typeof type;
+  lineHeight: typeof lineHeight;
   weight: typeof weight;
   motion: typeof motion;
   minTapTarget: number;
@@ -24,6 +25,7 @@ function buildTheme(mode: ThemeMode): Theme {
     space,
     radius,
     type,
+    lineHeight,
     weight,
     motion,
     minTapTarget,
