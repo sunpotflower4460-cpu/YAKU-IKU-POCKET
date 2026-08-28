@@ -13,6 +13,7 @@ export function SecondaryButton({
   label,
   fullWidth,
   disabled,
+  accessibilityLabel,
   accessibilityState,
   style,
   ...rest
@@ -22,7 +23,7 @@ export function SecondaryButton({
     <Pressable
       {...rest}
       accessibilityRole="button"
-      accessibilityLabel={label}
+      accessibilityLabel={accessibilityLabel ?? label}
       accessibilityState={{ ...accessibilityState, disabled: !!disabled }}
       disabled={disabled}
       style={(state) => [
