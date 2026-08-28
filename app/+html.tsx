@@ -15,6 +15,24 @@ const webAccessibilityStyles = `
     box-shadow: 0 0 0 5px #174F2A !important;
   }
 
+  /*
+   * Component animations also read the preference in useReduceMotion(). This
+   * CSS layer is a second line of defence for browser-native transitions,
+   * future CSS animation and smooth scrolling that bypass React Native's hook.
+   */
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto !important;
+    }
+
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      transition-delay: 0ms !important;
+    }
+  }
+
   @media (forced-colors: active) {
     *:focus-visible {
       outline: 3px solid CanvasText !important;
