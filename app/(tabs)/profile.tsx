@@ -1,5 +1,7 @@
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  AccessibilityInfo,
+  findNodeHandle,
   View,
   Text,
   StyleSheet,
@@ -52,6 +54,26 @@ interface AchievementDef {
   check: (ctx: AchievementContext) => boolean;
 }
 
+type WebFocusable = {
+  focus?: () => void;
+  isConnected?: boolean;
+};
+
+type WebDocumentLike = {
+  activeElement?: WebFocusable | null;
+  body?: WebFocusable | null;
+};
+
+function getWebDocument(): WebDocumentLike | undefined {
+  return (globalThis as unknown as { document?: WebDocumentLike }).document;
+}
+
+function safeSeasonForIso(iso: string): string | null {
+  const date = new Date(iso);
+  if (!Number.isFinite(date.getTime())) return null;
+  return seasonForDate(date);
+}
+
 const ACHIEVEMENTS: AchievementDef[] = [
   { id: 'first_discovery', icon: 'leaf-outline', label: '初めての観察', desc: '初めて植物を記録した', check: (ctx) => ctx.discoveredPlantIds.length >= 1 },
   { id: 'ten_plants', icon: 'book-outline', label: '10種類の記録', desc: '10種類の植物を記録した', check: (ctx) => ctx.discoveredPlantIds.length >= 10 },
@@ -96,7 +118,8 @@ const ACHIEVEMENTS: AchievementDef[] = [
     check: (ctx) => {
       const seasonsByPlant = new Map<string, Set<string>>();
       for (const record of ctx.scanHistory) {
-        const season = seasonForDate(new Date(record.scannedAt));
+        const season = safeSeasonForIso(record.scannedAt);
+        if (!season) continue;
         if (!seasonsByPlant.has(record.plantId)) seasonsByPlant.set(record.plantId, new Set());
         seasonsByPlant.get(record.plantId)!.add(season);
       }
@@ -143,6 +166,10 @@ export default function ProfileScreen() {
   const [shareCardVisible, setShareCardVisible] = useState(false);
   const [sourcesVisible, setSourcesVisible] = useState(false);
   const [historySearch, setHistorySearch] = useState('');
+  const editNamePreviousWebFocusRef = useRef<WebFocusable | null>(null);
+  const sourcesPreviousWebFocusRef = useRef<WebFocusable | null>(null);
+  const sourcesTitleRef = useRef<React.ElementRef<typeof Text>>(null);
+  const sourcesCloseButtonRef = useRef<React.ElementRef<typeof Pressable>>(null);
 
   const season = getCurrentSeason();
   const seasonCfg = SEASON_CONFIG[season];
@@ -194,7 +221,10 @@ export default function ProfileScreen() {
 
   const seasonCounts = useMemo(() => {
     const counts: Record<string, number> = { 春: 0, 夏: 0, 秋: 0, 冬: 0 };
-    for (const record of scanHistory) counts[seasonForDate(new Date(record.scannedAt))]++;
+    for (const record of scanHistory) {
+      const seasonName = safeSeasonForIso(record.scannedAt);
+      if (seasonName && seasonName in counts) counts[seasonName]++;
+    }
     return counts;
   }, [scanHistory]);
 
@@ -244,10 +274,68 @@ export default function ProfileScreen() {
     return { cells, year, month, mm, todayStr: todayKey };
   }, [todayKey]);
 
+  useEffect(() => {
+    if (!sourcesVisible) return;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+
+    if (Platform.OS === 'web') {
+      timer = setTimeout(() => {
+        const target = sourcesCloseButtonRef.current as unknown as WebFocusable | null;
+        target?.focus?.();
+      }, 0);
+    } else {
+      timer = setTimeout(() => {
+        const node = findNodeHandle(sourcesTitleRef.current);
+        if (node) AccessibilityInfo.setAccessibilityFocus(node);
+      }, reduceMotion ? 70 : 180);
+    }
+
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [sourcesVisible, reduceMotion]);
+
+  function captureCurrentWebFocus(targetRef: React.MutableRefObject<WebFocusable | null>) {
+    if (Platform.OS !== 'web') return;
+    const doc = getWebDocument();
+    const active = doc?.activeElement;
+    targetRef.current = active && active !== doc?.body ? active : null;
+  }
+
+  function restoreWebFocus(targetRef: React.MutableRefObject<WebFocusable | null>) {
+    if (Platform.OS !== 'web') return;
+    const target = targetRef.current;
+    targetRef.current = null;
+    setTimeout(() => {
+      if (target?.isConnected !== false) target?.focus?.();
+    }, 0);
+  }
+
+  function openEditName() {
+    captureCurrentWebFocus(editNamePreviousWebFocusRef);
+    setTempName(playerName);
+    setEditNameVisible(true);
+  }
+
+  function closeEditName() {
+    setEditNameVisible(false);
+    restoreWebFocus(editNamePreviousWebFocusRef);
+  }
+
+  function openSources() {
+    captureCurrentWebFocus(sourcesPreviousWebFocusRef);
+    setSourcesVisible(true);
+  }
+
+  function closeSources() {
+    setSourcesVisible(false);
+    restoreWebFocus(sourcesPreviousWebFocusRef);
+  }
+
   function handleSaveName() {
     if (!canSaveName) return;
     setPlayerName(normalizedTempName);
-    setEditNameVisible(false);
+    closeEditName();
   }
 
   async function handleExportData() {
@@ -265,7 +353,9 @@ export default function ProfileScreen() {
     };
     try {
       await Share.share({ message: JSON.stringify(payload, null, 2) });
-    } catch { /* user cancellation */ }
+    } catch {
+      Alert.alert('観察データを共有できませんでした', '通信状態や共有先を確認して、もう一度お試しください。');
+    }
   }
 
   function handleDeleteAllData() {
@@ -288,7 +378,7 @@ export default function ProfileScreen() {
       <LinearGradient colors={['#123F24', '#1C542C', '#2B6638']} style={[styles.hero, { paddingTop: insets.top + 18 }]}>
         <Text style={styles.heroEyebrow}>FIELD NOTE</Text>
         <View style={styles.identityRow}>
-          <View style={styles.avatar}>
+          <View style={styles.avatar} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
             <Ionicons name="person-outline" size={34} color="#FFFFFF" />
           </View>
           <View style={styles.identityText}>
@@ -297,23 +387,20 @@ export default function ProfileScreen() {
           </View>
           <Pressable
             style={({ pressed }) => [styles.editNameBtn, pressed && styles.glassPressed]}
-            onPress={() => {
-              setTempName(playerName);
-              setEditNameVisible(true);
-            }}
+            onPress={openEditName}
             accessibilityRole="button"
             accessibilityLabel="名前を変更"
           >
-            <Ionicons name="create-outline" size={18} color="#FFFFFF" />
+            <Ionicons name="create-outline" size={18} color="#FFFFFF" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" />
           </Pressable>
         </View>
 
         <View style={styles.levelBox} accessible accessibilityRole="text" accessibilityLabel={`レベル${level}。次のレベルまで${xpToNext}XP`}>
-          <View style={[styles.levelTitleRow, compactLayout && styles.levelTitleRowCompact]}>
+          <View style={[styles.levelTitleRow, compactLayout && styles.levelTitleRowCompact]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
             <Text style={styles.levelLabel}>Level {level}</Text>
             <Text style={styles.xpLabel}>{xpCurrent} / {XP_PER_LEVEL} XP</Text>
           </View>
-          <View style={styles.xpBarOuter} accessibilityElementsHidden>
+          <View style={styles.xpBarOuter} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
             <View style={[styles.xpBarInner, { width: `${Math.min((xpCurrent / XP_PER_LEVEL) * 100, 100)}%` }]} />
           </View>
         </View>
@@ -325,8 +412,10 @@ export default function ProfileScreen() {
             accessibilityRole="text"
             accessibilityLabel={streak > 0 ? `継続日数${streak}日` : '今日から記録を開始'}
           >
-            <Ionicons name="calendar-outline" size={17} color="#E7F3E8" />
-            <Text style={styles.streakText}>{streak > 0 ? `${streak}日継続` : '今日から'}</Text>
+            <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.streakVisualRow}>
+              <Ionicons name="calendar-outline" size={17} color="#E7F3E8" />
+              <Text style={styles.streakText}>{streak > 0 ? `${streak}日継続` : '今日から'}</Text>
+            </View>
           </View>
           <Pressable
             style={({ pressed }) => [styles.shareBtn, compactLayout && styles.heroActionStacked, pressed && styles.glassPressed]}
@@ -334,7 +423,7 @@ export default function ProfileScreen() {
             accessibilityRole="button"
             accessibilityLabel="観察カードを開く"
           >
-            <Ionicons name="share-outline" size={17} color="#FFFFFF" />
+            <Ionicons name="share-outline" size={17} color="#FFFFFF" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" />
             <Text style={styles.shareBtnText}>観察カード</Text>
           </Pressable>
         </View>
@@ -383,12 +472,19 @@ export default function ProfileScreen() {
                     isToday && fillColor ? { borderWidth: 2, borderColor: theme.colors.textOnAccent } : undefined,
                   ]}
                 >
-                  <Text maxFontSizeMultiplier={1.6} style={[styles.calendarDayNum, { color: fillColor ? theme.colors.textOnAccent : isToday ? theme.colors.accentPrimary : theme.colors.textSecondary }]}>{day}</Text>
+                  <Text
+                    maxFontSizeMultiplier={1.6}
+                    style={[styles.calendarDayNum, { color: fillColor ? theme.colors.textOnAccent : isToday ? theme.colors.accentPrimary : theme.colors.textSecondary }]}
+                    accessibilityElementsHidden
+                    importantForAccessibility="no-hide-descendants"
+                  >
+                    {day}
+                  </Text>
                 </View>
               );
             })}
           </View>
-          <View style={styles.calendarLegend} accessibilityElementsHidden>
+          <View style={styles.calendarLegend} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
             <Text maxFontSizeMultiplier={1.6} style={[styles.calendarLegendLabel, { color: theme.colors.textTertiary }]}>観察数: 少</Text>
             {observationIntensity.map((color, index) => <View key={index} style={[styles.calendarLegendDot, { backgroundColor: color }]} />)}
             <Text maxFontSizeMultiplier={1.6} style={[styles.calendarLegendLabel, { color: theme.colors.textTertiary }]}>多</Text>
@@ -415,14 +511,18 @@ export default function ProfileScreen() {
                 accessibilityRole="text"
                 accessibilityLabel={`${achievement.label}。${achievement.desc}。${unlocked ? '達成済み' : '未達成'}`}
               >
-                <View style={[styles.achIconWrap, { backgroundColor: unlocked ? `${theme.colors.accentPrimary}16` : theme.colors.surfaceSecondary }]}>
+                <View
+                  style={[styles.achIconWrap, { backgroundColor: unlocked ? `${theme.colors.accentPrimary}16` : theme.colors.surfaceSecondary }]}
+                  accessibilityElementsHidden
+                  importantForAccessibility="no-hide-descendants"
+                >
                   <Ionicons
                     name={(unlocked ? achievement.icon : 'lock-closed-outline') as React.ComponentProps<typeof Ionicons>['name']}
                     size={24}
                     color={unlocked ? theme.colors.accentPrimary : theme.colors.textTertiary}
                   />
                 </View>
-                <View style={styles.achTextWrap}>
+                <View style={styles.achTextWrap} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
                   <Text style={[styles.achLabel, { color: unlocked ? theme.colors.textPrimary : theme.colors.textTertiary }]}>{achievement.label}</Text>
                   <Text style={[styles.achDesc, { color: theme.colors.textSecondary }]}>{achievement.desc}</Text>
                 </View>
@@ -450,7 +550,7 @@ export default function ProfileScreen() {
           <View style={[styles.historyList, { backgroundColor: theme.colors.surfacePrimary, borderColor: theme.colors.borderSubtle }]}>
             {upcomingRevisits.map((revisit) => (
               <View key={`${revisit.kind}_${revisit.id}`} style={[styles.revisitRow, { borderBottomColor: theme.colors.borderSubtle }]}>
-                <View style={[styles.rowIconWrap, { backgroundColor: theme.colors.surfaceSecondary }]}>
+                <View style={[styles.rowIconWrap, { backgroundColor: theme.colors.surfaceSecondary }]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
                   <Ionicons name="alarm-outline" size={17} color={theme.colors.accentPrimary} />
                 </View>
                 {revisit.kind === 'scan' && revisit.plantId ? (
@@ -481,7 +581,7 @@ export default function ProfileScreen() {
           <View style={[styles.historyList, { backgroundColor: theme.colors.surfacePrimary, borderColor: theme.colors.borderSubtle }]}>
             {unidentifiedObservations.slice(0, 20).map((observation) => (
               <View key={observation.id} style={[styles.historyItem, { borderBottomColor: theme.colors.borderSubtle }]}>
-                <View style={[styles.historyEmojiWrap, { backgroundColor: theme.colors.surfaceSecondary }]}>
+                <View style={[styles.historyEmojiWrap, { backgroundColor: theme.colors.surfaceSecondary }]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
                   <Text style={styles.historyEmoji}>❔</Text>
                 </View>
                 <View style={styles.historyInfo}>
@@ -506,7 +606,7 @@ export default function ProfileScreen() {
       <Section title="観察履歴" icon="time-outline">
         {scanHistory.length > 0 && (
           <View style={[styles.historySearchBox, { backgroundColor: theme.colors.surfacePrimary, borderColor: theme.colors.borderSubtle }]}>
-            <Ionicons name="search-outline" size={18} color={theme.colors.textTertiary} />
+            <Ionicons name="search-outline" size={18} color={theme.colors.textTertiary} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" />
             <TextInput
               style={[styles.historySearchInput, { color: theme.colors.textPrimary }]}
               value={historySearch}
@@ -522,7 +622,7 @@ export default function ProfileScreen() {
         )}
         {recentScans.length === 0 && matchingUnidentified.length === 0 ? (
           <View style={[styles.emptyHistory, { backgroundColor: theme.colors.surfacePrimary, borderColor: theme.colors.borderSubtle }]}>
-            <Ionicons name="leaf-outline" size={28} color={theme.colors.textTertiary} />
+            <Ionicons name="leaf-outline" size={28} color={theme.colors.textTertiary} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" />
             <Text style={[styles.emptyHistoryText, { color: theme.colors.textTertiary }]}>
               {trimmedSearch ? '一致する観察記録が見つかりませんでした' : 'まだ観察履歴がありません'}
             </Text>
@@ -534,7 +634,7 @@ export default function ProfileScreen() {
             ))}
             {matchingUnidentified.map((observation) => (
               <View key={observation.id} style={[styles.historyItem, { borderBottomColor: theme.colors.borderSubtle }]}>
-                <View style={[styles.historyEmojiWrap, { backgroundColor: theme.colors.surfaceSecondary }]}>
+                <View style={[styles.historyEmojiWrap, { backgroundColor: theme.colors.surfaceSecondary }]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
                   <Text style={styles.historyEmoji}>❔</Text>
                 </View>
                 <View style={styles.historyInfo}>
@@ -603,10 +703,10 @@ export default function ProfileScreen() {
         </View>
 
         <View style={[styles.settingsCard, { backgroundColor: theme.colors.surfacePrimary, borderColor: theme.colors.borderSubtle }]}>
-          <SettingsRow icon="library-outline" label="データソース・出典について" onPress={() => setSourcesVisible(true)} />
-          <SettingsRow icon="shield-checkmark-outline" label="プライバシーポリシー" onPress={() => Linking.openURL(PRIVACY_POLICY_URL).catch(() => {})} />
-          <SettingsRow icon="document-text-outline" label="利用規約" onPress={() => Linking.openURL(TERMS_URL).catch(() => {})} />
-          <SettingsRow icon="mail-outline" label="お問い合わせ" onPress={() => Linking.openURL(`mailto:${SUPPORT_EMAIL}`).catch(() => {})} />
+          <SettingsRow icon="library-outline" label="データソース・出典について" onPress={openSources} />
+          <SettingsRow icon="shield-checkmark-outline" label="プライバシーポリシー" onPress={() => Linking.openURL(PRIVACY_POLICY_URL).catch(() => Alert.alert('プライバシーポリシーを開けませんでした', 'もう一度お試しください。'))} />
+          <SettingsRow icon="document-text-outline" label="利用規約" onPress={() => Linking.openURL(TERMS_URL).catch(() => Alert.alert('利用規約を開けませんでした', 'もう一度お試しください。'))} />
+          <SettingsRow icon="mail-outline" label="お問い合わせ" onPress={() => Linking.openURL(`mailto:${SUPPORT_EMAIL}`).catch(() => Alert.alert('メールアプリを開けませんでした', `お問い合わせ先: ${SUPPORT_EMAIL}`))} />
           <Text style={[styles.versionText, { color: theme.colors.textTertiary }]}>バージョン {APP_VERSION}</Text>
         </View>
       </Section>
@@ -626,16 +726,16 @@ export default function ProfileScreen() {
         seasonIcon={seasonCfg.icon}
       />
 
-      <Modal visible={editNameVisible} transparent animationType={reduceMotion ? 'none' : 'fade'} onRequestClose={() => setEditNameVisible(false)}>
+      <Modal visible={editNameVisible} transparent animationType={reduceMotion ? 'none' : 'fade'} onRequestClose={closeEditName}>
         <KeyboardAvoidingView
           style={[styles.modalOverlay, { backgroundColor: theme.colors.overlay }]}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
-          <Pressable style={StyleSheet.absoluteFill} onPress={() => setEditNameVisible(false)} accessible={false} />
+          <Pressable style={StyleSheet.absoluteFill} onPress={closeEditName} accessible={false} />
           <View
             style={[styles.modalCard, { backgroundColor: theme.colors.surfacePrimary, borderColor: theme.colors.borderSubtle, shadowColor: theme.colors.shadow }]}
             accessibilityViewIsModal
-            onAccessibilityEscape={() => setEditNameVisible(false)}
+            onAccessibilityEscape={closeEditName}
           >
             <Text style={[styles.modalTitle, { color: theme.colors.textPrimary }]} accessibilityRole="header">名前を変更</Text>
             <TextInput
@@ -663,7 +763,7 @@ export default function ProfileScreen() {
             <View style={[styles.modalBtns, compactLayout && styles.modalBtnsStacked]}>
               <Pressable
                 style={({ pressed }) => [styles.modalBtn, compactLayout && styles.modalBtnStacked, { backgroundColor: theme.colors.surfaceSecondary }, pressed && styles.buttonPressed]}
-                onPress={() => setEditNameVisible(false)}
+                onPress={closeEditName}
                 accessibilityRole="button"
                 accessibilityLabel="名前の変更をキャンセル"
               >
@@ -689,15 +789,21 @@ export default function ProfileScreen() {
         </KeyboardAvoidingView>
       </Modal>
 
-      <Modal visible={sourcesVisible} transparent animationType={reduceMotion ? 'none' : 'fade'} onRequestClose={() => setSourcesVisible(false)}>
+      <Modal visible={sourcesVisible} transparent animationType={reduceMotion ? 'none' : 'fade'} onRequestClose={closeSources}>
         <View style={[styles.modalOverlay, { backgroundColor: theme.colors.overlay }]}>
-          <Pressable style={StyleSheet.absoluteFill} onPress={() => setSourcesVisible(false)} accessible={false} />
+          <Pressable style={StyleSheet.absoluteFill} onPress={closeSources} accessible={false} />
           <View
             style={[styles.modalCard, { backgroundColor: theme.colors.surfacePrimary, borderColor: theme.colors.borderSubtle, shadowColor: theme.colors.shadow }]}
             accessibilityViewIsModal
-            onAccessibilityEscape={() => setSourcesVisible(false)}
+            onAccessibilityEscape={closeSources}
           >
-            <Text style={[styles.modalTitle, { color: theme.colors.textPrimary }]} accessibilityRole="header">データソース・出典について</Text>
+            <Text
+              ref={sourcesTitleRef}
+              style={[styles.modalTitle, { color: theme.colors.textPrimary }]}
+              accessibilityRole="header"
+            >
+              データソース・出典について
+            </Text>
             <ScrollView style={styles.sourcesScroll} showsVerticalScrollIndicator={false}>
               <Text style={[styles.sourcesText, { color: theme.colors.textSecondary }]}>
                 本アプリの植物データ（科・属などの分類情報を含む）は、編集部が一般的な植物学の知見をもとに整理しています。現時点ではGBIF・POWO・iNaturalist・YListなどの公的・専門データベースと直接連携しておらず、個々の記載に外部データベースIDや出典を紐づけていません。
@@ -708,8 +814,9 @@ export default function ProfileScreen() {
               </Text>
             </ScrollView>
             <Pressable
+              ref={sourcesCloseButtonRef}
               style={({ pressed }) => [styles.modalBtn, compactLayout && styles.modalBtnStacked, { backgroundColor: theme.colors.accentPrimary, marginTop: 16 }, pressed && styles.buttonPressed]}
-              onPress={() => setSourcesVisible(false)}
+              onPress={closeSources}
               accessibilityRole="button"
               accessibilityLabel="出典情報を閉じる"
             >
@@ -735,7 +842,7 @@ function Section({
   return (
     <View style={styles.section}>
       <View style={styles.sectionTitleRow}>
-        <Ionicons name={icon} size={18} color={theme.colors.textSecondary} />
+        <Ionicons name={icon} size={18} color={theme.colors.textSecondary} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" />
         <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]} accessibilityRole="header">{title}</Text>
       </View>
       {children}
@@ -764,7 +871,13 @@ function IconButton({
       accessibilityRole="button"
       accessibilityLabel={label}
     >
-      <Ionicons name={icon} size={18} color={danger ? theme.colors.statusDanger : theme.colors.textTertiary} />
+      <Ionicons
+        name={icon}
+        size={18}
+        color={danger ? theme.colors.statusDanger : theme.colors.textTertiary}
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+      />
     </Pressable>
   );
 }
@@ -789,9 +902,9 @@ function SettingsRow({
       accessibilityRole="button"
       accessibilityLabel={label}
     >
-      <Ionicons name={icon} size={18} color={color} />
+      <Ionicons name={icon} size={18} color={color} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" />
       <Text style={[styles.legalRowText, { color }]}>{label}</Text>
-      <Ionicons name="chevron-forward" size={17} color={theme.colors.textTertiary} />
+      <Ionicons name="chevron-forward" size={17} color={theme.colors.textTertiary} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" />
     </Pressable>
   );
 }
@@ -816,18 +929,26 @@ function HistoryRow({
       accessibilityLabel={`${plant.name}。${DANGER_LABEL[plant.danger]}。${formatScanDate(record.scannedAt)}。詳細を見る`}
     >
       {showThumb ? (
-        <Image source={{ uri: record.imageUri }} style={[styles.historyThumb, { backgroundColor: theme.colors.surfaceSecondary }]} resizeMode="cover" onError={() => setImgError(true)} accessibilityIgnoresInvertColors />
+        <Image
+          source={{ uri: record.imageUri }}
+          style={[styles.historyThumb, { backgroundColor: theme.colors.surfaceSecondary }]}
+          resizeMode="cover"
+          onError={() => setImgError(true)}
+          accessibilityIgnoresInvertColors
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+        />
       ) : (
-        <View style={[styles.historyEmojiWrap, { backgroundColor: theme.colors.surfaceSecondary }]}>
+        <View style={[styles.historyEmojiWrap, { backgroundColor: theme.colors.surfaceSecondary }]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
           <Text style={styles.historyEmoji}>{plant.emoji}</Text>
         </View>
       )}
-      <View style={styles.historyInfo}>
+      <View style={styles.historyInfo} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
         <Text style={[styles.historyName, { color: theme.colors.textPrimary }]}>{plant.name}</Text>
         <Text style={[styles.historyTime, { color: theme.colors.textTertiary }]}>{formatScanDate(record.scannedAt)}</Text>
       </View>
-      <DangerBadge danger={plant.danger} size="sm" />
-      <Ionicons name="chevron-forward" size={16} color={theme.colors.textTertiary} />
+      <DangerBadge danger={plant.danger} size="sm" accessible={false} />
+      <Ionicons name="chevron-forward" size={16} color={theme.colors.textTertiary} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" />
     </Pressable>
   );
 }
@@ -860,9 +981,11 @@ function StatBox({
       accessibilityRole="text"
       accessibilityLabel={`${label} ${value} ${unit}`}
     >
-      <Text style={[styles.statValue, { color }]}>{value}</Text>
-      <Text style={[styles.statUnit, { color: theme.colors.textTertiary }]}>{unit}</Text>
-      <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>{label}</Text>
+      <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.statVisual}>
+        <Text style={[styles.statValue, { color }]}>{value}</Text>
+        <Text style={[styles.statUnit, { color: theme.colors.textTertiary }]}>{unit}</Text>
+        <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>{label}</Text>
+      </View>
     </View>
   );
 }
@@ -888,7 +1011,8 @@ const styles = StyleSheet.create({
   heroBottomRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 14, gap: 10 },
   heroBottomRowStacked: { flexDirection: 'column', alignItems: 'stretch' },
   heroActionStacked: { width: '100%', justifyContent: 'center' },
-  streakBadge: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(255,255,255,0.10)', borderRadius: 999, paddingHorizontal: 13 },
+  streakBadge: { minHeight: 44, justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.10)', borderRadius: 999, paddingHorizontal: 13 },
+  streakVisualRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
   streakText: { fontSize: 13, lineHeight: 18, fontWeight: '800', color: '#FFFFFF' },
   shareBtn: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.18)', borderRadius: 999, paddingHorizontal: 14 },
   shareBtnText: { fontSize: 13, lineHeight: 18, fontWeight: '800', color: '#FFFFFF' },
@@ -899,6 +1023,7 @@ const styles = StyleSheet.create({
   disclaimerSection: { paddingTop: 22 },
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 9 },
   statBox: { flex: 1, minWidth: '30%', borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, borderTopWidth: 3, paddingVertical: 13, paddingHorizontal: 9, alignItems: 'center', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 5, elevation: 2 },
+  statVisual: { alignItems: 'center' },
   statBoxCompact: { minWidth: '46%' },
   statBoxSingleColumn: { flexBasis: '100%', minWidth: '100%' },
   statValue: { fontSize: 22, lineHeight: 27, fontWeight: '900' },
