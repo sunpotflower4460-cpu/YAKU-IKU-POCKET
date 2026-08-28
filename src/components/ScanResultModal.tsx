@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { RARITY_XP, XP_PER_RESCAN } from '../store/useGameStore';
 import {
+  ActivityIndicator,
   View,
   Text,
   StyleSheet,
@@ -62,6 +63,8 @@ interface Props {
   usedRealAI: boolean;
   /** Demo (mock) mode: result is view-only — no save, no XP, no registration. */
   isDemo?: boolean;
+  /** True while the selected observation photo/record is being persisted. */
+  isSaving?: boolean;
   reason?: string;
   candidates?: IdentificationCandidate[];
   selectedPlantId?: string;
@@ -79,6 +82,7 @@ export function ScanResultModal({
   isNewDiscovery,
   usedRealAI,
   isDemo = false,
+  isSaving = false,
   reason,
   candidates,
   selectedPlantId,
@@ -173,7 +177,7 @@ export function ScanResultModal({
   if (!plant) return null;
 
   async function handleShareDiscovery() {
-    if (!plant) return;
+    if (!plant || isSaving) return;
     const rarityStars = '★'.repeat(plant.rarity) + '☆'.repeat(5 - plant.rarity);
     const dangerLabel = DANGER_LABEL[plant.danger];
     const msg =
@@ -218,18 +222,22 @@ export function ScanResultModal({
       ? '珍しい発見'
       : '新しい発見';
 
+  const requestClose = () => {
+    if (!isSaving) onScanAgain();
+  };
+
   return (
     <Modal
       visible={visible}
       transparent
       animationType={reduceMotion ? 'none' : 'fade'}
       statusBarTranslucent
-      onRequestClose={onScanAgain}
+      onRequestClose={requestClose}
     >
       <View style={[styles.overlay, { backgroundColor: theme.colors.overlay }]}>
         <Animated.View
           accessibilityViewIsModal
-          onAccessibilityEscape={onScanAgain}
+          onAccessibilityEscape={requestClose}
           style={[
             styles.card,
             {
@@ -262,10 +270,16 @@ export function ScanResultModal({
             )}
 
             <Pressable
-              style={({ pressed }) => [styles.closeBtn, pressed && styles.glassPressed]}
-              onPress={onScanAgain}
+              style={({ pressed }) => [
+                styles.closeBtn,
+                isSaving && styles.controlDisabled,
+                pressed && !isSaving && styles.glassPressed,
+              ]}
+              onPress={requestClose}
+              disabled={isSaving}
               accessibilityRole="button"
-              accessibilityLabel="観察結果を閉じる"
+              accessibilityLabel={isSaving ? '観察記録を保存中' : '観察結果を閉じる'}
+              accessibilityState={{ disabled: isSaving, busy: isSaving }}
             >
               <Ionicons name="close" size={20} color="#FFFFFF" />
             </Pressable>
@@ -346,11 +360,13 @@ export function ScanResultModal({
                             backgroundColor: selected ? theme.colors.surfaceSecondary : theme.colors.surfacePrimary,
                             borderColor: selected ? theme.colors.accentPrimary : theme.colors.borderSubtle,
                           },
-                          pressed && styles.cardPressed,
+                          pressed && !isSaving && styles.cardPressed,
+                          isSaving && styles.controlDisabled,
                         ]}
                         onPress={() => onSelectCandidate?.(candidate)}
+                        disabled={isSaving}
                         accessibilityRole="button"
-                        accessibilityState={{ selected }}
+                        accessibilityState={{ selected, disabled: isSaving }}
                         accessibilityLabel={`候補${candidate.score.overallRank}: ${candidate.plant.name}、画像との一致度${candidate.score.visionScore ?? '不明'}${selected ? '、選択中' : ''}`}
                       >
                         <View style={[styles.candidateEmojiWrap, { backgroundColor: theme.colors.surfaceSecondary }]}>
@@ -437,14 +453,16 @@ export function ScanResultModal({
                                   borderColor: selected ? optionColor : theme.colors.borderSubtle,
                                   borderWidth: selected ? 2 : StyleSheet.hairlineWidth,
                                 },
-                                pressed && styles.cardPressed,
+                                pressed && !isSaving && styles.cardPressed,
+                                isSaving && styles.controlDisabled,
                               ]}
                               onPress={() => {
                                 Haptics.selectionAsync();
                                 setTraitStates((prev) => ({ ...prev, [item.id]: option.key }));
                               }}
+                              disabled={isSaving}
                               accessibilityRole="radio"
-                              accessibilityState={{ selected }}
+                              accessibilityState={{ selected, disabled: isSaving }}
                               accessibilityLabel={`${item.label}: ${option.label}`}
                             >
                               {selected && <Ionicons name="checkmark" size={15} color={optionColor} />}
@@ -606,11 +624,14 @@ export function ScanResultModal({
                       styles.btn,
                       styles.btnShare,
                       { borderColor: theme.colors.borderStrong },
-                      pressed && styles.buttonPressed,
+                      isSaving && styles.controlDisabled,
+                      pressed && !isSaving && styles.buttonPressed,
                     ]}
                     onPress={handleShareDiscovery}
+                    disabled={isSaving}
                     accessibilityRole="button"
                     accessibilityLabel={`${plant.name}の観察をシェア`}
+                    accessibilityState={{ disabled: isSaving }}
                   >
                     <Ionicons name="share-outline" size={18} color={theme.colors.accentPrimary} />
                     <Text style={[styles.btnShareText, { color: theme.colors.accentPrimary }]}>観察をシェア</Text>
@@ -621,11 +642,14 @@ export function ScanResultModal({
                     style={({ pressed }) => [
                       styles.btn,
                       { backgroundColor: theme.colors.surfaceSecondary },
-                      pressed && styles.buttonPressed,
+                      isSaving && styles.controlDisabled,
+                      pressed && !isSaving && styles.buttonPressed,
                     ]}
-                    onPress={onScanAgain}
+                    onPress={requestClose}
+                    disabled={isSaving}
                     accessibilityRole="button"
-                    accessibilityLabel="もう一度観察する"
+                    accessibilityLabel={isSaving ? '観察記録を保存中' : 'もう一度観察する'}
+                    accessibilityState={{ disabled: isSaving, busy: isSaving }}
                   >
                     <Text style={[styles.btnSecondaryText, { color: theme.colors.textSecondary }]}>もう一度</Text>
                   </Pressable>
@@ -633,17 +657,28 @@ export function ScanResultModal({
                     style={({ pressed }) => [
                       styles.btn,
                       { backgroundColor: theme.colors.accentPrimary },
-                      pressed && styles.buttonPressed,
+                      isSaving && styles.controlDisabled,
+                      pressed && !isSaving && styles.buttonPressed,
                     ]}
                     onPress={() => onAddToZukan(traitChecks)}
+                    disabled={isSaving}
                     accessibilityRole="button"
-                    accessibilityLabel={`観察記録として保存${isNewDiscovery ? `、${RARITY_XP[plant.rarity] ?? 100}XP獲得` : `、${XP_PER_RESCAN}XP獲得`}`}
+                    accessibilityLabel={isSaving
+                      ? '観察記録を保存中'
+                      : `観察記録として保存${isNewDiscovery ? `、${RARITY_XP[plant.rarity] ?? 100}XP獲得` : `、${XP_PER_RESCAN}XP獲得`}`}
+                    accessibilityState={{ disabled: isSaving, busy: isSaving }}
                   >
-                    <Ionicons name="bookmark-outline" size={18} color={theme.colors.textOnAccent} />
+                    {isSaving ? (
+                      <ActivityIndicator color={theme.colors.textOnAccent} />
+                    ) : (
+                      <Ionicons name="bookmark-outline" size={18} color={theme.colors.textOnAccent} />
+                    )}
                     <Text style={[styles.btnPrimaryText, { color: theme.colors.textOnAccent }]} numberOfLines={2}>
-                      記録に保存{isNewDiscovery
-                        ? `  +${RARITY_XP[plant.rarity] ?? 100}XP`
-                        : `  +${XP_PER_RESCAN}XP`}
+                      {isSaving
+                        ? '保存中…'
+                        : `記録に保存${isNewDiscovery
+                            ? `  +${RARITY_XP[plant.rarity] ?? 100}XP`
+                            : `  +${XP_PER_RESCAN}XP`}`}
                     </Text>
                   </Pressable>
                 </View>
@@ -755,6 +790,7 @@ const styles = StyleSheet.create({
   btnPrimaryText: { fontWeight: '800', fontSize: 13, lineHeight: 18, textAlign: 'center' },
   btnSecondaryText: { fontWeight: '700', fontSize: 13, lineHeight: 18 },
   btnShareText: { fontWeight: '800', fontSize: 13, lineHeight: 18 },
+  controlDisabled: { opacity: 0.58 },
   cardPressed: { opacity: 0.76, transform: [{ scale: 0.995 }] },
   buttonPressed: { opacity: 0.82, transform: [{ scale: 0.99 }] },
 });
