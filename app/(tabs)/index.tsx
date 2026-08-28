@@ -6,9 +6,11 @@ import {
   Pressable,
   ScrollView,
   Animated,
+  useWindowDimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from '../../src/utils/haptics';
 import { useGameStore, XP_PER_LEVEL } from '../../src/store/useGameStore';
@@ -33,16 +35,19 @@ import {
 // Milestones: [ threshold, iconName, title, desc ]. The final milestone
 // always tracks TOTAL_PLANTS so it doesn't go stale as the catalog grows.
 const MILESTONES: [number, string, string, string][] = [
-  [1,  'leaf-outline',   '初めての発見！',   '図鑑の旅が始まりました'],
-  [10, 'book-outline',   '10種類発見！',    '観察の積み重ねが形になってきました'],
-  [25, 'ribbon-outline', '25種類発見！',    '植物を見る目が育ってきました'],
-  [TOTAL_PLANTS, 'trophy-outline', '図鑑完成！', `全${TOTAL_PLANTS}種類との出会いを記録しました`],
+  [1, 'leaf-outline', '初めての観察！', 'フィールドノートが始まりました'],
+  [10, 'book-outline', '10種類を記録！', '観察の積み重ねが形になってきました'],
+  [25, 'ribbon-outline', '25種類を記録！', '植物を見る目が育ってきました'],
+  [TOTAL_PLANTS, 'book-outline', '観察図鑑の記録達成！', `全${TOTAL_PLANTS}種類との出会いを記録しました`],
 ];
 
 export default function HomeScreen() {
   const router = useRouter();
   const theme = useTheme();
   const reduceMotion = useReduceMotion();
+  const insets = useSafeAreaInsets();
+  const { width, fontScale } = useWindowDimensions();
+  const compactLayout = width < 360 || fontScale >= 1.3;
   const {
     discoveredPlantIds, scanHistory, playerName, getLevel, getXpForCurrentLevel,
     todayScanCount, todayNewCount, todayMaxRarity, todayDangers, todayCategories,
@@ -94,7 +99,7 @@ export default function HomeScreen() {
   const greenCount = PLANTS.filter(
     (p) => p.danger === 'GREEN' && discoveredPlantIds.includes(p.id)
   ).length;
-  const rarePlants = PLANTS.filter(
+  const uncommonPlants = PLANTS.filter(
     (p) => p.rarity >= 4 && discoveredPlantIds.includes(p.id)
   );
 
@@ -149,18 +154,17 @@ export default function HomeScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* 今日のHero — 主役は「観察を始める」の1つ。レベル/XPは補助表示 */}
         <LinearGradient
           colors={['#174F2A', '#226B35', '#2F7F40']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={styles.hero}
+          style={[styles.hero, { paddingTop: insets.top + 18 }]}
         >
           <View style={styles.heroTopRow}>
             <View style={styles.heroIdentity}>
               <Text style={styles.appEyebrow}>FIELD NOTE</Text>
               <Text style={styles.appTitle}>薬育ポケット</Text>
-              <Text style={styles.playerName} numberOfLines={1}>{playerName}</Text>
+              <Text style={styles.playerName} numberOfLines={2}>{playerName}</Text>
             </View>
             <View style={styles.levelBadgeSmall} accessible accessibilityRole="text" accessibilityLabel={`レベル${level}`}>
               <Text style={styles.levelBadgeSmallText}>Lv.{level}</Text>
@@ -172,9 +176,13 @@ export default function HomeScreen() {
           </Text>
           <Text style={styles.heroSubline}>見つける。見比べる。記録する。</Text>
 
-          <View style={styles.heroActionRow}>
+          <View style={[styles.heroActionRow, compactLayout && styles.heroActionRowStacked]}>
             <Pressable
-              style={({ pressed }) => [styles.heroPrimaryBtn, pressed && styles.heroPrimaryPressed]}
+              style={({ pressed }) => [
+                styles.heroPrimaryBtn,
+                compactLayout && styles.heroActionButtonStacked,
+                pressed && styles.heroPrimaryPressed,
+              ]}
               onPress={() => router.push('/(tabs)/scan')}
               accessibilityRole="button"
               accessibilityLabel="観察を始める"
@@ -183,7 +191,11 @@ export default function HomeScreen() {
               <Text style={styles.heroPrimaryBtnText}>観察を始める</Text>
             </Pressable>
             <Pressable
-              style={({ pressed }) => [styles.heroSecondaryBtn, pressed && styles.heroSecondaryPressed]}
+              style={({ pressed }) => [
+                styles.heroSecondaryBtn,
+                compactLayout && styles.heroActionButtonStacked,
+                pressed && styles.heroSecondaryPressed,
+              ]}
               onPress={() => router.push('/(tabs)/zukan')}
               accessibilityRole="button"
               accessibilityLabel="植物を探す"
@@ -202,10 +214,9 @@ export default function HomeScreen() {
           </View>
         </LinearGradient>
 
-        {/* Milestone Banner */}
         {pendingMilestone && (
           <LinearGradient
-            colors={['#9A4E0D', '#C66A0A', '#E19426']}
+            colors={['#8A430B', '#A95108', '#B05A08']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={styles.milestoneBanner}
@@ -228,7 +239,6 @@ export default function HomeScreen() {
           </LinearGradient>
         )}
 
-        {/* 最近の観察 */}
         {recentPlants.length > 0 && (
           <View style={styles.section}>
             <SectionTitle icon="time-outline" title="最近の観察" />
@@ -261,7 +271,6 @@ export default function HomeScreen() {
           </View>
         )}
 
-        {/* 今の季節 */}
         <View
           style={[
             styles.seasonBanner,
@@ -285,7 +294,6 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* 今の季節の注目植物 */}
         {spotlightPlants.length > 0 && (
           <View style={styles.section}>
             <View style={styles.sectionRow}>
@@ -315,7 +323,7 @@ export default function HomeScreen() {
                     ]}
                     onPress={() => router.push(`/plant/${plant.id}`)}
                     accessibilityRole={found ? 'button' : 'text'}
-                    accessibilityLabel={found ? `${plant.name}の詳細を見る` : `未発見の植物。レアリティ${plant.rarity}`}
+                    accessibilityLabel={found ? `${plant.name}の詳細を見る` : `未発見の植物。珍しさ5段階中${plant.rarity}`}
                     accessibilityState={{ disabled: !found }}
                   >
                     <RarityStars rarity={plant.rarity} size="sm" />
@@ -351,7 +359,6 @@ export default function HomeScreen() {
           </View>
         )}
 
-        {/* 今日の観察チャレンジ */}
         <View style={styles.section}>
           <SectionTitle icon="list-outline" title="今日の観察チャレンジ" />
           {dailyChallenges.map((challenge) => {
@@ -393,7 +400,6 @@ export default function HomeScreen() {
           )}
         </View>
 
-        {/* 今月の季節クエスト */}
         <View style={styles.section}>
           <View style={styles.sectionRow}>
             <View style={{ flex: 1 }}>
@@ -420,7 +426,6 @@ export default function HomeScreen() {
           })}
         </View>
 
-        {/* 1分で学ぶ */}
         {learnCard && (
           <View style={styles.section}>
             <SectionTitle icon="bulb-outline" title="1分で学ぶ" />
@@ -463,14 +468,13 @@ export default function HomeScreen() {
           </View>
         )}
 
-        {/* Progress */}
         <View style={styles.section}>
-          <SectionTitle icon="stats-chart-outline" title="コレクション進捗" />
+          <SectionTitle icon="stats-chart-outline" title="観察の積み重ね" />
           <View style={styles.statsRow}>
             <StatCard
               icon="book-outline"
               value={`${discoveredCount}/${TOTAL_PLANTS}`}
-              label="図鑑収録"
+              label="記録した種類"
               color={theme.colors.accentPrimary}
             />
             <StatCard
@@ -481,8 +485,8 @@ export default function HomeScreen() {
             />
             <StatCard
               icon="star-outline"
-              value={String(rarePlants.length)}
-              label="レア発見"
+              value={String(uncommonPlants.length)}
+              label="珍しい植物"
               color={theme.colors.rarityLegendary}
             />
           </View>
@@ -698,11 +702,10 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   scrollContent: { paddingBottom: 28 },
 
-  // Hero
-  hero: { paddingTop: 58, paddingBottom: 22, paddingHorizontal: 20 },
+  hero: { paddingBottom: 22, paddingHorizontal: 20 },
   heroTopRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 },
   heroIdentity: { flex: 1 },
-  appEyebrow: { fontSize: 10, lineHeight: 13, fontWeight: '800', color: 'rgba(255,255,255,0.58)', letterSpacing: 1.8, marginBottom: 2 },
+  appEyebrow: { fontSize: 10, lineHeight: 13, fontWeight: '800', color: 'rgba(255,255,255,0.62)', letterSpacing: 1.8, marginBottom: 2 },
   appTitle: { fontSize: 20, lineHeight: 26, fontWeight: '900', color: '#FFFFFF', letterSpacing: 0.2 },
   playerName: { fontSize: 13, lineHeight: 18, color: '#B7DDBB', marginTop: 2 },
   levelBadgeSmall: {
@@ -718,6 +721,8 @@ const styles = StyleSheet.create({
   heroHeadline: { fontSize: 24, fontWeight: '900', color: '#FFFFFF', marginTop: 20, lineHeight: 31, letterSpacing: -0.3 },
   heroSubline: { fontSize: 13, lineHeight: 19, color: 'rgba(255,255,255,0.72)', marginTop: 3, marginBottom: 18 },
   heroActionRow: { flexDirection: 'row', gap: 10 },
+  heroActionRowStacked: { flexDirection: 'column' },
+  heroActionButtonStacked: { flex: 0, width: '100%' },
   heroPrimaryBtn: {
     flex: 1,
     flexDirection: 'row',
@@ -753,16 +758,14 @@ const styles = StyleSheet.create({
   heroXpTrack: { flex: 1, height: 5, backgroundColor: 'rgba(255,255,255,0.18)', borderRadius: 3, overflow: 'hidden' },
   heroXpFill: { height: '100%', backgroundColor: '#E9D96A', borderRadius: 3 },
 
-  // Milestone
   milestoneBanner: { flexDirection: 'row', alignItems: 'center', paddingLeft: 16, paddingRight: 8, paddingVertical: 10, gap: 11 },
   milestoneIconWrap: { width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(255,255,255,0.14)', justifyContent: 'center', alignItems: 'center' },
   milestoneText: { flex: 1 },
   milestoneTitle: { fontSize: 14, lineHeight: 19, fontWeight: '800', color: '#FFFFFF' },
-  milestoneDesc: { fontSize: 12, lineHeight: 17, color: 'rgba(255,255,255,0.82)', marginTop: 1 },
+  milestoneDesc: { fontSize: 12, lineHeight: 17, color: 'rgba(255,255,255,0.95)', marginTop: 1 },
   milestoneDismiss: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.12)', justifyContent: 'center', alignItems: 'center' },
   glassPressed: { backgroundColor: 'rgba(255,255,255,0.22)' },
 
-  // Sections
   section: { paddingHorizontal: 16, paddingTop: 22 },
   sectionRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
   sectionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 11 },
@@ -771,7 +774,6 @@ const styles = StyleSheet.create({
   sectionBadge: { borderRadius: 999, paddingHorizontal: 9, paddingVertical: 4, alignSelf: 'flex-start' },
   sectionBadgeText: { fontSize: 11, lineHeight: 14, fontWeight: '800' },
 
-  // Recent
   recentCard: {
     borderRadius: 16,
     borderWidth: StyleSheet.hairlineWidth,
@@ -791,7 +793,6 @@ const styles = StyleSheet.create({
   recentName: { fontSize: 12, lineHeight: 16, fontWeight: '700', textAlign: 'center' },
   recentDangerDot: { width: 7, height: 7, borderRadius: 4, marginTop: 6 },
 
-  // Season
   seasonBanner: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 16, marginTop: 22, paddingHorizontal: 14, paddingVertical: 12, gap: 10, borderRadius: 17, borderWidth: StyleSheet.hairlineWidth },
   seasonIconWrap: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
   seasonTitle: { fontSize: 14, lineHeight: 19, fontWeight: '800' },
@@ -799,7 +800,6 @@ const styles = StyleSheet.create({
   seasonBadge: { borderRadius: 999, paddingHorizontal: 8, paddingVertical: 4 },
   seasonBadgeText: { fontSize: 10, lineHeight: 13, fontWeight: '800' },
 
-  // Spotlight
   spotlightCard: {
     borderRadius: 17,
     borderWidth: StyleSheet.hairlineWidth,
@@ -824,7 +824,6 @@ const styles = StyleSheet.create({
   spotlightUnfoundBadge: { borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 },
   spotlightUnfoundText: { fontSize: 11, lineHeight: 14, fontWeight: '700' },
 
-  // Learn
   learnCard: { borderRadius: 17, padding: 14, borderWidth: StyleSheet.hairlineWidth },
   learnCardHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 9 },
   learnEmojiWrap: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
@@ -834,20 +833,18 @@ const styles = StyleSheet.create({
   learnCardBadgeText: { fontSize: 11, lineHeight: 15, fontWeight: '700' },
   learnCardTip: { fontSize: 13, lineHeight: 20 },
 
-  // Stats
-  statsRow: { flexDirection: 'row', gap: 9, marginBottom: 14 },
-  statCard: { flex: 1, borderRadius: 17, borderWidth: StyleSheet.hairlineWidth, paddingVertical: 13, paddingHorizontal: 7, alignItems: 'center', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 5, elevation: 2 },
+  statsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 9, marginBottom: 14 },
+  statCard: { flexGrow: 1, flexBasis: 100, minWidth: 100, borderRadius: 17, borderWidth: StyleSheet.hairlineWidth, paddingVertical: 13, paddingHorizontal: 7, alignItems: 'center', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 5, elevation: 2 },
   statIconWrap: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center', marginBottom: 7 },
   statValue: { fontSize: 20, fontWeight: '900', lineHeight: 25 },
   statLabel: { fontSize: 11, lineHeight: 15, marginTop: 2, fontWeight: '600', textAlign: 'center' },
   progressCard: { borderRadius: 17, borderWidth: StyleSheet.hairlineWidth, padding: 16, gap: 15, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 5, elevation: 1 },
   progressRow: { flexDirection: 'row', alignItems: 'center', gap: 9 },
-  progressLabel: { fontSize: 12, lineHeight: 17, width: 108, fontWeight: '600' },
+  progressLabel: { fontSize: 12, lineHeight: 17, flexBasis: 108, flexShrink: 1, fontWeight: '600' },
   progressBarContainer: { flex: 1, height: 8, borderRadius: 4, overflow: 'hidden' },
   progressFill: { height: '100%', borderRadius: 4 },
   progressValue: { fontSize: 12, lineHeight: 17, fontWeight: '700', width: 38, textAlign: 'right' },
 
-  // Quest
   questCard: { borderRadius: 17, borderWidth: StyleSheet.hairlineWidth, padding: 14, marginBottom: 10, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 5, elevation: 1 },
   questHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 11 },
   questIconWrap: { width: 34, height: 34, borderRadius: 17, justifyContent: 'center', alignItems: 'center' },
