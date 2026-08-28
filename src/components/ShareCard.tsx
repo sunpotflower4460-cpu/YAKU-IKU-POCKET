@@ -7,6 +7,7 @@ import {
   Share,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -78,6 +79,8 @@ export function ShareCard(props: ShareCardProps) {
   } = rest;
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  const { width, fontScale } = useWindowDimensions();
+  const compactCard = width < 360 || fontScale >= 1.3;
   const pct = totalCount > 0 ? Math.min(discoveredCount / totalCount, 1) : 0;
   const spokenSummary = [
     `${playerName}の観察サマリー`,
@@ -157,19 +160,19 @@ export function ShareCard(props: ShareCardProps) {
           >
             <LinearGradient
               colors={theme.mode === 'dark'
-                ? ['#0D2A19', '#17442A', '#225B36']
-                : ['#174F2A', '#246B37', '#39844A']}
+                ? ['#0D2A19', '#17442A', '#1F5432']
+                : ['#174F2A', '#245C32', '#2B6436']}
               style={styles.card}
               accessible
               accessibilityRole="summary"
               accessibilityLabel={spokenSummary}
             >
-              <View style={styles.cardBrandRow}>
+              <View style={[styles.cardBrandRow, compactCard && styles.cardBrandRowCompact]}>
                 <View style={styles.brandMark}>
                   <Ionicons name="leaf" size={16} color="#E4F4E6" />
                 </View>
                 <Text style={styles.cardAppName}>薬育ポケット</Text>
-                <Text style={styles.cardEyebrow}>FIELD NOTE</Text>
+                <Text style={[styles.cardEyebrow, compactCard && styles.cardEyebrowCompact]}>FIELD NOTE</Text>
               </View>
 
               <View style={styles.cardIdentity}>
@@ -177,12 +180,12 @@ export function ShareCard(props: ShareCardProps) {
                 <Text style={styles.cardTitle}>{title}</Text>
               </View>
 
-              <View style={styles.cardStatRow}>
-                <CardStat value={`${discoveredCount}/${totalCount}`} label="植物の記録" />
-                <View style={styles.cardStatDivider} />
-                <CardStat value={`Lv.${level}`} label="レベル" />
-                <View style={styles.cardStatDivider} />
-                <CardStat value={xp.toLocaleString()} label="XP" />
+              <View style={[styles.cardStatRow, compactCard && styles.cardStatRowStacked]}>
+                <CardStat value={`${discoveredCount}/${totalCount}`} label="植物の記録" compact={compactCard} />
+                <View style={[styles.cardStatDivider, compactCard && styles.cardStatDividerStacked]} />
+                <CardStat value={`Lv.${level}`} label="レベル" compact={compactCard} />
+                <View style={[styles.cardStatDivider, compactCard && styles.cardStatDividerStacked]} />
+                <CardStat value={xp.toLocaleString()} label="XP" compact={compactCard} />
               </View>
 
               <View style={styles.progressBlock}>
@@ -195,7 +198,7 @@ export function ShareCard(props: ShareCardProps) {
                 </View>
               </View>
 
-              <View style={styles.seasonRow}>
+              <View style={[styles.seasonRow, compactCard && styles.seasonRowCompact]}>
                 <Ionicons
                   name={seasonIcon as React.ComponentProps<typeof Ionicons>['name']}
                   size={17}
@@ -203,7 +206,7 @@ export function ShareCard(props: ShareCardProps) {
                 />
                 <Text style={styles.seasonText}>{season}のフィールドノート</Text>
                 {streak >= 2 && (
-                  <View style={styles.streakPill}>
+                  <View style={[styles.streakPill, compactCard && styles.streakPillCompact]}>
                     <Ionicons name="calendar-outline" size={13} color="#E8F3E9" />
                     <Text style={styles.streakText}>{streak}日継続</Text>
                   </View>
@@ -266,10 +269,10 @@ export function ShareCard(props: ShareCardProps) {
   );
 }
 
-function CardStat({ value, label }: { value: string; label: string }) {
+function CardStat({ value, label, compact }: { value: string; label: string; compact: boolean }) {
   return (
-    <View style={styles.cardStat}>
-      <Text style={styles.cardStatValue} numberOfLines={1}>{value}</Text>
+    <View style={[styles.cardStat, compact && styles.cardStatStacked]}>
+      <Text style={styles.cardStatValue} numberOfLines={compact ? 2 : 1}>{value}</Text>
       <Text style={styles.cardStatLabel}>{label}</Text>
     </View>
   );
@@ -298,35 +301,42 @@ const styles = StyleSheet.create({
   scrollContent: { paddingBottom: 4 },
   card: { borderRadius: 22, padding: 18, overflow: 'hidden' },
   cardBrandRow: { flexDirection: 'row', alignItems: 'center' },
+  cardBrandRowCompact: { flexWrap: 'wrap', rowGap: 6 },
   brandMark: { width: 30, height: 30, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.11)', alignItems: 'center', justifyContent: 'center', marginRight: 8 },
   cardAppName: { fontSize: 14, lineHeight: 20, fontWeight: '800', color: '#FFFFFF' },
-  cardEyebrow: { marginLeft: 'auto', fontSize: 9, lineHeight: 12, fontWeight: '800', letterSpacing: 1.6, color: 'rgba(230,247,232,0.58)' },
+  cardEyebrow: { marginLeft: 'auto', fontSize: 9, lineHeight: 12, fontWeight: '800', letterSpacing: 1.6, color: '#CBE7CF' },
+  cardEyebrowCompact: { width: '100%', marginLeft: 38 },
   cardIdentity: { paddingVertical: 22, alignItems: 'center' },
   cardPlayerName: { maxWidth: '100%', fontSize: 24, lineHeight: 31, fontWeight: '900', color: '#FFFFFF', textAlign: 'center' },
   cardTitle: { fontSize: 13, lineHeight: 19, fontWeight: '700', color: '#CBE7CF', textAlign: 'center', marginTop: 4 },
-  cardStatRow: { minHeight: 70, flexDirection: 'row', alignItems: 'center', borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.14)' },
+  cardStatRow: { minHeight: 70, flexDirection: 'row', alignItems: 'center', borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.22)' },
+  cardStatRowStacked: { flexDirection: 'column', alignItems: 'stretch', paddingVertical: 7 },
   cardStat: { flex: 1, minWidth: 0, alignItems: 'center', paddingHorizontal: 3 },
-  cardStatValue: { maxWidth: '100%', fontSize: 17, lineHeight: 23, fontWeight: '900', color: '#FFFFFF' },
-  cardStatLabel: { fontSize: 10, lineHeight: 14, fontWeight: '600', color: '#B8D9BD', marginTop: 2 },
-  cardStatDivider: { width: StyleSheet.hairlineWidth, height: 32, backgroundColor: 'rgba(255,255,255,0.14)' },
+  cardStatStacked: { flex: 0, minHeight: 48, justifyContent: 'center', paddingVertical: 5 },
+  cardStatValue: { maxWidth: '100%', fontSize: 17, lineHeight: 23, fontWeight: '900', color: '#FFFFFF', textAlign: 'center' },
+  cardStatLabel: { fontSize: 10, lineHeight: 14, fontWeight: '600', color: '#CBE7CF', marginTop: 2, textAlign: 'center' },
+  cardStatDivider: { width: StyleSheet.hairlineWidth, height: 32, backgroundColor: 'rgba(255,255,255,0.22)' },
+  cardStatDividerStacked: { width: '100%', height: StyleSheet.hairlineWidth },
   progressBlock: { marginTop: 17 },
   progressHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 7 },
   progressLabel: { fontSize: 12, lineHeight: 17, fontWeight: '700', color: '#CBE7CF' },
   progressPct: { fontSize: 12, lineHeight: 17, fontWeight: '800', color: '#FFFFFF' },
-  progressTrack: { height: 7, borderRadius: 4, overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.14)' },
+  progressTrack: { height: 7, borderRadius: 4, overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.18)' },
   progressFill: { height: '100%', borderRadius: 4, backgroundColor: '#D9DD73' },
   seasonRow: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 13 },
-  seasonText: { flex: 1, fontSize: 12, lineHeight: 17, fontWeight: '700', color: '#CBE7CF' },
-  streakPill: { minHeight: 28, flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.10)', paddingHorizontal: 9 },
+  seasonRowCompact: { flexWrap: 'wrap', alignItems: 'flex-start' },
+  seasonText: { flex: 1, minWidth: 130, fontSize: 12, lineHeight: 17, fontWeight: '700', color: '#CBE7CF' },
+  streakPill: { minHeight: 28, flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.12)', paddingHorizontal: 9 },
+  streakPillCompact: { marginLeft: 24 },
   streakText: { fontSize: 10, lineHeight: 14, fontWeight: '700', color: '#E8F3E9' },
   achievementBlock: { marginTop: 12 },
   achievementTitle: { fontSize: 11, lineHeight: 16, fontWeight: '800', color: '#CBE7CF', marginBottom: 8 },
   achievementRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  achievementPill: { maxWidth: '100%', minHeight: 34, flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.09)', paddingHorizontal: 9, paddingVertical: 4 },
+  achievementPill: { maxWidth: '100%', minHeight: 34, flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.11)', paddingHorizontal: 9, paddingVertical: 4 },
   achievementLabel: { flexShrink: 1, fontSize: 10, lineHeight: 14, fontWeight: '700', color: '#E5F2E7' },
   cardFooter: { marginTop: 17 },
-  cardFooterLine: { height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(255,255,255,0.14)', marginBottom: 12 },
-  cardFooterText: { fontSize: 11, lineHeight: 17, color: 'rgba(232,246,234,0.68)', textAlign: 'center' },
+  cardFooterLine: { height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(255,255,255,0.22)', marginBottom: 12 },
+  cardFooterText: { fontSize: 11, lineHeight: 17, color: '#CBE7CF', textAlign: 'center' },
   shareNote: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, borderRadius: 14, padding: 12, marginTop: 12, marginBottom: 12 },
   shareNoteText: { flex: 1, fontSize: 12, lineHeight: 18 },
   shareBtn: { minHeight: 54, borderRadius: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 10 },
