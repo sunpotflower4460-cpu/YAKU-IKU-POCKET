@@ -15,6 +15,12 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
+      - name: Production dependency audit (tracked in #38)
+        # Expo SDK 52 currently pulls known high/critical advisories through its
+        # CLI/Metro/config toolchain. Keep the result visible without masking
+        # regressions in this bugfix PR; #38 owns the breaking SDK/RN upgrade.
+        continue-on-error: true
+        run: npm audit --omit=dev --audit-level=high
       - name: Typecheck
         run: npm run typecheck
       - name: Lint

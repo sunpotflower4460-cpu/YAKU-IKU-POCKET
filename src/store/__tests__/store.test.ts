@@ -1,17 +1,52 @@
 import { useGameStore, RARITY_XP, XP_PER_RESCAN } from '../useGameStore';
 import { PLANTS } from '../../data/plants';
+import { CHALLENGES, getDailyChallenges, SEASONAL_CHALLENGES } from '../../data/challenges';
+import { todayLocalStr } from '../../utils/date';
+import { getCurrentSeason, getSeasonalPlants } from '../../utils/season';
+import * as observationPhotoStorage from '../../utils/observationPhotoStorage';
+
+jest.mock('../../utils/observationPhotoStorage', () => ({
+  clearObservationPhotos: jest.fn(),
+  deleteObservationPhoto: jest.fn(),
+}));
+
+const mockDeleteObservationPhoto = observationPhotoStorage.deleteObservationPhoto as jest.MockedFunction<
+  typeof observationPhotoStorage.deleteObservationPhoto
+>;
+
+function setCompletedDailyProgress(): void {
+  const today = todayLocalStr();
+  useGameStore.setState({
+    todayDate: today,
+    lastLoginDate: today,
+    seasonalQuestMonth: today.slice(0, 7),
+    todayScanCount: 20,
+    todayNewCount: 10,
+    todayMaxRarity: 5,
+    todayDangers: ['GREEN', 'YELLOW', 'RED'],
+    todayCategories: ['野草', 'スパイス・ハーブ'],
+  });
+}
 
 // Reset the relevant slice of state before each test.
 beforeEach(() => {
+  jest.useRealTimers();
+  jest.clearAllMocks();
   useGameStore.setState({
     discoveredPlantIds: [],
     scanHistory: [],
     xp: 0,
+    streak: 0,
+    lastLoginDate: '',
     claimedChallengeIds: [],
     claimedSeasonalQuestIds: [],
+    seasonalQuestMonth: '',
     todayDate: '',
     todayScanCount: 0,
     todayNewCount: 0,
+    todayMaxRarity: 0,
+    todayDangers: [],
+    todayCategories: [],
     playerName: 'ハーブマスター',
     plantNotes: {},
     favoritePlantIds: [],
@@ -24,21 +59,128 @@ beforeEach(() => {
   });
 });
 
-describe('claimChallenge / claimSeasonalChallenge double-reward guard', () => {
-  it('does not award the same daily quest twice', () => {
+describe('claimChallenge / claimSeasonalChallenge reward integrity', () => {
+  it('uses the trusted daily reward and does not award the same completed quest twice', () => {
+    setCompletedDailyProgress();
+    const challenge = getDailyChallenges(todayLocalStr())[0];
     const { claimChallenge } = useGameStore.getState();
-    claimChallenge('q1', 50);
-    claimChallenge('q1', 50); // duplicate
+
+    claimChallenge(challenge.id);
+    claimChallenge(challenge.id); // duplicate
+
     const s = useGameStore.getState();
-    expect(s.xp).toBe(50);
-    expect(s.claimedChallengeIds.filter((id) => id === 'q1')).toHaveLength(1);
+    expect(s.xp).toBe(challenge.xpReward);
+    expect(s.claimedChallengeIds.filter((id) => id === challenge.id)).toHaveLength(1);
   });
 
-  it('does not award the same seasonal quest twice', () => {
+  it('rejects a valid global daily challenge that is not one of today\'s three', () => {
+    setCompletedDailyProgress();
+    const todayIds = new Set(getDailyChallenges(todayLocalStr()).map((challenge) => challenge.id));
+    const notToday = CHALLENGES.find((challenge) => !todayIds.has(challenge.id));
+    expect(notToday).toBeDefined();
+
+    useGameStore.getState().claimChallenge(notToday!.id);
+
+    expect(useGameStore.getState().xp).toBe(0);
+    expect(useGameStore.getState().claimedChallengeIds).toEqual([]);
+  });
+
+  it('rejects an incomplete daily challenge even when the id is valid for today', () => {
+    const today = todayLocalStr();
+    useGameStore.setState({
+      todayDate: today,
+      lastLoginDate: today,
+      seasonalQuestMonth: today.slice(0, 7),
+    });
+    const challenge = getDailyChallenges(today)[0];
+
+    useGameStore.getState().claimChallenge(challenge.id);
+
+    expect(useGameStore.getState().xp).toBe(0);
+    expect(useGameStore.getState().claimedChallengeIds).toEqual([]);
+  });
+
+  it('uses the trusted seasonal reward, requires completion, and blocks duplicates', () => {
+    const today = todayLocalStr();
+    const season = getCurrentSeason();
+    const challenge = SEASONAL_CHALLENGES[season][0];
+    const seasonalPlant = getSeasonalPlants(season, PLANTS)[0];
+    expect(seasonalPlant).toBeDefined();
+    useGameStore.setState({
+      todayDate: today,
+      lastLoginDate: today,
+      seasonalQuestMonth: today.slice(0, 7),
+      discoveredPlantIds: [seasonalPlant.id],
+    });
+
     const { claimSeasonalChallenge } = useGameStore.getState();
-    claimSeasonalChallenge('sc_spring_1', 60);
-    claimSeasonalChallenge('sc_spring_1', 60);
-    expect(useGameStore.getState().xp).toBe(60);
+    claimSeasonalChallenge(challenge.id);
+    claimSeasonalChallenge(challenge.id);
+
+    const s = useGameStore.getState();
+    expect(s.xp).toBe(challenge.xpReward);
+    expect(s.claimedSeasonalQuestIds.filter((id) => id === challenge.id)).toHaveLength(1);
+  });
+
+  it('rejects a seasonal challenge from a different season', () => {
+    const today = todayLocalStr();
+    const season = getCurrentSeason();
+    const wrongSeason = (Object.keys(SEASONAL_CHALLENGES) as (keyof typeof SEASONAL_CHALLENGES)[])
+      .find((candidate) => candidate !== season)!;
+    const wrongChallenge = SEASONAL_CHALLENGES[wrongSeason][0];
+    useGameStore.setState({
+      todayDate: today,
+      lastLoginDate: today,
+      seasonalQuestMonth: today.slice(0, 7),
+      discoveredPlantIds: PLANTS.map((plant) => plant.id),
+    });
+
+    useGameStore.getState().claimSeasonalChallenge(wrongChallenge.id);
+
+    expect(useGameStore.getState().xp).toBe(0);
+    expect(useGameStore.getState().claimedSeasonalQuestIds).toEqual([]);
+  });
+
+  it('rejects unknown challenge ids instead of minting XP', () => {
+    setCompletedDailyProgress();
+    const { claimChallenge, claimSeasonalChallenge } = useGameStore.getState();
+    claimChallenge('__missing_daily__');
+    claimSeasonalChallenge('__missing_seasonal__');
+    const s = useGameStore.getState();
+    expect(s.xp).toBe(0);
+    expect(s.claimedChallengeIds).toEqual([]);
+    expect(s.claimedSeasonalQuestIds).toEqual([]);
+  });
+});
+
+describe('session rollover integrity', () => {
+  it('rolls the day forward inside recordObservation even if the app stays foregrounded across midnight', () => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date(2026, 7, 28, 23, 59, 59));
+    useGameStore.setState({
+      todayDate: '2026-08-28',
+      lastLoginDate: '2026-08-28',
+      seasonalQuestMonth: '2026-08',
+      todayScanCount: 9,
+      todayNewCount: 4,
+      todayMaxRarity: 5,
+      todayDangers: ['RED'],
+      todayCategories: ['野草'],
+      claimedChallengeIds: ['old-claim'],
+    });
+
+    jest.setSystemTime(new Date(2026, 7, 29, 0, 0, 1));
+    const plant = PLANTS[0];
+    useGameStore.getState().recordObservation(plant.id);
+
+    const s = useGameStore.getState();
+    expect(s.todayDate).toBe('2026-08-29');
+    expect(s.todayScanCount).toBe(1);
+    expect(s.todayNewCount).toBe(1);
+    expect(s.todayMaxRarity).toBe(plant.rarity);
+    expect(s.todayDangers).toEqual([plant.danger]);
+    expect(s.todayCategories).toEqual([plant.category]);
+    expect(s.claimedChallengeIds).toEqual([]);
   });
 });
 
@@ -62,6 +204,55 @@ describe('recordObservation (atomic)', () => {
     expect(s.discoveredPlantIds.filter((id) => id === plant.id)).toHaveLength(1);
     expect(s.scanHistory).toHaveLength(2);
     expect(s.xp).toBe((RARITY_XP[plant.rarity] ?? 100) + XP_PER_RESCAN);
+  });
+
+  it('does not save or award XP twice for the same persisted photo', () => {
+    const plant = PLANTS[0];
+    const { recordObservation } = useGameStore.getState();
+    recordObservation(plant.id, 'file:///documents/observations/same.jpg');
+    recordObservation(plant.id, 'file:///documents/observations/same.jpg');
+
+    const s = useGameStore.getState();
+    expect(s.scanHistory).toHaveLength(1);
+    expect(s.discoveredPlantIds).toEqual([plant.id]);
+    expect(s.xp).toBe(RARITY_XP[plant.rarity] ?? 100);
+  });
+
+  it('does not let one photo exist in both unidentified and identified records', () => {
+    const plant = PLANTS[0];
+    const uri = 'file:///documents/observations/shared.jpg';
+    useGameStore.getState().recordUnidentifiedObservation(uri);
+    useGameStore.getState().recordObservation(plant.id, uri);
+
+    const s = useGameStore.getState();
+    expect(s.unidentifiedObservations).toHaveLength(1);
+    expect(s.scanHistory).toEqual([]);
+    expect(s.discoveredPlantIds).toEqual([]);
+    expect(s.xp).toBe(0);
+  });
+
+  it('fails closed for an unknown plant id', () => {
+    const { recordObservation, discoverPlant, addScan } = useGameStore.getState();
+    recordObservation('__missing__', 'file://ghost.jpg');
+    discoverPlant('__missing__');
+    addScan('__missing__', 'file://ghost-2.jpg');
+
+    const s = useGameStore.getState();
+    expect(s.discoveredPlantIds).toEqual([]);
+    expect(s.scanHistory).toEqual([]);
+    expect(s.xp).toBe(0);
+  });
+
+  it('does not mint rescan XP through the legacy discoverPlant helper', () => {
+    const plant = PLANTS[0];
+    const { discoverPlant } = useGameStore.getState();
+    discoverPlant(plant.id);
+    discoverPlant(plant.id);
+    discoverPlant(plant.id);
+
+    const s = useGameStore.getState();
+    expect(s.discoveredPlantIds).toEqual([plant.id]);
+    expect(s.xp).toBe(RARITY_XP[plant.rarity] ?? 100);
   });
 });
 
@@ -104,6 +295,13 @@ describe('unidentified observations (v3 §6.1 "そのまま記録する", PR17)'
     expect(s.discoveredPlantIds).toEqual([]);
   });
 
+  it('does not duplicate the same saved photo', () => {
+    const { recordUnidentifiedObservation } = useGameStore.getState();
+    recordUnidentifiedObservation('file://mystery.jpg');
+    recordUnidentifiedObservation('file://mystery.jpg');
+    expect(useGameStore.getState().unidentifiedObservations).toHaveLength(1);
+  });
+
   it('deleteUnidentifiedObservation removes only the targeted entry', () => {
     const { recordUnidentifiedObservation, deleteUnidentifiedObservation } = useGameStore.getState();
     recordUnidentifiedObservation('file://a.jpg');
@@ -113,6 +311,30 @@ describe('unidentified observations (v3 §6.1 "そのまま記録する", PR17)'
     const s = useGameStore.getState();
     expect(s.unidentifiedObservations).toHaveLength(1);
     expect(s.unidentifiedObservations[0].id).toBe(keep.id);
+  });
+
+  it('does not delete a photo file while another retained record still references it', () => {
+    const sharedUri = 'file:///mock-documents/observations/1780000000000_abc123.jpg';
+    useGameStore.setState({
+      scanHistory: [{ id: 'scan_keep', plantId: PLANTS[0].id, scannedAt: new Date().toISOString(), imageUri: sharedUri }],
+      unidentifiedObservations: [{ id: 'unid_remove', observedAt: new Date().toISOString(), imageUri: sharedUri }],
+    });
+
+    useGameStore.getState().deleteUnidentifiedObservation('unid_remove');
+
+    expect(useGameStore.getState().unidentifiedObservations).toEqual([]);
+    expect(mockDeleteObservationPhoto).not.toHaveBeenCalled();
+  });
+
+  it('deletes an unreferenced managed photo after its unidentified record is removed', () => {
+    const uri = 'file:///mock-documents/observations/1780000000001_def456.jpg';
+    useGameStore.setState({
+      unidentifiedObservations: [{ id: 'unid_remove', observedAt: new Date().toISOString(), imageUri: uri }],
+    });
+
+    useGameStore.getState().deleteUnidentifiedObservation('unid_remove');
+
+    expect(mockDeleteObservationPhoto).toHaveBeenCalledWith(uri);
   });
 
   it('setUnidentifiedRevisit sets and clears a revisit date', () => {
@@ -164,6 +386,11 @@ describe('暮らし: setScanOrigin / practiceRecords (PR22)', () => {
 
     deletePracticeRecord(s1.practiceRecords[0].id);
     expect(useGameStore.getState().practiceRecords).toHaveLength(0);
+  });
+
+  it('does not create journal records for an unknown plant id', () => {
+    useGameStore.getState().addPracticeRecord('__missing__', 'general', 'ghost');
+    expect(useGameStore.getState().practiceRecords).toEqual([]);
   });
 });
 

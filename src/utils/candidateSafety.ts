@@ -22,7 +22,11 @@ export function assessCandidateSafety(candidates: IdentificationCandidate[]): Ca
   const warnings: LookalikeRisk[] = [];
   for (const c of candidates) {
     for (const w of getSafetyWarnings(c.plant.id)) {
-      const key = `${c.plant.id}:${w.name}`;
+      // Deduplicate by the dangerous species itself, not by the source candidate.
+      // Multiple plausible candidates can share the same toxic look-alike (e.g.
+      // ウド and フキ -> ハシリドコロ). Keeping candidate id in the key caused
+      // duplicate warning rows and duplicate React keys in SafetyBanner.
+      const key = w.inDbId ? `id:${w.inDbId}` : `name:${w.name}`;
       if (seen.has(key)) continue;
       seen.add(key);
       warnings.push(w);

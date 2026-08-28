@@ -30,9 +30,16 @@ describe('assessCandidateSafety', () => {
     expect(result.warnings).toEqual([]);
   });
 
-  it('deduplicates identical warnings across candidates', () => {
+  it('deduplicates identical warnings repeated by the same candidate', () => {
     const result = assessCandidateSafety([candidateFor('p008', 1), candidateFor('p008', 2)]);
     const dokuzeriWarnings = result.warnings.filter((w) => w.name === 'ドクゼリ');
     expect(dokuzeriWarnings).toHaveLength(1);
+  });
+
+  it('deduplicates the same dangerous species shared by different candidates', () => {
+    // p010 (ウド) and p011 (フキ) both warn about ハシリドコロ.
+    const result = assessCandidateSafety([candidateFor('p010', 1), candidateFor('p011', 2)]);
+    const warnings = result.warnings.filter((w) => w.name === 'ハシリドコロ');
+    expect(warnings).toHaveLength(1);
   });
 });
