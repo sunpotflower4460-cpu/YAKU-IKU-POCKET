@@ -87,7 +87,8 @@ export function OnboardingModal({ visible, onComplete }: Props) {
   );
   const illustrationSize = Math.min(94, Math.max(60, visualHeaderHeight - 18));
   const mainIconSize = Math.min(47, Math.max(30, Math.round(illustrationSize * 0.5)));
-  const stackActions = fontScale >= 1.3 || width < 360;
+  const safetyIllustrationSize = Math.min(84, Math.max(56, safetyHeaderHeight - 20));
+  const safetyIconSize = Math.min(46, Math.max(30, Math.round(safetyIllustrationSize * 0.54)));
   const safetyBg = theme.mode === 'dark' ? theme.colors.surfaceSecondary : '#FFF9EC';
   const safetySurface = theme.mode === 'dark' ? theme.colors.surfaceTertiary : '#FFF1C9';
   const safetyAccent = theme.colors.statusCaution;
@@ -202,7 +203,7 @@ export function OnboardingModal({ visible, onComplete }: Props) {
       statusBarTranslucent
       onRequestClose={handleBack}
     >
-      <View style={[styles.overlay, { backgroundColor: theme.colors.overlay }]}> 
+      <View style={[styles.overlay, { backgroundColor: theme.colors.overlay }]}>
         <Animated.View
           accessibilityViewIsModal
           onAccessibilityEscape={handleBack}
@@ -219,7 +220,7 @@ export function OnboardingModal({ visible, onComplete }: Props) {
             },
           ]}
         >
-          <View style={[styles.slidesWrapper, { width: cardWidth }]}> 
+          <View style={[styles.slidesWrapper, { width: cardWidth }]}>
             <Animated.View
               style={[
                 styles.slidesTrack,
@@ -261,14 +262,14 @@ export function OnboardingModal({ visible, onComplete }: Props) {
                           style={[
                             styles.safetyIconCircle,
                             {
-                              width: Math.min(84, Math.max(56, safetyHeaderHeight - 20)),
-                              height: Math.min(84, Math.max(56, safetyHeaderHeight - 20)),
-                              borderRadius: 42,
+                              width: safetyIllustrationSize,
+                              height: safetyIllustrationSize,
+                              borderRadius: safetyIllustrationSize / 2,
                               backgroundColor: `${safetyAccent}16`,
                             },
                           ]}
                         >
-                          <Ionicons name={slide.icon} size={Math.min(46, Math.max(30, safetyHeaderHeight * 0.42))} color={safetyAccent} />
+                          <Ionicons name={slide.icon} size={safetyIconSize} color={safetyAccent} />
                         </View>
                       </View>
                     ) : (
@@ -342,7 +343,7 @@ export function OnboardingModal({ visible, onComplete }: Props) {
                             importantForAccessibility="no-hide-descendants"
                           >
                             <Ionicons name="warning-outline" size={17} color={safetyAccent} />
-                            <Text style={[styles.safetyBoxText, { color: theme.colors.textPrimary }]}> 
+                            <Text style={[styles.safetyBoxText, { color: theme.colors.textPrimary }]}>
                               採取・摂取の前に、専門家へ確認してください
                             </Text>
                           </View>
@@ -373,7 +374,7 @@ export function OnboardingModal({ visible, onComplete }: Props) {
             ))}
           </View>
 
-          <View style={[styles.actions, { backgroundColor: theme.colors.surfacePrimary }]}> 
+          <View style={[styles.actions, { backgroundColor: theme.colors.surfacePrimary }]}>
             <Text
               style={[styles.progressLabel, { color: theme.colors.textTertiary }]}
               accessibilityRole="text"
@@ -382,7 +383,7 @@ export function OnboardingModal({ visible, onComplete }: Props) {
               {slideIndex + 1} / {SLIDES.length} ・ {SLIDES[slideIndex].label}
             </Text>
 
-            <View style={[styles.actionRow, stackActions && styles.actionRowStacked]}> 
+            <View style={[styles.actionRow, stackActions && styles.actionRowStacked]}>
               {slideIndex === 0 ? (
                 <Pressable
                   style={({ pressed }) => [
