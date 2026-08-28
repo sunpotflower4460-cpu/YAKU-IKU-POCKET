@@ -1,12 +1,14 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { RARITY_XP, XP_PER_RESCAN } from '../store/useGameStore';
 import {
+  AccessibilityInfo,
   ActivityIndicator,
   View,
   Text,
   StyleSheet,
   Modal,
   Animated,
+  findNodeHandle,
   Pressable,
   ScrollView,
   Image,
@@ -95,6 +97,7 @@ export function ScanResultModal({
   const { width, fontScale } = useWindowDimensions();
   const stackActions = width < 380 || fontScale >= 1.3;
   const stackTraitActions = width < 390 || fontScale >= 1.25;
+  const stackConfidence = width < 340 || fontScale >= 1.6;
   const showCompare = !!candidates && candidates.length > 1;
   const candidateSafety = candidates ? assessCandidateSafety(candidates) : null;
   const reduceMotion = useReduceMotion();
@@ -102,6 +105,7 @@ export function ScanResultModal({
   const opacityAnim = useRef(new Animated.Value(0)).current;
   const shimmerAnim = useRef(new Animated.Value(0)).current;
   const sparkleAnim = useRef(new Animated.Value(0)).current;
+  const resultHeadingRef = useRef<React.ElementRef<typeof Text>>(null);
 
   const [traitStates, setTraitStates] = useState<Record<string, TraitCheckState>>({});
   const traitItems = useMemo(
@@ -174,6 +178,19 @@ export function ScanResultModal({
     sparkleAnim.setValue(0);
   }, [visible, plant, isNewDiscovery, reduceMotion, scaleAnim, opacityAnim, shimmerAnim, sparkleAnim, theme.motion.stateChange]);
 
+  // Focus the result context once when the modal opens. Do not depend on the
+  // selected plant: switching candidates while comparing should keep focus on
+  // the user's chosen control rather than yanking it back to the header.
+  useEffect(() => {
+    if (!visible) return;
+    const delay = reduceMotion ? 70 : theme.motion.stateChange + 100;
+    const timer = setTimeout(() => {
+      const node = findNodeHandle(resultHeadingRef.current);
+      if (node) AccessibilityInfo.setAccessibilityFocus(node);
+    }, delay);
+    return () => clearTimeout(timer);
+  }, [visible, reduceMotion, theme.motion.stateChange]);
+
   if (!plant) return null;
 
   async function handleShareDiscovery() {
@@ -221,6 +238,14 @@ export function ScanResultModal({
     : plant.rarity >= 4
       ? '珍しい発見'
       : '新しい発見';
+  const resultHeadingLabel = [
+    '植物候補',
+    plant.name,
+    DANGER_LABEL[plant.danger],
+    showCompare ? `候補が${candidates?.length ?? 0}件あります` : null,
+    isNewDiscovery ? discoveryLabel : null,
+    isDemo ? 'デモ表示' : null,
+  ].filter((part): part is string => !!part).join('。');
 
   const requestClose = () => {
     if (!isSaving) onScanAgain();
@@ -302,7 +327,14 @@ export function ScanResultModal({
               <Text style={styles.emoji}>{plant.emoji}</Text>
             </Animated.View>
 
-            <Text style={styles.plantName} accessibilityRole="header">{plant.name}</Text>
+            <Text
+              ref={resultHeadingRef}
+              style={styles.plantName}
+              accessibilityRole="header"
+              accessibilityLabel={resultHeadingLabel}
+            >
+              {plant.name}
+            </Text>
             <Text style={styles.plantNameEn}>{plant.nameEn}</Text>
             <Text style={styles.plantNameLatin}>{plant.nameLatin}</Text>
 
@@ -330,7 +362,7 @@ export function ScanResultModal({
           >
             {showCompare && candidates && (
               <View style={styles.compareContainer}>
-                <Text style={[styles.compareHeadline, { color: theme.colors.textPrimary }]}>候補が{candidates.length}件あります</Text>
+                <Text style={[styles.compareHeadline, { color: theme.colors.textPrimary }]} accessibilityRole="header">候補が{candidates.length}件あります</Text>
                 <Text style={[styles.compareSubtext, { color: theme.colors.textSecondary }]}>見た目・季節・安全情報を見比べて、記録する候補を選んでください。</Text>
 
                 {candidateSafety && (candidateSafety.hasDangerousCandidate || candidateSafety.hasLookalikeRisk) && (
@@ -367,12 +399,12 @@ export function ScanResultModal({
                         disabled={isSaving}
                         accessibilityRole="button"
                         accessibilityState={{ selected, disabled: isSaving }}
-                        accessibilityLabel={`候補${candidate.score.overallRank}: ${candidate.plant.name}、画像との一致度${candidate.score.visionScore ?? '不明'}${selected ? '、選択中' : ''}`}
+                        accessibilityLabel={`候補${candidate.score.overallRank}: ${candidate.plant.name}、${DANGER_LABEL[candidate.plant.danger]}、画像との一致度${candidate.score.visionScore ?? '不明'}${selected ? '、選択中' : ''}`}
                       >
-                        <View style={[styles.candidateEmojiWrap, { backgroundColor: theme.colors.surfaceSecondary }]}>
+                        <View style={[styles.candidateEmojiWrap, { backgroundColor: theme.colors.surfaceSecondary }]} accessibilityElementsHidden>
                           <Text style={styles.candidateEmoji}>{candidate.plant.emoji}</Text>
                         </View>
-                        <View style={{ flex: 1 }}>
+                        <View style={styles.candidateTextBlock}>
                           <View style={styles.candidateNameRow}>
                             <Text style={[styles.candidateRank, { color: theme.colors.textTertiary }]}>候補{candidate.score.overallRank}</Text>
                             <Text style={[styles.candidateName, { color: theme.colors.textPrimary }]}>{candidate.plant.name}</Text>
@@ -412,7 +444,7 @@ export function ScanResultModal({
                   { backgroundColor: theme.colors.surfaceSecondary, borderColor: theme.colors.borderSubtle },
                 ]}
               >
-                <Text style={[styles.traitCheckHeadline, { color: theme.colors.textPrimary }]}>目の前の植物と見比べる</Text>
+                <Text style={[styles.traitCheckHeadline, { color: theme.colors.textPrimary }]} accessibilityRole="header">目の前の植物と見比べる</Text>
                 <Text style={[styles.traitCheckSubtext, { color: theme.colors.textSecondary }]}>AIの候補をそのまま正解とせず、実物の特徴を一つずつ照合してください。</Text>
                 <Text style={[styles.traitCheckSummaryText, { color: theme.colors.textSecondary }]} accessibilityLiveRegion="polite">
                   一致 {traitSummary.match}　不一致 {traitSummary.mismatch}　未確認 {traitSummary.unknown}
@@ -511,13 +543,13 @@ export function ScanResultModal({
             </View>
 
             <View
-              style={styles.confidenceContainer}
+              style={[styles.confidenceContainer, stackConfidence && styles.confidenceContainerStacked]}
               accessible
               accessibilityRole="text"
               accessibilityLabel={`${usedRealAI ? '画像との候補一致度' : 'デモ一致スコア'} ${Math.round(safeConfidence)}パーセント`}
             >
-              <Text style={[styles.confidenceLabel, { color: theme.colors.textTertiary }]}>{usedRealAI ? '画像一致' : 'デモ値'}</Text>
-              <View style={[styles.confidenceBar, { backgroundColor: theme.colors.surfaceTertiary }]} accessibilityElementsHidden>
+              <Text style={[styles.confidenceLabel, stackConfidence && styles.confidenceLabelStacked, { color: theme.colors.textTertiary }]}>{usedRealAI ? '画像一致' : 'デモ値'}</Text>
+              <View style={[styles.confidenceBar, { backgroundColor: theme.colors.surfaceTertiary }]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
                 <View style={[styles.confidenceFill, { width: `${safeConfidence}%`, backgroundColor: theme.colors.accentPrimary }]} />
               </View>
               <Text style={[styles.confidenceValue, { color: theme.colors.accentPrimary }]}>{Math.round(safeConfidence)}%</Text>
@@ -710,34 +742,35 @@ const styles = StyleSheet.create({
   sparkleOverlay: { position: 'absolute', inset: 0, backgroundColor: '#FFFFFF' },
   closeBtn: { position: 'absolute', top: 10, right: 10, width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(0,0,0,0.32)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.28)', justifyContent: 'center', alignItems: 'center', zIndex: 2 },
   glassPressed: { backgroundColor: 'rgba(0,0,0,0.46)' },
-  newLabel: { minHeight: 30, flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(0,0,0,0.24)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.30)', borderRadius: 999, paddingHorizontal: 12, marginBottom: 9 },
-  newLabelText: { color: '#FFFFFF', fontWeight: '800', fontSize: 12, lineHeight: 16 },
+  newLabel: { minHeight: 30, flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(0,0,0,0.24)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.30)', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 4, marginBottom: 9, maxWidth: '86%' },
+  newLabelText: { color: '#FFFFFF', fontWeight: '800', fontSize: 12, lineHeight: 16, textAlign: 'center', flexShrink: 1 },
   emojiContainer: { width: 88, height: 88, borderRadius: 44, backgroundColor: 'rgba(255,255,255,0.12)', justifyContent: 'center', alignItems: 'center', marginBottom: 9, borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.30)' },
   dangerEmojiContainer: { backgroundColor: 'rgba(120,0,0,0.28)', borderColor: 'rgba(255,255,255,0.36)' },
   emoji: { fontSize: 50 },
-  plantName: { fontSize: 24, lineHeight: 31, fontWeight: '900', color: '#FFFFFF', textAlign: 'center', textShadowColor: 'rgba(0,0,0,0.28)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 },
-  plantNameEn: { fontSize: 14, lineHeight: 19, color: 'rgba(255,255,255,0.90)', fontWeight: '600', marginTop: 1 },
-  plantNameLatin: { fontSize: 11, lineHeight: 15, color: 'rgba(255,255,255,0.88)', fontStyle: 'italic', marginTop: 1, marginBottom: 9 },
+  plantName: { maxWidth: '100%', fontSize: 24, lineHeight: 31, fontWeight: '900', color: '#FFFFFF', textAlign: 'center', textShadowColor: 'rgba(0,0,0,0.28)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 },
+  plantNameEn: { maxWidth: '100%', fontSize: 14, lineHeight: 19, color: '#F1F7F2', fontWeight: '600', marginTop: 1, textAlign: 'center' },
+  plantNameLatin: { maxWidth: '100%', fontSize: 11, lineHeight: 15, color: '#E8F0E9', fontStyle: 'italic', marginTop: 1, marginBottom: 9, textAlign: 'center' },
   headerBadgeRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: 'center' },
   rarityLabelBadge: { backgroundColor: 'rgba(0,0,0,0.34)', borderRadius: 999, paddingHorizontal: 9, paddingVertical: 4 },
   rarityLabelText: { color: '#FFFFFF', fontSize: 11, lineHeight: 14, fontWeight: '800' },
   headerStarsWrap: { backgroundColor: 'rgba(255,255,255,0.92)', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 4 },
-  photoLabel: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 8, backgroundColor: 'rgba(0,0,0,0.44)', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
-  photoLabelText: { color: '#FFFFFF', fontSize: 10, lineHeight: 14, fontWeight: '600' },
+  photoLabel: { maxWidth: '90%', flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 8, backgroundColor: 'rgba(0,0,0,0.44)', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 },
+  photoLabelText: { color: '#FFFFFF', fontSize: 10, lineHeight: 14, fontWeight: '600', flexShrink: 1, textAlign: 'center' },
   content: { padding: 16, alignItems: 'center' },
   badgeRow: { flexDirection: 'row', gap: 10, alignItems: 'center', marginBottom: 14, justifyContent: 'center' },
   compareContainer: { width: '100%', marginBottom: 16 },
   compareHeadline: { fontSize: 17, lineHeight: 22, fontWeight: '800', textAlign: 'center' },
   compareSubtext: { fontSize: 13, lineHeight: 19, textAlign: 'center', marginTop: 4, marginBottom: 12 },
   compareSafetyBlock: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, borderWidth: StyleSheet.hairlineWidth, borderRadius: 14, padding: 11, marginBottom: 12 },
-  compareSafetyText: { flex: 1, fontSize: 13, lineHeight: 19, fontWeight: '700' },
+  compareSafetyText: { flex: 1, minWidth: 0, fontSize: 13, lineHeight: 19, fontWeight: '700' },
   candidateList: { gap: 8 },
   candidateCard: { minHeight: 72, flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 15, borderWidth: 1.5, padding: 10 },
   candidateEmojiWrap: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
   candidateEmoji: { fontSize: 25 },
+  candidateTextBlock: { flex: 1, minWidth: 0 },
   candidateNameRow: { flexDirection: 'row', alignItems: 'baseline', gap: 6, flexWrap: 'wrap' },
   candidateRank: { fontSize: 10, lineHeight: 14, fontWeight: '800' },
-  candidateName: { fontSize: 14, lineHeight: 19, fontWeight: '800' },
+  candidateName: { flexShrink: 1, fontSize: 14, lineHeight: 19, fontWeight: '800' },
   candidateLatin: { fontSize: 11, lineHeight: 15, fontStyle: 'italic', marginTop: 1 },
   candidateMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 6, flexWrap: 'wrap' },
   candidateScore: { fontSize: 11, lineHeight: 15, fontWeight: '700' },
@@ -753,31 +786,33 @@ const styles = StyleSheet.create({
   traitItemHint: { fontSize: 12, lineHeight: 18, marginTop: 3, marginBottom: 10 },
   traitItemBtnRow: { flexDirection: 'row', gap: 7 },
   traitItemBtnRowStacked: { flexDirection: 'column' },
-  traitItemBtn: { flex: 1, minHeight: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8, flexDirection: 'row', gap: 5 },
+  traitItemBtn: { flex: 1, minHeight: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8, paddingVertical: 7, flexDirection: 'row', gap: 5 },
   traitItemBtnStacked: { flex: 0, width: '100%' },
   traitItemBtnText: { fontSize: 12, lineHeight: 16, fontWeight: '700', textAlign: 'center' },
   alertBox: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, borderWidth: StyleSheet.hairlineWidth, borderRadius: 14, padding: 11, marginBottom: 12, width: '100%' },
-  alertText: { flex: 1, fontWeight: '700', fontSize: 13, lineHeight: 19 },
+  alertText: { flex: 1, minWidth: 0, fontWeight: '700', fontSize: 13, lineHeight: 19 },
   confidenceContainer: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12, width: '100%' },
-  confidenceLabel: { fontSize: 11, lineHeight: 15, width: 52 },
-  confidenceBar: { flex: 1, height: 7, borderRadius: 4, overflow: 'hidden' },
+  confidenceContainerStacked: { flexWrap: 'wrap', alignItems: 'center' },
+  confidenceLabel: { fontSize: 11, lineHeight: 15, minWidth: 52 },
+  confidenceLabelStacked: { flexBasis: '100%' },
+  confidenceBar: { flex: 1, minWidth: 100, height: 7, borderRadius: 4, overflow: 'hidden' },
   confidenceFill: { height: '100%', borderRadius: 4 },
-  confidenceValue: { fontSize: 12, lineHeight: 16, fontWeight: '800', width: 38, textAlign: 'right' },
-  aiBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5, marginBottom: 12, borderWidth: StyleSheet.hairlineWidth },
-  aiBadgeText: { fontSize: 11, lineHeight: 15, fontWeight: '700' },
+  confidenceValue: { fontSize: 12, lineHeight: 16, fontWeight: '800', minWidth: 44, textAlign: 'right' },
+  aiBadge: { maxWidth: '100%', flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5, marginBottom: 12, borderWidth: StyleSheet.hairlineWidth },
+  aiBadgeText: { flexShrink: 1, fontSize: 11, lineHeight: 15, fontWeight: '700', textAlign: 'center' },
   reasonBox: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 14, padding: 11, marginBottom: 13, width: '100%' },
   reasonTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 5 },
   reasonLabel: { fontSize: 12, lineHeight: 16, fontWeight: '800' },
   reasonText: { fontSize: 13, lineHeight: 20 },
   fallbackNotice: { flexDirection: 'row', alignItems: 'flex-start', gap: 7, borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, padding: 11, marginBottom: 11, width: '100%' },
-  fallbackText: { flex: 1, fontSize: 12, lineHeight: 18 },
+  fallbackText: { flex: 1, minWidth: 0, fontSize: 12, lineHeight: 18 },
   description: { fontSize: 14, lineHeight: 22, textAlign: 'left', width: '100%', marginBottom: 15 },
   effectsContainer: { width: '100%', marginBottom: 13 },
   effectsTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
   sectionTitle: { fontSize: 14, lineHeight: 19, fontWeight: '800' },
   effectTags: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  effectTag: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 },
-  effectText: { fontSize: 12, lineHeight: 16, fontWeight: '600' },
+  effectTag: { maxWidth: '100%', borderWidth: StyleSheet.hairlineWidth, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 },
+  effectText: { flexShrink: 1, fontSize: 12, lineHeight: 16, fontWeight: '600' },
   effectsCaveat: { marginTop: 8, fontSize: 12, lineHeight: 18 },
   warningBox: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 14, padding: 11, marginBottom: 11, width: '100%' },
   warningText: { fontSize: 12, lineHeight: 18, fontWeight: '600' },
@@ -785,11 +820,11 @@ const styles = StyleSheet.create({
   actions: { gap: 8, padding: 12, borderTopWidth: StyleSheet.hairlineWidth },
   actionRow: { flexDirection: 'row', gap: 9 },
   actionRowStacked: { flexDirection: 'column' },
-  btn: { flex: 1, minHeight: 52, flexDirection: 'row', paddingHorizontal: 12, borderRadius: 15, alignItems: 'center', justifyContent: 'center', gap: 6 },
+  btn: { flex: 1, minHeight: 52, flexDirection: 'row', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 15, alignItems: 'center', justifyContent: 'center', gap: 6 },
   btnShare: { backgroundColor: 'transparent', borderWidth: StyleSheet.hairlineWidth },
-  btnPrimaryText: { fontWeight: '800', fontSize: 13, lineHeight: 18, textAlign: 'center' },
-  btnSecondaryText: { fontWeight: '700', fontSize: 13, lineHeight: 18 },
-  btnShareText: { fontWeight: '800', fontSize: 13, lineHeight: 18 },
+  btnPrimaryText: { flexShrink: 1, fontWeight: '800', fontSize: 13, lineHeight: 18, textAlign: 'center' },
+  btnSecondaryText: { fontWeight: '700', fontSize: 13, lineHeight: 18, textAlign: 'center' },
+  btnShareText: { flexShrink: 1, fontWeight: '800', fontSize: 13, lineHeight: 18, textAlign: 'center' },
   controlDisabled: { opacity: 0.58 },
   cardPressed: { opacity: 0.76, transform: [{ scale: 0.995 }] },
   buttonPressed: { opacity: 0.82, transform: [{ scale: 0.99 }] },
