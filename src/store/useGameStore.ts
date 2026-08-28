@@ -29,6 +29,12 @@ function findKnownPlant(plantId: string) {
   return PLANTS.find((p) => p.id === plantId);
 }
 
+function cleanupDroppedPhotos(records: Array<{ imageUri?: string }>): void {
+  for (const record of records) {
+    if (record.imageUri) void deleteObservationPhoto(record.imageUri);
+  }
+}
+
 // ─── State shape ─────────────────────────────────────────────────────────────
 interface GameState {
   // Collection
@@ -242,7 +248,8 @@ export const useGameStore = create<GameState>()(
       addScan: (plantId: string, imageUri?: string) => {
         if (!findKnownPlant(plantId)) return;
 
-        const { todayDate } = get();
+        const { todayDate, scanHistory } = get();
+        const dropped = scanHistory.length >= 100 ? scanHistory.slice(99) : [];
         const record: ScanRecord = {
           id: generateId('scan'),
           plantId,
@@ -255,6 +262,7 @@ export const useGameStore = create<GameState>()(
             ? state.todayScanCount + 1
             : state.todayScanCount,
         }));
+        cleanupDroppedPhotos(dropped);
       },
 
       // ── Atomic observation record (discovery + history + XP in one update) ─
@@ -262,7 +270,14 @@ export const useGameStore = create<GameState>()(
         const plant = findKnownPlant(plantId);
         if (!plant) return;
 
-        const isToday = get().todayDate === todayStr();
+        const snapshot = get();
+        // One persisted photo represents one observation. This also closes a
+        // real double-tap race: concurrent save taps share the same durable URI
+        // in observationPhotoStorage, so only the first may award XP.
+        if (imageUri && snapshot.scanHistory.some((r) => r.imageUri === imageUri)) return;
+
+        const isToday = snapshot.todayDate === todayStr();
+        const dropped = snapshot.scanHistory.length >= 100 ? snapshot.scanHistory.slice(99) : [];
         const rarity = plant.rarity;
         const record: ScanRecord = {
           id: generateId('scan'),
@@ -272,13 +287,6 @@ export const useGameStore = create<GameState>()(
           traitChecks: traitChecks && traitChecks.length > 0 ? traitChecks : undefined,
         };
         set((state) => {
-          // One persisted photo represents one observation. This also closes a
-          // real double-tap race: concurrent save taps share the same durable
-          // URI in observationPhotoStorage, so only the first may award XP.
-          if (imageUri && state.scanHistory.some((r) => r.imageUri === imageUri)) {
-            return state;
-          }
-
           const isNew = !state.discoveredPlantIds.includes(plantId);
           const gainedXp = isNew ? (RARITY_XP[rarity] ?? 100) : XP_PER_RESCAN;
           return {
@@ -302,6 +310,7 @@ export const useGameStore = create<GameState>()(
                 : state.todayCategories,
           };
         });
+        cleanupDroppedPhotos(dropped);
       },
 
       setHasOnboarded: () => set({ hasOnboarded: true }),
@@ -322,20 +331,22 @@ export const useGameStore = create<GameState>()(
       markCandidatesCompared: () => set({ hasComparedCandidates: true }),
 
       recordUnidentifiedObservation: (imageUri?: string, note?: string) => {
+        const snapshot = get();
+        if (imageUri && snapshot.unidentifiedObservations.some((o) => o.imageUri === imageUri)) return;
+
+        const dropped = snapshot.unidentifiedObservations.length >= 100
+          ? snapshot.unidentifiedObservations.slice(99)
+          : [];
         const observation: UnidentifiedObservation = {
           id: generateId('unid'),
           observedAt: new Date().toISOString(),
           imageUri,
           note,
         };
-        set((state) => {
-          if (imageUri && state.unidentifiedObservations.some((o) => o.imageUri === imageUri)) {
-            return state;
-          }
-          return {
-            unidentifiedObservations: [observation, ...state.unidentifiedObservations].slice(0, 100),
-          };
-        });
+        set((state) => ({
+          unidentifiedObservations: [observation, ...state.unidentifiedObservations].slice(0, 100),
+        }));
+        cleanupDroppedPhotos(dropped);
       },
 
       deleteUnidentifiedObservation: (id: string) => {
