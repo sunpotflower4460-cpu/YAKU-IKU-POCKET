@@ -15,9 +15,8 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
-      - name: Production dependency audit (diagnostic)
-        continue-on-error: true
-        run: npm audit --omit=dev --audit-level=low
+      - name: Production dependency audit
+        run: npm audit --omit=dev --audit-level=high
       - name: Typecheck
         run: npm run typecheck
       - name: Lint
