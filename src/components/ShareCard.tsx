@@ -4,6 +4,7 @@ import {
   Alert,
   findNodeHandle,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   Share,
@@ -36,6 +37,20 @@ interface ShareCardProps {
   unlockedAchievements: Achievement[];
   season: string;
   seasonIcon: string;
+}
+
+type WebFocusable = {
+  focus?: () => void;
+  isConnected?: boolean;
+};
+
+type WebDocumentLike = {
+  activeElement?: WebFocusable | null;
+  body?: WebFocusable | null;
+};
+
+function getWebDocument(): WebDocumentLike | undefined {
+  return (globalThis as unknown as { document?: WebDocumentLike }).document;
 }
 
 function buildShareText(props: Omit<ShareCardProps, 'visible' | 'onClose'>): string {
@@ -86,6 +101,9 @@ export function ShareCard(props: ShareCardProps) {
   const { width, fontScale } = useWindowDimensions();
   const compactCard = width < 360 || fontScale >= 1.3;
   const titleRef = useRef<React.ElementRef<typeof Text>>(null);
+  const closeButtonRef = useRef<React.ElementRef<typeof Pressable>>(null);
+  const previousWebFocusRef = useRef<WebFocusable | null>(null);
+  const wasVisibleRef = useRef(false);
   const pct = totalCount > 0 ? Math.min(discoveredCount / totalCount, 1) : 0;
   const spokenSummary = [
     `${playerName}の観察サマリー`,
@@ -98,12 +116,36 @@ export function ShareCard(props: ShareCardProps) {
   ].join('。');
 
   useEffect(() => {
-    if (!visible) return;
-    const timer = setTimeout(() => {
-      const node = findNodeHandle(titleRef.current);
-      if (node) AccessibilityInfo.setAccessibilityFocus(node);
-    }, reduceMotion ? 70 : 260);
-    return () => clearTimeout(timer);
+    let timer: ReturnType<typeof setTimeout> | undefined;
+
+    if (visible && !wasVisibleRef.current) {
+      if (Platform.OS === 'web') {
+        const doc = getWebDocument();
+        const active = doc?.activeElement;
+        if (active && active !== doc?.body) previousWebFocusRef.current = active;
+
+        timer = setTimeout(() => {
+          const target = closeButtonRef.current as unknown as WebFocusable | null;
+          target?.focus?.();
+        }, 0);
+      } else {
+        timer = setTimeout(() => {
+          const node = findNodeHandle(titleRef.current);
+          if (node) AccessibilityInfo.setAccessibilityFocus(node);
+        }, reduceMotion ? 70 : 260);
+      }
+    } else if (!visible && wasVisibleRef.current && Platform.OS === 'web') {
+      const target = previousWebFocusRef.current;
+      previousWebFocusRef.current = null;
+      timer = setTimeout(() => {
+        if (target?.isConnected !== false) target?.focus?.();
+      }, 0);
+    }
+
+    wasVisibleRef.current = visible;
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
   }, [visible, reduceMotion]);
 
   async function handleShare() {
@@ -168,6 +210,7 @@ export function ShareCard(props: ShareCardProps) {
               </Text>
             </View>
             <Pressable
+              ref={closeButtonRef}
               style={({ pressed }) => [styles.iconClose, pressed && styles.pressed]}
               onPress={onClose}
               accessibilityRole="button"
