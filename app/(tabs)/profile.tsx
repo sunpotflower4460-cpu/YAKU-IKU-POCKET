@@ -14,6 +14,7 @@ import {
   Switch,
   KeyboardAvoidingView,
   Platform,
+  useWindowDimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -23,7 +24,7 @@ import { PLANTS, TOTAL_PLANTS } from '../../src/data/plants';
 import { getPlantDefinitionById } from '../../src/data/plantDefinitions';
 import { useGameStore } from '../../src/store/useGameStore';
 import { DisclaimerBanner } from '../../src/components/DisclaimerBanner';
-import { DangerBadge } from '../../src/components/DangerBadge';
+import { DangerBadge, DANGER_LABEL } from '../../src/components/DangerBadge';
 import { ShareCard } from '../../src/components/ShareCard';
 import { useTheme } from '../../src/theme/ThemeProvider';
 import { getPlayerTitle } from '../../src/utils/playerTitle';
@@ -120,6 +121,9 @@ export default function ProfileScreen() {
   const router = useRouter();
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  const { width, fontScale } = useWindowDimensions();
+  const compactLayout = width < 380 || fontScale >= 1.3;
+  const singleColumnStats = width < 340 || fontScale >= 1.6;
   const {
     playerName, xp, discoveredPlantIds, setPlayerName, streak, getLevel, getXpForCurrentLevel,
     getXpToNextLevel, scanHistory, plantNotes, viewedSafetyCardPlantIds, hasComparedCandidates,
@@ -273,7 +277,7 @@ export default function ProfileScreen() {
       contentContainerStyle={styles.scrollContent}
       showsVerticalScrollIndicator={false}
     >
-      <LinearGradient colors={['#174F2A', '#226B35', '#348447']} style={[styles.hero, { paddingTop: insets.top + 18 }]}>
+      <LinearGradient colors={['#123F24', '#1C542C', '#2B6638']} style={[styles.hero, { paddingTop: insets.top + 18 }]}>
         <Text style={styles.heroEyebrow}>FIELD NOTE</Text>
         <View style={styles.identityRow}>
           <View style={styles.avatar}>
@@ -297,7 +301,7 @@ export default function ProfileScreen() {
         </View>
 
         <View style={styles.levelBox} accessible accessibilityRole="text" accessibilityLabel={`レベル${level}。次のレベルまで${xpToNext}XP`}>
-          <View style={styles.levelTitleRow}>
+          <View style={[styles.levelTitleRow, compactLayout && styles.levelTitleRowCompact]}>
             <Text style={styles.levelLabel}>Level {level}</Text>
             <Text style={styles.xpLabel}>{xpCurrent} / {XP_PER_LEVEL} XP</Text>
           </View>
@@ -306,18 +310,18 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        <View style={styles.heroBottomRow}>
+        <View style={[styles.heroBottomRow, compactLayout && styles.heroBottomRowStacked]}>
           <View
-            style={styles.streakBadge}
+            style={[styles.streakBadge, compactLayout && styles.heroActionStacked]}
             accessible
             accessibilityRole="text"
             accessibilityLabel={streak > 0 ? `継続日数${streak}日` : '今日から記録を開始'}
           >
-            <Ionicons name="calendar-outline" size={17} color="#D9E8C1" />
+            <Ionicons name="calendar-outline" size={17} color="#E7F3E8" />
             <Text style={styles.streakText}>{streak > 0 ? `${streak}日継続` : '今日から'}</Text>
           </View>
           <Pressable
-            style={({ pressed }) => [styles.shareBtn, pressed && styles.glassPressed]}
+            style={({ pressed }) => [styles.shareBtn, compactLayout && styles.heroActionStacked, pressed && styles.glassPressed]}
             onPress={() => setShareCardVisible(true)}
             accessibilityRole="button"
             accessibilityLabel="観察カードを開く"
@@ -330,12 +334,12 @@ export default function ProfileScreen() {
 
       <Section title="観察の記録" icon="stats-chart-outline">
         <View style={styles.statsGrid}>
-          <StatBox label="記録した種類" value={`${discoveredCount}`} unit={`/ ${PLANTS.length}`} color={theme.colors.accentPrimary} />
-          <StatBox label="合計XP" value={String(xp)} unit="XP" color={theme.colors.rarityLegendary} />
-          <StatBox label="一般食用" value={String(greenCount)} unit="種" color={theme.colors.statusObserved} />
-          <StatBox label="要注意" value={String(yellowCount)} unit="種" color={theme.colors.statusCaution} />
-          <StatBox label="危険植物" value={String(redCount)} unit="種" color={theme.colors.statusDanger} />
-          <StatBox label="珍しい植物" value={String(rarity5Count)} unit="種" color={theme.colors.rarityLegendary} />
+          <StatBox label="記録した種類" value={`${discoveredCount}`} unit={`/ ${PLANTS.length}`} color={theme.colors.accentPrimary} compact={compactLayout} singleColumn={singleColumnStats} />
+          <StatBox label="合計XP" value={String(xp)} unit="XP" color={theme.colors.rarityLegendary} compact={compactLayout} singleColumn={singleColumnStats} />
+          <StatBox label="一般食用区分" value={String(greenCount)} unit="種" color={theme.colors.statusObserved} compact={compactLayout} singleColumn={singleColumnStats} />
+          <StatBox label="要注意" value={String(yellowCount)} unit="種" color={theme.colors.statusCaution} compact={compactLayout} singleColumn={singleColumnStats} />
+          <StatBox label="危険植物" value={String(redCount)} unit="種" color={theme.colors.statusDanger} compact={compactLayout} singleColumn={singleColumnStats} />
+          <StatBox label="珍しい植物" value={String(rarity5Count)} unit="種" color={theme.colors.rarityLegendary} compact={compactLayout} singleColumn={singleColumnStats} />
         </View>
       </Section>
 
@@ -344,7 +348,7 @@ export default function ProfileScreen() {
           <Text style={[styles.calendarMonth, { color: theme.colors.textPrimary }]}>{calendarData.year}年{calendarData.month + 1}月</Text>
           <View style={styles.calendarDowRow}>
             {['月', '火', '水', '木', '金', '土', '日'].map((day) => (
-              <Text key={day} style={[styles.calendarDow, { color: theme.colors.textTertiary }]}>{day}</Text>
+              <Text key={day} maxFontSizeMultiplier={1.6} style={[styles.calendarDow, { color: theme.colors.textTertiary }]}>{day}</Text>
             ))}
           </View>
           <View style={styles.calendarGrid}>
@@ -371,15 +375,15 @@ export default function ProfileScreen() {
                     isToday && fillColor ? { borderWidth: 2, borderColor: theme.colors.textOnAccent } : undefined,
                   ]}
                 >
-                  <Text style={[styles.calendarDayNum, { color: fillColor ? theme.colors.textOnAccent : isToday ? theme.colors.accentPrimary : theme.colors.textSecondary }]}>{day}</Text>
+                  <Text maxFontSizeMultiplier={1.6} style={[styles.calendarDayNum, { color: fillColor ? theme.colors.textOnAccent : isToday ? theme.colors.accentPrimary : theme.colors.textSecondary }]}>{day}</Text>
                 </View>
               );
             })}
           </View>
           <View style={styles.calendarLegend} accessibilityElementsHidden>
-            <Text style={[styles.calendarLegendLabel, { color: theme.colors.textTertiary }]}>観察数: 少</Text>
+            <Text maxFontSizeMultiplier={1.6} style={[styles.calendarLegendLabel, { color: theme.colors.textTertiary }]}>観察数: 少</Text>
             {observationIntensity.map((color, index) => <View key={index} style={[styles.calendarLegendDot, { backgroundColor: color }]} />)}
-            <Text style={[styles.calendarLegendLabel, { color: theme.colors.textTertiary }]}>多</Text>
+            <Text maxFontSizeMultiplier={1.6} style={[styles.calendarLegendLabel, { color: theme.colors.textTertiary }]}>多</Text>
           </View>
         </View>
       </Section>
@@ -393,6 +397,7 @@ export default function ProfileScreen() {
                 key={achievement.id}
                 style={[
                   styles.achCard,
+                  compactLayout && styles.achCardCompact,
                   {
                     backgroundColor: unlocked ? theme.colors.surfaceSecondary : theme.colors.surfacePrimary,
                     borderColor: unlocked ? theme.colors.borderStrong : theme.colors.borderSubtle,
@@ -421,9 +426,9 @@ export default function ProfileScreen() {
 
       {scanHistory.length > 0 && (
         <Section title="季節別の観察数" icon="flower-outline">
-          <View style={styles.seasonBreakdownRow}>
+          <View style={[styles.seasonBreakdownRow, compactLayout && styles.seasonBreakdownRowCompact]}>
             {(['春', '夏', '秋', '冬'] as const).map((seasonName) => (
-              <View key={seasonName} style={[styles.seasonBreakdownCell, { backgroundColor: theme.colors.surfacePrimary, borderColor: theme.colors.borderSubtle }]}>
+              <View key={seasonName} style={[styles.seasonBreakdownCell, compactLayout && styles.seasonBreakdownCellCompact, { backgroundColor: theme.colors.surfacePrimary, borderColor: theme.colors.borderSubtle }]}>
                 <Text style={[styles.seasonBreakdownLabel, { color: theme.colors.textSecondary }]}>{seasonName}</Text>
                 <Text style={[styles.seasonBreakdownValue, { color: theme.colors.accentPrimary }]}>{seasonCounts[seasonName]}</Text>
               </View>
@@ -447,12 +452,12 @@ export default function ProfileScreen() {
                     accessibilityRole="button"
                     accessibilityLabel={`${revisit.label}の図鑑詳細を開く。再訪予定 ${revisit.revisitAt}`}
                   >
-                    <Text style={[styles.revisitLabel, { color: theme.colors.textPrimary }]} numberOfLines={1}>{revisit.label}</Text>
+                    <Text style={[styles.revisitLabel, { color: theme.colors.textPrimary }]} numberOfLines={compactLayout ? 2 : 1}>{revisit.label}</Text>
                     <Text style={[styles.revisitDate, { color: theme.colors.textTertiary }]}>{revisit.revisitAt}</Text>
                   </Pressable>
                 ) : (
                   <View style={styles.rowMainAction}>
-                    <Text style={[styles.revisitLabel, { color: theme.colors.textPrimary }]} numberOfLines={1}>{revisit.label}</Text>
+                    <Text style={[styles.revisitLabel, { color: theme.colors.textPrimary }]} numberOfLines={compactLayout ? 2 : 1}>{revisit.label}</Text>
                     <Text style={[styles.revisitDate, { color: theme.colors.textTertiary }]}>{revisit.revisitAt}</Text>
                   </View>
                 )}
@@ -472,7 +477,7 @@ export default function ProfileScreen() {
                   <Text style={styles.historyEmoji}>❔</Text>
                 </View>
                 <View style={styles.historyInfo}>
-                  <Text style={[styles.historyName, { color: theme.colors.textPrimary }]} numberOfLines={1}>{observation.note || '未同定の植物'}</Text>
+                  <Text style={[styles.historyName, { color: theme.colors.textPrimary }]} numberOfLines={compactLayout ? 2 : 1}>{observation.note || '未同定の植物'}</Text>
                   <Text style={[styles.historyTime, { color: theme.colors.textTertiary }]}>{formatScanDate(observation.observedAt)}</Text>
                 </View>
                 <IconButton
@@ -525,7 +530,7 @@ export default function ProfileScreen() {
                   <Text style={styles.historyEmoji}>❔</Text>
                 </View>
                 <View style={styles.historyInfo}>
-                  <Text style={[styles.historyName, { color: theme.colors.textPrimary }]} numberOfLines={1}>{observation.note}</Text>
+                  <Text style={[styles.historyName, { color: theme.colors.textPrimary }]} numberOfLines={compactLayout ? 2 : 1}>{observation.note}</Text>
                   <Text style={[styles.historyTime, { color: theme.colors.textTertiary }]}>{formatScanDate(observation.observedAt)}</Text>
                 </View>
               </View>
@@ -539,7 +544,7 @@ export default function ProfileScreen() {
       <Section title="設定" icon="settings-outline">
         <View style={[styles.settingsCard, { backgroundColor: theme.colors.surfacePrimary, borderColor: theme.colors.borderSubtle }]}>
           <Text style={[styles.settingsGroupLabel, { color: theme.colors.textPrimary }]}>外観</Text>
-          <View style={[styles.segmentedRow, { backgroundColor: theme.colors.surfaceSecondary }]} accessibilityRole="radiogroup">
+          <View style={[styles.segmentedRow, compactLayout && styles.segmentedRowStacked, { backgroundColor: theme.colors.surfaceSecondary }]} accessibilityRole="radiogroup">
             {(['system', 'light', 'dark'] as const).map((mode) => {
               const selected = themeOverride === mode;
               return (
@@ -548,6 +553,7 @@ export default function ProfileScreen() {
                   onPress={() => setThemeOverride(mode)}
                   style={({ pressed }) => [
                     styles.segmentBtn,
+                    compactLayout && styles.segmentBtnStacked,
                     selected && { backgroundColor: theme.colors.accentPrimary },
                     pressed && styles.rowPressed,
                   ]}
@@ -565,7 +571,7 @@ export default function ProfileScreen() {
         </View>
 
         <View style={[styles.settingsCard, { backgroundColor: theme.colors.surfacePrimary, borderColor: theme.colors.borderSubtle }]}>
-          <View style={styles.settingsRowHeader}>
+          <View style={[styles.settingsRowHeader, compactLayout && styles.settingsRowHeaderStacked]}>
             <View style={{ flex: 1 }}>
               <Text style={[styles.settingsGroupLabel, { color: theme.colors.textPrimary, marginBottom: 2 }]}>AI画像解析への同意</Text>
               <Text style={[styles.settingsMiniStatus, { color: aiConsentGiven ? theme.colors.statusVerified : theme.colors.textTertiary }]}>{aiConsentGiven ? 'オン' : 'オフ・デモモード'}</Text>
@@ -642,17 +648,19 @@ export default function ProfileScreen() {
             <Text style={[styles.nameCounter, { color: theme.colors.textTertiary }]} accessibilityLiveRegion="polite">
               {tempName.length}/20
             </Text>
-            <View style={styles.modalBtns}>
+            <View style={[styles.modalBtns, compactLayout && styles.modalBtnsStacked]}>
               <Pressable
-                style={({ pressed }) => [styles.modalBtn, { backgroundColor: theme.colors.surfaceSecondary }, pressed && styles.buttonPressed]}
+                style={({ pressed }) => [styles.modalBtn, compactLayout && styles.modalBtnStacked, { backgroundColor: theme.colors.surfaceSecondary }, pressed && styles.buttonPressed]}
                 onPress={() => setEditNameVisible(false)}
                 accessibilityRole="button"
+                accessibilityLabel="名前の変更をキャンセル"
               >
                 <Text style={[styles.modalBtnText, { color: theme.colors.textSecondary }]}>キャンセル</Text>
               </Pressable>
               <Pressable
                 style={({ pressed }) => [
                   styles.modalBtn,
+                  compactLayout && styles.modalBtnStacked,
                   { backgroundColor: canSaveName ? theme.colors.accentPrimary : theme.colors.surfaceTertiary },
                   pressed && canSaveName && styles.buttonPressed,
                 ]}
@@ -688,7 +696,7 @@ export default function ProfileScreen() {
               </Text>
             </ScrollView>
             <Pressable
-              style={({ pressed }) => [styles.modalBtn, { backgroundColor: theme.colors.accentPrimary, marginTop: 16 }, pressed && styles.buttonPressed]}
+              style={({ pressed }) => [styles.modalBtn, compactLayout && styles.modalBtnStacked, { backgroundColor: theme.colors.accentPrimary, marginTop: 16 }, pressed && styles.buttonPressed]}
               onPress={() => setSourcesVisible(false)}
               accessibilityRole="button"
               accessibilityLabel="出典情報を閉じる"
@@ -716,7 +724,7 @@ function Section({
     <View style={styles.section}>
       <View style={styles.sectionTitleRow}>
         <Ionicons name={icon} size={18} color={theme.colors.textSecondary} />
-        <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>{title}</Text>
+        <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]} accessibilityRole="header">{title}</Text>
       </View>
       {children}
     </View>
@@ -793,7 +801,7 @@ function HistoryRow({
       style={({ pressed }) => [styles.historyItem, { borderBottomColor: theme.colors.borderSubtle }, pressed && styles.rowPressed]}
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={`${plant.name}。${formatScanDate(record.scannedAt)}。詳細を見る`}
+      accessibilityLabel={`${plant.name}。${DANGER_LABEL[plant.danger]}。${formatScanDate(record.scannedAt)}。詳細を見る`}
     >
       {showThumb ? (
         <Image source={{ uri: record.imageUri }} style={[styles.historyThumb, { backgroundColor: theme.colors.surfaceSecondary }]} resizeMode="cover" onError={() => setImgError(true)} accessibilityIgnoresInvertColors />
@@ -812,11 +820,30 @@ function HistoryRow({
   );
 }
 
-function StatBox({ label, value, unit, color }: { label: string; value: string; unit: string; color: string }) {
+function StatBox({
+  label,
+  value,
+  unit,
+  color,
+  compact,
+  singleColumn,
+}: {
+  label: string;
+  value: string;
+  unit: string;
+  color: string;
+  compact: boolean;
+  singleColumn: boolean;
+}) {
   const theme = useTheme();
   return (
     <View
-      style={[styles.statBox, { backgroundColor: theme.colors.surfacePrimary, borderColor: theme.colors.borderSubtle, borderTopColor: color, shadowColor: theme.colors.shadow }]}
+      style={[
+        styles.statBox,
+        compact && styles.statBoxCompact,
+        singleColumn && styles.statBoxSingleColumn,
+        { backgroundColor: theme.colors.surfacePrimary, borderColor: theme.colors.borderSubtle, borderTopColor: color, shadowColor: theme.colors.shadow },
+      ]}
       accessible
       accessibilityRole="text"
       accessibilityLabel={`${label} ${value} ${unit}`}
@@ -832,20 +859,23 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   scrollContent: { paddingBottom: 32 },
   hero: { paddingBottom: 24, paddingHorizontal: 20 },
-  heroEyebrow: { fontSize: 10, lineHeight: 13, fontWeight: '800', letterSpacing: 1.7, color: 'rgba(255,255,255,0.58)', marginBottom: 10 },
+  heroEyebrow: { fontSize: 10, lineHeight: 13, fontWeight: '800', letterSpacing: 1.7, color: '#E7F3E8', marginBottom: 10 },
   identityRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   avatar: { width: 64, height: 64, borderRadius: 32, backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.25)', justifyContent: 'center', alignItems: 'center' },
   identityText: { flex: 1, minWidth: 0 },
   playerName: { fontSize: 22, lineHeight: 28, fontWeight: '900', color: '#FFFFFF' },
-  titleText: { fontSize: 13, lineHeight: 18, color: '#B7DDBB', marginTop: 2 },
+  titleText: { fontSize: 13, lineHeight: 18, color: '#D9E9DA', marginTop: 2 },
   editNameBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.20)', justifyContent: 'center', alignItems: 'center' },
   levelBox: { width: '100%', marginTop: 18 },
-  levelTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 7 },
+  levelTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 7, gap: 8 },
+  levelTitleRowCompact: { flexWrap: 'wrap', alignItems: 'flex-start' },
   levelLabel: { fontSize: 14, lineHeight: 19, fontWeight: '800', color: '#FFFFFF' },
-  xpLabel: { fontSize: 11, lineHeight: 15, color: '#CBE4CE', fontWeight: '600' },
+  xpLabel: { fontSize: 11, lineHeight: 15, color: '#E1EFE2', fontWeight: '600' },
   xpBarOuter: { height: 8, backgroundColor: 'rgba(255,255,255,0.17)', borderRadius: 4, overflow: 'hidden' },
   xpBarInner: { height: '100%', backgroundColor: '#E8D866', borderRadius: 4 },
   heroBottomRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 14, gap: 10 },
+  heroBottomRowStacked: { flexDirection: 'column', alignItems: 'stretch' },
+  heroActionStacked: { width: '100%', justifyContent: 'center' },
   streakBadge: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(255,255,255,0.10)', borderRadius: 999, paddingHorizontal: 13 },
   streakText: { fontSize: 13, lineHeight: 18, fontWeight: '800', color: '#FFFFFF' },
   shareBtn: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.18)', borderRadius: 999, paddingHorizontal: 14 },
@@ -857,6 +887,8 @@ const styles = StyleSheet.create({
   disclaimerSection: { paddingTop: 22 },
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 9 },
   statBox: { flex: 1, minWidth: '30%', borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, borderTopWidth: 3, paddingVertical: 13, paddingHorizontal: 9, alignItems: 'center', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 5, elevation: 2 },
+  statBoxCompact: { minWidth: '46%' },
+  statBoxSingleColumn: { flexBasis: '100%', minWidth: '100%' },
   statValue: { fontSize: 22, lineHeight: 27, fontWeight: '900' },
   statUnit: { fontSize: 11, lineHeight: 14, fontWeight: '600' },
   statLabel: { fontSize: 11, lineHeight: 15, marginTop: 3, textAlign: 'center', fontWeight: '600' },
@@ -868,17 +900,20 @@ const styles = StyleSheet.create({
   calendarCell: { width: `${100 / 7}%`, aspectRatio: 1, padding: 2, alignItems: 'center', justifyContent: 'center' },
   calendarDayCell: { borderRadius: 100 },
   calendarDayNum: { fontSize: 11, lineHeight: 14, fontWeight: '700', textAlign: 'center' },
-  calendarLegend: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 10, gap: 4 },
+  calendarLegend: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 10, gap: 4, flexWrap: 'wrap' },
   calendarLegendLabel: { fontSize: 10, lineHeight: 13, fontWeight: '600' },
   calendarLegendDot: { width: 12, height: 12, borderRadius: 6 },
   achievementsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 9 },
   achCard: { width: '48.5%', minHeight: 86, flexDirection: 'row', alignItems: 'center', gap: 9, borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, padding: 11 },
+  achCardCompact: { width: '100%', minHeight: 92 },
   achIconWrap: { width: 42, height: 42, borderRadius: 21, justifyContent: 'center', alignItems: 'center' },
-  achTextWrap: { flex: 1 },
+  achTextWrap: { flex: 1, minWidth: 0 },
   achLabel: { fontSize: 12, lineHeight: 16, fontWeight: '800' },
   achDesc: { fontSize: 11, lineHeight: 16, marginTop: 2 },
   seasonBreakdownRow: { flexDirection: 'row', gap: 8 },
+  seasonBreakdownRowCompact: { flexWrap: 'wrap' },
   seasonBreakdownCell: { flex: 1, borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, paddingVertical: 11, alignItems: 'center' },
+  seasonBreakdownCellCompact: { flex: 0, width: '48.5%', minWidth: 0 },
   seasonBreakdownLabel: { fontSize: 12, lineHeight: 16, fontWeight: '700' },
   seasonBreakdownValue: { fontSize: 20, lineHeight: 24, fontWeight: '900', marginTop: 2 },
   historyList: { borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden' },
@@ -893,7 +928,7 @@ const styles = StyleSheet.create({
   historyEmojiWrap: { width: 48, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   historyEmoji: { fontSize: 26 },
   historyThumb: { width: 48, height: 48, borderRadius: 14 },
-  historyInfo: { flex: 1 },
+  historyInfo: { flex: 1, minWidth: 0 },
   historyName: { fontSize: 14, lineHeight: 19, fontWeight: '700' },
   historyTime: { fontSize: 12, lineHeight: 16, marginTop: 2 },
   iconButton: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
@@ -904,12 +939,15 @@ const styles = StyleSheet.create({
   settingsGroupLabel: { fontSize: 14, lineHeight: 19, fontWeight: '800', marginBottom: 10 },
   settingsMiniStatus: { fontSize: 11, lineHeight: 15, fontWeight: '700' },
   settingsRowHeader: { minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 6 },
+  settingsRowHeaderStacked: { alignItems: 'flex-start', flexWrap: 'wrap' },
   settingsDesc: { fontSize: 13, lineHeight: 20 },
   segmentedRow: { flexDirection: 'row', borderRadius: 14, padding: 3, gap: 3 },
+  segmentedRowStacked: { flexDirection: 'column' },
   segmentBtn: { flex: 1, minHeight: 44, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
+  segmentBtnStacked: { flex: 0, width: '100%' },
   segmentBtnText: { fontSize: 13, lineHeight: 17, fontWeight: '700' },
-  legalRow: { minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 2, borderBottomWidth: StyleSheet.hairlineWidth },
-  legalRowText: { flex: 1, fontSize: 14, lineHeight: 19, fontWeight: '600' },
+  legalRow: { minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 2, paddingVertical: 4, borderBottomWidth: StyleSheet.hairlineWidth },
+  legalRowText: { flex: 1, minWidth: 0, fontSize: 14, lineHeight: 19, fontWeight: '600' },
   versionText: { marginTop: 12, fontSize: 12, lineHeight: 16, textAlign: 'center' },
   modalOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
   modalCard: { borderRadius: 22, borderWidth: StyleSheet.hairlineWidth, padding: 20, width: '100%', maxWidth: 440, maxHeight: '90%', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.24, shadowRadius: 20, elevation: 16 },
@@ -917,7 +955,9 @@ const styles = StyleSheet.create({
   nameInput: { minHeight: 52, borderWidth: 1.5, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 10, fontSize: 16 },
   nameCounter: { fontSize: 12, lineHeight: 17, textAlign: 'right', marginTop: 5, marginBottom: 12 },
   modalBtns: { flexDirection: 'row', gap: 9 },
+  modalBtnsStacked: { flexDirection: 'column-reverse' },
   modalBtn: { flex: 1, minHeight: 52, borderRadius: 14, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 14, paddingVertical: 9 },
+  modalBtnStacked: { flex: 0, width: '100%' },
   modalBtnText: { fontSize: 15, lineHeight: 20, fontWeight: '800', textAlign: 'center' },
   sourcesScroll: { maxHeight: 360 },
   sourcesText: { fontSize: 14, lineHeight: 22 },
