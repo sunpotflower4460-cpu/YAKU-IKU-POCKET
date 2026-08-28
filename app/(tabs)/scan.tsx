@@ -39,6 +39,8 @@ import {
 
 type ScanState = 'idle' | 'scanning' | 'done';
 
+// Stages we actually perform, shown honestly — never a step we don't run
+// (§7.4 "実際に行っていない処理を表示しない").
 type ProcessingStage = 'reviewing' | 'identifying' | 'safety';
 
 const REAL_STAGE_LABEL: Record<ProcessingStage, string> = {
@@ -68,14 +70,18 @@ export default function ScanScreen() {
   } = useGameStore();
   const demoMode = isDemoMode(aiConsentGiven);
 
+  // Camera permissions
   const [permission, requestPermission] = useCameraPermissions();
   const [facing, setFacing] = useState<CameraType>('back');
   const [flash, setFlash] = useState<'on' | 'off'>('off');
   const cameraRef = useRef<CameraView>(null);
 
+  // Scan state
   const [scanState, setScanState] = useState<ScanState>('idle');
   const [usedRealAI, setUsedRealAI] = useState(false);
   const [processingStage, setProcessingStage] = useState<ProcessingStage>('reviewing');
+  // Multi-photo capture (§7.4): 1-5 photos of the same specimen, each taggable
+  // by organ (whole/leaf/flower/...), sent together for identification.
   const [photos, setPhotos] = useState<CapturedPhoto[]>([]);
   const [capturing, setCapturing] = useState(false);
   const [savingObservation, setSavingObservation] = useState(false);
@@ -92,11 +98,13 @@ export default function ScanScreen() {
   const photoUri = photos[0]?.uri ?? null;
   const cameraControlsLocked = scanState === 'scanning' || savingUnidentified;
 
+  // Animations
   const reduceMotion = useReduceMotion();
   const scanLineY = useRef(new Animated.Value(0)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const spinAnim = useRef(new Animated.Value(0)).current;
 
+  // Scan line
   useEffect(() => {
     if (scanState === 'scanning' && !reduceMotion) {
       const scanLoop = Animated.loop(
@@ -139,6 +147,8 @@ export default function ScanScreen() {
     }
   }, [scanState, reduceMotion, viewfinderSize, scanLineY, spinAnim]);
 
+  // Idle pulse — restrained enough to signal the primary action without
+  // making the camera screen feel gamey or visually restless.
   useEffect(() => {
     if (scanState === 'idle' && !reduceMotion && !savingUnidentified) {
       const pulseLoop = Animated.loop(
@@ -171,6 +181,7 @@ export default function ScanScreen() {
           ? processingLabel
           : '候補を確認できます';
 
+  // ── Capture one photo and add it to the set (§7.4 複数写真) ──
   async function handleCapturePhoto() {
     if (capturing || savingUnidentified || photos.length >= MAX_CAPTURE_PHOTOS || !cameraRef.current) return;
     setCapturing(true);
@@ -215,18 +226,23 @@ export default function ScanScreen() {
     );
   }
 
+  // ── Identify from the captured photo set ──
   async function handleIdentify() {
     if (scanState !== 'idle' || photos.length === 0 || savingUnidentified) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setScanState('scanning');
 
     try {
+      // Stages shown here are the real steps we perform, in order — never a
+      // step we don't actually run (§7.4).
       setProcessingStage('reviewing');
-      await new Promise((r) => setTimeout(r, 400));
+      await new Promise((r) => setTimeout(r, 400)); // let the stage render before the network call
 
       setProcessingStage('identifying');
       const outcome = await scanPlant(discoveredPlantIds, photos, aiConsentGiven);
 
+      // Real AI could not confidently match a database plant. Never invent a
+      // random result — tell the user it could not be identified.
       if (outcome.status === 'unidentified') {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
         setScanState('idle');
@@ -242,6 +258,9 @@ export default function ScanScreen() {
         return;
       }
 
+      // Subject Router (v3 §12): the photo isn't a vascular plant. Never
+      // force it through species identification — give an honest,
+      // category-specific answer instead of a dead end.
       if (outcome.status === 'out_of_scope') {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
         setScanState('idle');
@@ -257,6 +276,7 @@ export default function ScanScreen() {
         return;
       }
 
+      // Real AI call failed (network/timeout/malformed). No random fallback.
       if (outcome.status === 'error') {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
         setScanState('idle');
@@ -268,7 +288,7 @@ export default function ScanScreen() {
       }
 
       setProcessingStage('safety');
-      await new Promise((r) => setTimeout(r, 300));
+      await new Promise((r) => setTimeout(r, 300)); // safety lookup is near-instant; keep the stage legible
 
       setResult({
         plant: outcome.plant,
@@ -295,6 +315,8 @@ export default function ScanScreen() {
     }
   }
 
+  // User picked a different candidate in the compare view (§7.5) — switch
+  // the result to reflect their choice so it (not the top rank) gets saved.
   function handleSelectCandidate(candidate: IdentificationCandidate) {
     Haptics.selectionAsync();
     if (result && candidate.plant.id !== result.plant.id) {
@@ -335,6 +357,8 @@ export default function ScanScreen() {
     }
   }
 
+  // Save the photos as a Fieldbook entry with no plant match — "判定不能でも
+  // 記録価値を失わせない" (v3 §5 Flow A / §6.1「そのまま記録する」).
   async function handleSaveUnidentified() {
     if (savingUnidentified) return;
     setSavingUnidentified(true);
@@ -734,54 +758,327 @@ export default function ScanScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0D1117' },
-  permissionLoading: { justifyContent: 'center', alignItems: 'center', gap: 12, paddingHorizontal: 28 },
-  permissionLoadingText: { fontSize: 14, lineHeight: 20, fontWeight: '700', textAlign: 'center' },
-  permissionContainer: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 28 },
-  permissionIconWrap: { width: 72, height: 72, borderRadius: 36, borderWidth: StyleSheet.hairlineWidth, justifyContent: 'center', alignItems: 'center', marginBottom: 18 },
-  permissionTitle: { fontSize: 22, lineHeight: 29, fontWeight: '800', textAlign: 'center', marginBottom: 10 },
-  permissionDesc: { fontSize: 15, lineHeight: 23, textAlign: 'center', marginBottom: 24, maxWidth: 420 },
-  permissionBtn: { minHeight: 52, borderRadius: 16, paddingHorizontal: 28, paddingVertical: 10, justifyContent: 'center', alignItems: 'center', marginBottom: 20 },
-  permissionBtnText: { fontWeight: '800', fontSize: 16, lineHeight: 22, textAlign: 'center' },
-  permissionSafetyWrap: { width: '100%', maxWidth: 480, borderRadius: 16, overflow: 'hidden' },
-  cameraArea: { flex: 1, position: 'relative', minHeight: 300 },
-  scanningDim: { backgroundColor: 'rgba(0,0,0,0.25)' },
-  topControls: { position: 'absolute', left: 16, right: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', zIndex: 10 },
-  controlBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(0,0,0,0.48)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.22)', justifyContent: 'center', alignItems: 'center' },
+
+  permissionLoading: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 28,
+  },
+  permissionLoadingText: {
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  permissionContainer: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 28,
+  },
+  permissionIconWrap: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    borderWidth: StyleSheet.hairlineWidth,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 18,
+  },
+  permissionTitle: {
+    fontSize: 22,
+    lineHeight: 29,
+    fontWeight: '800',
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  permissionDesc: {
+    fontSize: 15,
+    lineHeight: 23,
+    textAlign: 'center',
+    marginBottom: 24,
+    maxWidth: 420,
+  },
+  permissionBtn: {
+    minHeight: 52,
+    borderRadius: 16,
+    paddingHorizontal: 28,
+    paddingVertical: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  permissionBtnText: {
+    fontWeight: '800',
+    fontSize: 16,
+    lineHeight: 22,
+    textAlign: 'center',
+  },
+  permissionSafetyWrap: {
+    width: '100%',
+    maxWidth: 480,
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+
+  cameraArea: {
+    flex: 1,
+    position: 'relative',
+    minHeight: 300,
+  },
+  scanningDim: {
+    backgroundColor: 'rgba(0,0,0,0.25)',
+  },
+
+  topControls: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    zIndex: 10,
+  },
+  controlBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(0,0,0,0.48)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.22)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   cameraControlDisabled: { opacity: 0.5 },
-  cameraControlPressed: { opacity: 0.65 },
-  aiModeBadge: { minHeight: 32, flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(24,79,44,0.88)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.22)', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 5 },
-  aiModeMock: { backgroundColor: 'rgba(60,60,60,0.88)' },
-  aiModeText: { color: '#FFFFFF', fontSize: 12, fontWeight: '700' },
-  viewfinderWrapper: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 40, paddingBottom: 54 },
-  viewfinder: { position: 'relative', overflow: 'hidden' },
-  cornerTL: { position: 'absolute', top: 0, left: 0, width: 32, height: 32, borderTopWidth: 3, borderLeftWidth: 3, borderColor: '#75E180', borderTopLeftRadius: 6 },
-  cornerTR: { position: 'absolute', top: 0, right: 0, width: 32, height: 32, borderTopWidth: 3, borderRightWidth: 3, borderColor: '#75E180', borderTopRightRadius: 6 },
-  cornerBL: { position: 'absolute', bottom: 0, left: 0, width: 32, height: 32, borderBottomWidth: 3, borderLeftWidth: 3, borderColor: '#75E180', borderBottomLeftRadius: 6 },
-  cornerBR: { position: 'absolute', bottom: 0, right: 0, width: 32, height: 32, borderBottomWidth: 3, borderRightWidth: 3, borderColor: '#75E180', borderBottomRightRadius: 6 },
-  scanLine: { position: 'absolute', left: 0, right: 0, height: 2, backgroundColor: '#75E180', shadowColor: '#75E180', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.8, shadowRadius: 5, elevation: 6 },
-  statusLabel: { marginTop: 18, maxWidth: '88%', backgroundColor: 'rgba(0,0,0,0.68)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.18)', borderRadius: 999, paddingHorizontal: 15, paddingVertical: 8 },
-  statusTextRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
-  statusText: { color: '#FFFFFF', fontSize: 13, lineHeight: 18, fontWeight: '700', textAlign: 'center', flexShrink: 1 },
-  hintBar: { position: 'absolute', bottom: 12, left: 16, right: 16, flexDirection: 'row', alignItems: 'center', gap: 8, justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.72)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.14)', borderRadius: 14, paddingHorizontal: 14, paddingVertical: 10 },
-  hintText: { color: '#FFFFFF', fontSize: 12, lineHeight: 18, flex: 1, textAlign: 'center' },
-  controlArea: { paddingTop: 16, paddingBottom: 18, paddingHorizontal: 20, alignItems: 'center', borderTopLeftRadius: 24, borderTopRightRadius: 24 },
+  cameraControlPressed: {
+    opacity: 0.65,
+  },
+  aiModeBadge: {
+    minHeight: 32,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(24,79,44,0.88)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.22)',
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+  },
+  aiModeMock: {
+    backgroundColor: 'rgba(60,60,60,0.88)',
+  },
+  aiModeText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+
+  viewfinderWrapper: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingTop: 40,
+    paddingBottom: 54,
+  },
+  viewfinder: {
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  cornerTL: {
+    position: 'absolute', top: 0, left: 0,
+    width: 32, height: 32,
+    borderTopWidth: 3, borderLeftWidth: 3,
+    borderColor: '#75E180', borderTopLeftRadius: 6,
+  },
+  cornerTR: {
+    position: 'absolute', top: 0, right: 0,
+    width: 32, height: 32,
+    borderTopWidth: 3, borderRightWidth: 3,
+    borderColor: '#75E180', borderTopRightRadius: 6,
+  },
+  cornerBL: {
+    position: 'absolute', bottom: 0, left: 0,
+    width: 32, height: 32,
+    borderBottomWidth: 3, borderLeftWidth: 3,
+    borderColor: '#75E180', borderBottomLeftRadius: 6,
+  },
+  cornerBR: {
+    position: 'absolute', bottom: 0, right: 0,
+    width: 32, height: 32,
+    borderBottomWidth: 3, borderRightWidth: 3,
+    borderColor: '#75E180', borderBottomRightRadius: 6,
+  },
+  scanLine: {
+    position: 'absolute', left: 0, right: 0, height: 2,
+    backgroundColor: '#75E180',
+    shadowColor: '#75E180',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 5,
+    elevation: 6,
+  },
+  statusLabel: {
+    marginTop: 18,
+    maxWidth: '88%',
+    backgroundColor: 'rgba(0,0,0,0.68)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.18)',
+    borderRadius: 999,
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+  },
+  statusTextRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  statusText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: '700',
+    textAlign: 'center',
+    flexShrink: 1,
+  },
+
+  hintBar: {
+    position: 'absolute',
+    bottom: 12,
+    left: 16,
+    right: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.72)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.14)',
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  hintText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    lineHeight: 18,
+    flex: 1,
+    textAlign: 'center',
+  },
+
+  controlArea: {
+    paddingTop: 16,
+    paddingBottom: 18,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+  },
+
   photoStrip: { width: '100%', marginBottom: 8 },
-  photoStripContent: { gap: 12, paddingHorizontal: 10, paddingTop: 8, paddingBottom: 16 },
+  photoStripContent: {
+    gap: 12,
+    paddingHorizontal: 10,
+    paddingTop: 8,
+    paddingBottom: 16,
+  },
   photoThumbWrap: { width: 64, height: 64, borderRadius: 12, overflow: 'visible' },
   photoThumb: { width: 64, height: 64, borderRadius: 12 },
-  photoOrganChip: { position: 'absolute', bottom: -12, alignSelf: 'center', minHeight: 28, minWidth: 44, borderRadius: 999, paddingHorizontal: 8, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: '#FFFFFF' },
+  photoOrganChip: {
+    position: 'absolute',
+    bottom: -12,
+    alignSelf: 'center',
+    minHeight: 28,
+    minWidth: 44,
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
   photoOrganChipText: { fontSize: 11, fontWeight: '800' },
-  photoDeleteBtn: { position: 'absolute', top: -8, right: -8, width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(0,0,0,0.78)', borderWidth: 2, borderColor: '#FFFFFF', justifyContent: 'center', alignItems: 'center' },
-  captureRow: { width: '100%', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 14, marginBottom: 8 },
+  photoDeleteBtn: {
+    position: 'absolute',
+    top: -8,
+    right: -8,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(0,0,0,0.78)',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  captureRow: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 14,
+    marginBottom: 8,
+  },
   captureRowStacked: { flexDirection: 'column' },
-  identifyBtn: { minHeight: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 16, paddingHorizontal: 18, paddingVertical: 9, maxWidth: '100%' },
+  identifyBtn: {
+    minHeight: 52,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderRadius: 16,
+    paddingHorizontal: 18,
+    paddingVertical: 9,
+    maxWidth: '100%',
+  },
   identifyBtnStacked: { width: '100%' },
   identifyBtnText: { fontWeight: '800', fontSize: 15, lineHeight: 21, textAlign: 'center', flexShrink: 1 },
-  scanBtn: { width: 80, height: 80, borderRadius: 40, justifyContent: 'center', alignItems: 'center', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.26, shadowRadius: 8, elevation: 8, marginBottom: 8 },
-  scanBtnDisabled: { backgroundColor: '#7E8880', shadowColor: '#000000', shadowOpacity: 0.08 },
-  scanBtnInner: { width: 68, height: 68, borderRadius: 34, backgroundColor: 'rgba(255,255,255,0.15)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.26)', justifyContent: 'center', alignItems: 'center' },
-  scanLabel: { fontSize: 13, lineHeight: 19, fontWeight: '600', marginBottom: 13, textAlign: 'center' },
-  safetyNoticeWrap: { width: '100%', borderRadius: 16, overflow: 'hidden' },
+
+  scanBtn: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.26,
+    shadowRadius: 8,
+    elevation: 8,
+    marginBottom: 8,
+  },
+  scanBtnDisabled: {
+    backgroundColor: '#7E8880',
+    shadowColor: '#000000',
+    shadowOpacity: 0.08,
+  },
+  scanBtnInner: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.26)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  scanLabel: {
+    fontSize: 13,
+    lineHeight: 19,
+    fontWeight: '600',
+    marginBottom: 13,
+    textAlign: 'center',
+  },
+  safetyNoticeWrap: {
+    width: '100%',
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
   controlDisabled: { opacity: 0.58 },
-  buttonPressed: { opacity: 0.82, transform: [{ scale: 0.99 }] },
+  buttonPressed: {
+    opacity: 0.82,
+    transform: [{ scale: 0.99 }],
+  },
 });
