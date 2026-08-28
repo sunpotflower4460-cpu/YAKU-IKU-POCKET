@@ -18,8 +18,8 @@ const OBSERVATIONS_DIR = FileSystem.documentDirectory
 // pending. Reuse the same in-flight copy for the same camera URI so both calls
 // resolve to one durable URI instead of creating two files. A second tap can
 // also already be queued when the first copy finishes, so keep a short-lived
-// cache of completed copies as well. The store treats one durable photo as one
-// observation, giving us defence in depth against double-save / double-XP.
+// cache of completed *successful* copies as well. Failed copies are deliberately
+// not cached so a transient filesystem failure can recover on the next attempt.
 const inFlightCopies = new Map<string, Promise<string>>();
 const recentCopies = new Map<string, { uri: string; expiresAt: number }>();
 const RECENT_COPY_TTL_MS = 10_000;
@@ -28,6 +28,11 @@ const RECENT_COPY_TTL_MS = 10_000;
 // Share directory initialisation as well so both callers cannot race through
 // getInfo(false) and try to create the same directory simultaneously.
 let ensureDirPromise: Promise<void> | null = null;
+
+// Incremented by clearObservationPhotos(). A copy started in an older generation
+// must never become a valid durable photo after the user has requested a full
+// data reset; if it finishes late we delete that stale result again.
+let storageGeneration = 0;
 
 const SAFE_IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'heic', 'heif', 'webp']);
 const MANAGED_PHOTO_NAME = /^\d+_[a-z0-9]{1,16}\.(?:jpg|jpeg|png|heic|heif|webp)$/i;
@@ -106,14 +111,31 @@ export async function persistObservationPhoto(cacheUri: string): Promise<string>
   const existing = inFlightCopies.get(cacheUri);
   if (existing) return existing;
 
-  const copyPromise = copyToDurableStorage(cacheUri);
-  inFlightCopies.set(cacheUri, copyPromise);
-  try {
-    const uri = await copyPromise;
-    recentCopies.set(cacheUri, { uri, expiresAt: Date.now() + RECENT_COPY_TTL_MS });
+  const generationAtStart = storageGeneration;
+  const persistPromise = (async () => {
+    const uri = await copyToDurableStorage(cacheUri);
+
+    // A full reset happened while this copy was in progress. The user's delete
+    // intent wins: remove a late durable result and never repopulate the recent
+    // cache from a pre-reset operation.
+    if (generationAtStart !== storageGeneration) {
+      if (uri !== cacheUri) await deleteObservationPhoto(uri);
+      return cacheUri;
+    }
+
+    // Only cache a genuinely durable result. If the copy fell back to the cache
+    // URI (disk full, transient OS error, etc.), let the next attempt retry.
+    if (uri !== cacheUri) {
+      recentCopies.set(cacheUri, { uri, expiresAt: Date.now() + RECENT_COPY_TTL_MS });
+    }
     return uri;
+  })();
+
+  inFlightCopies.set(cacheUri, persistPromise);
+  try {
+    return await persistPromise;
   } finally {
-    if (inFlightCopies.get(cacheUri) === copyPromise) {
+    if (inFlightCopies.get(cacheUri) === persistPromise) {
       inFlightCopies.delete(cacheUri);
     }
   }
@@ -143,6 +165,9 @@ export async function deleteObservationPhoto(uri?: string): Promise<void> {
 
 /** Remove every durable observation photo created by this app. */
 export async function clearObservationPhotos(): Promise<void> {
+  // Invalidate copies that started before this reset before touching the maps or
+  // directory. A late copy can then recognise itself as stale and self-delete.
+  storageGeneration += 1;
   inFlightCopies.clear();
   recentCopies.clear();
   ensureDirPromise = null;
