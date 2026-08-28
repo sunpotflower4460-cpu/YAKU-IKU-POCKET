@@ -4,6 +4,7 @@ import {
   Animated,
   findNodeHandle,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -24,6 +25,20 @@ interface Props {
   onClose: () => void;
 }
 
+type WebFocusable = {
+  focus?: () => void;
+  isConnected?: boolean;
+};
+
+type WebDocumentLike = {
+  activeElement?: WebFocusable | null;
+  body?: WebFocusable | null;
+};
+
+function getWebDocument(): WebDocumentLike | undefined {
+  return (globalThis as unknown as { document?: WebDocumentLike }).document;
+}
+
 const MOTIF_COUNT = 3;
 const MOTIF_ICONS: React.ComponentProps<typeof Ionicons>['name'][] = [
   'leaf-outline',
@@ -41,6 +56,9 @@ export function LevelUpModal({ visible, level, title, onClose }: Props) {
   const cardOpacity = useRef(new Animated.Value(0)).current;
   const levelScale = useRef(new Animated.Value(0.9)).current;
   const contextHeadingRef = useRef<React.ElementRef<typeof Text>>(null);
+  const continueButtonRef = useRef<React.ElementRef<typeof Pressable>>(null);
+  const previousWebFocusRef = useRef<WebFocusable | null>(null);
+  const wasVisibleRef = useRef(false);
   const motifAnims = useRef(
     Array.from({ length: MOTIF_COUNT }, () => ({
       opacity: new Animated.Value(0),
@@ -116,13 +134,36 @@ export function LevelUpModal({ visible, level, title, onClose }: Props) {
   }, [visible, reduceMotion, cardScale, cardOpacity, levelScale, motifAnims, theme.motion.stateChange]);
 
   useEffect(() => {
-    if (!visible) return;
-    const delay = reduceMotion ? 60 : theme.motion.stateChange + 100;
-    const timer = setTimeout(() => {
-      const node = findNodeHandle(contextHeadingRef.current);
-      if (node) AccessibilityInfo.setAccessibilityFocus(node);
-    }, delay);
-    return () => clearTimeout(timer);
+    let timer: ReturnType<typeof setTimeout> | undefined;
+
+    if (visible && !wasVisibleRef.current) {
+      if (Platform.OS === 'web') {
+        const doc = getWebDocument();
+        const active = doc?.activeElement;
+        if (active && active !== doc?.body) previousWebFocusRef.current = active;
+        timer = setTimeout(() => {
+          const target = continueButtonRef.current as unknown as WebFocusable | null;
+          target?.focus?.();
+        }, 0);
+      } else {
+        const delay = reduceMotion ? 60 : theme.motion.stateChange + 100;
+        timer = setTimeout(() => {
+          const node = findNodeHandle(contextHeadingRef.current);
+          if (node) AccessibilityInfo.setAccessibilityFocus(node);
+        }, delay);
+      }
+    } else if (!visible && wasVisibleRef.current && Platform.OS === 'web') {
+      const target = previousWebFocusRef.current;
+      previousWebFocusRef.current = null;
+      timer = setTimeout(() => {
+        if (target?.isConnected !== false) target?.focus?.();
+      }, 0);
+    }
+
+    wasVisibleRef.current = visible;
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
   }, [visible, reduceMotion, theme.motion.stateChange]);
 
   function handleContinue() {
@@ -233,6 +274,7 @@ export function LevelUpModal({ visible, level, title, onClose }: Props) {
 
             <View style={styles.footer}>
               <Pressable
+                ref={continueButtonRef}
                 style={({ pressed }) => [styles.continueButton, pressed && styles.continuePressed]}
                 onPress={handleContinue}
                 accessibilityRole="button"
