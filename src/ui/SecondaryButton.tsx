@@ -9,13 +9,20 @@ interface Props extends PressableProps {
 }
 
 /** Level B secondary action — paired with a PrimaryButton, never alone as the loudest element. */
-export function SecondaryButton({ label, fullWidth, disabled, style, ...rest }: Props) {
+export function SecondaryButton({
+  label,
+  fullWidth,
+  disabled,
+  accessibilityState,
+  style,
+  ...rest
+}: Props) {
   const theme = useTheme();
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
-      accessibilityState={{ disabled: !!disabled }}
+      accessibilityState={{ ...accessibilityState, disabled: !!disabled }}
       disabled={disabled}
       style={(state) => [
         styles.base,
