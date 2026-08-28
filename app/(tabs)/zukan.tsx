@@ -27,6 +27,7 @@ import { useTheme } from '../../src/theme/ThemeProvider';
 import { DangerLevel, Plant, PlantCategory } from '../../src/types';
 import { getCurrentSeason, SEASON_CONFIG, isPlantInSeason } from '../../src/utils/season';
 import { normalizeForSearch } from '../../src/utils/kana';
+import { useReduceMotion } from '../../src/utils/reduceMotion';
 
 type FilterDiscovered = 'all' | 'discovered' | 'undiscovered' | 'favorites' | 'noted';
 type FilterDanger = 'all' | DangerLevel;
@@ -45,6 +46,7 @@ export default function ZukanScreen() {
   const router = useRouter();
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  const reduceMotion = useReduceMotion();
   const { width, fontScale } = useWindowDimensions();
   const { filterEffect: initialFilterEffect } = useLocalSearchParams<{ filterEffect?: string }>();
   const { discoveredPlantIds, scanHistory, favoritePlantIds, toggleFavorite, plantNotes } = useGameStore();
@@ -499,7 +501,7 @@ export default function ZukanScreen() {
         >
           <ViewModeBtn icon="grid-outline" active={viewMode === 'grid'} onPress={() => setViewMode('grid')} label="グリッド" />
           <ViewModeBtn icon="list-outline" active={viewMode === 'list'} onPress={() => setViewMode('list')} label="リスト" />
-          <ViewModeBtn icon="git-branch-outline" active={viewMode === 'family'} onPress={() => setViewMode('family')} label="科でまとめる" />
+          <ViewModeBtn icon="git-branch-outline" active={viewMode === 'family'} onPress={() => setViewMode('family')} label="科別" />
         </View>
       </View>
 
@@ -534,7 +536,7 @@ export default function ZukanScreen() {
       <Modal
         visible={hintPlant !== null}
         transparent
-        animationType="slide"
+        animationType={reduceMotion ? 'none' : 'slide'}
         onRequestClose={() => setHintPlant(null)}
       >
         <View style={[styles.hintOverlay, { backgroundColor: theme.colors.overlay }]}>
@@ -695,7 +697,13 @@ function EmptyState({ canReset, onReset }: { canReset: boolean; onReset: () => v
       >
         <Ionicons name="leaf-outline" size={30} color={theme.colors.textTertiary} />
       </View>
-      <Text style={[styles.emptyTitle, { color: theme.colors.textPrimary }]} accessibilityRole="header">条件に一致する植物がありません</Text>
+      <Text
+        style={[styles.emptyTitle, { color: theme.colors.textPrimary }]}
+        accessibilityRole="header"
+        accessibilityLiveRegion="polite"
+      >
+        条件に一致する植物がありません
+      </Text>
       <Text style={[styles.emptyText, { color: theme.colors.textTertiary }]}>検索語やフィルターを少し広げてみてください。</Text>
       {canReset && (
         <Pressable
@@ -743,7 +751,15 @@ function ViewModeBtn({
       accessibilityLabel={`表示切替: ${label}`}
       accessibilityState={{ selected: active }}
     >
-      <Ionicons name={icon} size={17} color={active ? theme.colors.textOnAccent : theme.colors.textTertiary} />
+      <Ionicons name={icon} size={16} color={active ? theme.colors.textOnAccent : theme.colors.textTertiary} />
+      <Text
+        style={[
+          styles.viewModeBtnText,
+          { color: active ? theme.colors.textOnAccent : theme.colors.textSecondary },
+        ]}
+      >
+        {label}
+      </Text>
     </Pressable>
   );
 }
@@ -763,8 +779,8 @@ function PlantListRow({
   const theme = useTheme();
   const family = getPlantDefinitionById(plant.id)?.taxonomy.family;
   const accessibilityLabel = discovered
-    ? `${plant.name}。見つけやすさの目安5段階中${plant.rarity}。${DANGER_LABEL[plant.danger]}${isFavorite ? '。お気に入り' : ''}。詳細を見る`
-    : `未記録の植物。${family ?? 'ヒントなし'}。見つけやすさの目安5段階中${plant.rarity}。ヒントを見る`;
+    ? `${plant.name}。珍しさ5段階中${plant.rarity}。${DANGER_LABEL[plant.danger]}${isFavorite ? '。お気に入り' : ''}。詳細を見る`
+    : `未記録の植物。${family ?? 'ヒントなし'}。珍しさ5段階中${plant.rarity}。ヒントを見る`;
   return (
     <Pressable
       style={({ pressed }) => [
@@ -936,8 +952,9 @@ const styles = StyleSheet.create({
 
   countRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 9, paddingBottom: 5, gap: 8, flexWrap: 'wrap' },
   countText: { fontSize: 12, lineHeight: 17, flexShrink: 1 },
-  viewModeRow: { flexDirection: 'row', gap: 2, borderRadius: 14, padding: 2, borderWidth: StyleSheet.hairlineWidth, flexShrink: 0 },
-  viewModeBtn: { width: 44, height: 44, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
+  viewModeRow: { flexDirection: 'row', gap: 2, borderRadius: 14, padding: 2, borderWidth: StyleSheet.hairlineWidth, maxWidth: '100%', flexShrink: 1 },
+  viewModeBtn: { minWidth: 72, minHeight: 44, borderRadius: 12, justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 5, paddingHorizontal: 10, paddingVertical: 6 },
+  viewModeBtnText: { flexShrink: 1, fontSize: 12, lineHeight: 16, fontWeight: '700', textAlign: 'center' },
 
   listRow: { minHeight: 68, flexDirection: 'row', alignItems: 'center', gap: 9, borderRadius: 14, paddingHorizontal: 10, paddingVertical: 9, marginHorizontal: 4, marginBottom: 8, borderWidth: StyleSheet.hairlineWidth, flexWrap: 'wrap' },
   listEmojiWrap: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
