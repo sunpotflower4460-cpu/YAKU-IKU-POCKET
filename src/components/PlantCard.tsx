@@ -197,31 +197,31 @@ export function PlantCard({
             <Ionicons name="create-outline" size={13} color={theme.colors.accentPrimary} />
           </View>
         )}
-
-        {discovered && onFavorite && (
-          <Pressable
-            style={({ pressed }) => [
-              styles.heartBtn,
-              { backgroundColor: theme.colors.surfaceSecondary },
-              pressed && styles.heartBtnPressed,
-            ]}
-            onPress={(event) => {
-              event.stopPropagation?.();
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              onFavorite();
-            }}
-            accessibilityRole="button"
-            accessibilityLabel={isFavorite ? `${plant.name}をお気に入りから外す` : `${plant.name}をお気に入りに追加`}
-            accessibilityState={{ selected: !!isFavorite }}
-          >
-            <Ionicons
-              name={isFavorite ? 'heart' : 'heart-outline'}
-              size={18}
-              color={isFavorite ? '#D9363E' : theme.colors.textTertiary}
-            />
-          </Pressable>
-        )}
       </Pressable>
+
+      {discovered && onFavorite && (
+        <Pressable
+          style={({ pressed }) => [
+            styles.heartBtn,
+            { backgroundColor: theme.colors.surfaceSecondary },
+            pressed && styles.heartBtnPressed,
+          ]}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            onFavorite();
+          }}
+          accessibilityRole="button"
+          accessibilityLabel={isFavorite ? `${plant.name}をお気に入りから外す` : `${plant.name}をお気に入りに追加`}
+          accessibilityState={{ selected: !!isFavorite }}
+          accessibilityHint="カードを開かずにお気に入り状態を切り替えます"
+        >
+          <Ionicons
+            name={isFavorite ? 'heart' : 'heart-outline'}
+            size={18}
+            color={isFavorite ? '#D9363E' : theme.colors.textTertiary}
+          />
+        </Pressable>
+      )}
     </Animated.View>
   );
 }
@@ -312,6 +312,7 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
+    zIndex: 2,
   },
   heartBtnPressed: { opacity: 0.68 },
   noteBadge: {
