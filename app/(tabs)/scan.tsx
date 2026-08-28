@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
+  ActivityIndicator,
   View,
   Text,
   StyleSheet,
@@ -57,8 +58,9 @@ export default function ScanScreen() {
   const router = useRouter();
   const theme = useTheme();
   const insets = useSafeAreaInsets();
-  const { width } = useWindowDimensions();
+  const { width, fontScale } = useWindowDimensions();
   const viewfinderSize = Math.min(width * 0.65, 280);
+  const compactControls = width < 380 || fontScale >= 1.3;
   const {
     discoveredPlantIds,
     recordObservation,
@@ -82,6 +84,7 @@ export default function ScanScreen() {
   // by organ (whole/leaf/flower/...), sent together for identification.
   const [photos, setPhotos] = useState<CapturedPhoto[]>([]);
   const [capturing, setCapturing] = useState(false);
+  const [savingObservation, setSavingObservation] = useState(false);
   const [result, setResult] = useState<{
     plant: Plant;
     confidence: number;
@@ -163,6 +166,14 @@ export default function ScanScreen() {
     inputRange: [0, 1],
     outputRange: ['0deg', '360deg'],
   });
+  const processingLabel = !demoMode ? REAL_STAGE_LABEL[processingStage] : DEMO_STAGE_LABEL[processingStage];
+  const cameraStatusLabel = scanState === 'idle'
+    ? (photos.length === 0
+        ? '植物にカメラをかざしてください'
+        : `${photos.length}枚 撮影済み。続けて撮影するか候補を確認してください`)
+    : scanState === 'scanning'
+      ? processingLabel
+      : '候補を確認できます';
 
   // ── Capture one photo and add it to the set (§7.4 複数写真) ──
   async function handleCapturePhoto() {
@@ -280,7 +291,6 @@ export default function ScanScreen() {
       });
       setUsedRealAI(outcome.usedRealAI);
 
-      // Haptic feedback: success notification on scan complete
       if (outcome.isNewDiscovery) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       } else {
@@ -291,7 +301,6 @@ export default function ScanScreen() {
       setModalVisible(true);
     } catch (err) {
       console.error('[Scan] Error:', err);
-      // Error haptic
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       setScanState('idle');
       Alert.alert('スキャン失敗', 'もう一度お試しください。');
@@ -302,8 +311,6 @@ export default function ScanScreen() {
   // the result to reflect their choice so it (not the top rank) gets saved.
   function handleSelectCandidate(candidate: IdentificationCandidate) {
     Haptics.selectionAsync();
-    // Picking a candidate other than the top rank counts as "having compared"
-    // for the Fieldbook learning achievement (§7.8).
     if (result && candidate.plant.id !== result.plant.id) {
       markCandidatesCompared();
     }
@@ -321,20 +328,25 @@ export default function ScanScreen() {
   }
 
   async function handleAddToZukan(traitChecks: TraitCheck[]) {
-    if (!result) return;
-    // Safety: demo (mock) results are view-only and must never be persisted as
-    // real observations, grant XP, or register plants. Only real identifications
-    // reach this save path.
+    if (!result || savingObservation) return;
     if (demoMode) return;
-    // Copy out of the OS cache dir so the OS can't silently evict this saved
-    // observation's photo later (native only; no-op on web — see the util).
-    const durableUri = photoUri ? await persistObservationPhoto(photoUri) : undefined;
-    recordObservation(result.plant.id, durableUri, traitChecks);
-    setModalVisible(false);
-    setResult(null);
-    setScanState('idle');
-    setPhotos([]);
-    router.push(`/plant/${result.plant.id}`);
+    setSavingObservation(true);
+    try {
+      const durableUri = photoUri ? await persistObservationPhoto(photoUri) : undefined;
+      recordObservation(result.plant.id, durableUri, traitChecks);
+      const savedPlantId = result.plant.id;
+      setModalVisible(false);
+      setResult(null);
+      setScanState('idle');
+      setPhotos([]);
+      setSavingObservation(false);
+      router.push(`/plant/${savedPlantId}`);
+    } catch (err) {
+      console.error('[ObservationSave] Error:', err);
+      setSavingObservation(false);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert('観察記録を保存できませんでした', '写真はそのまま残しています。もう一度お試しください。');
+    }
   }
 
   // Save the photos as a Fieldbook entry with no plant match — "判定不能でも
@@ -348,24 +360,42 @@ export default function ScanScreen() {
   }
 
   function handleScanAgain() {
+    if (savingObservation) return;
     setModalVisible(false);
     setResult(null);
     setScanState('idle');
     setPhotos([]);
   }
 
-  // ── Permission not yet resolved ──
   if (!permission) {
-    return <View style={[styles.container, { backgroundColor: theme.colors.canvas }]} />;
+    return (
+      <View
+        style={[styles.container, styles.permissionLoading, { backgroundColor: theme.colors.canvas }]}
+        accessible
+        accessibilityRole="text"
+        accessibilityLabel="カメラを準備中"
+      >
+        <ActivityIndicator size="large" color={theme.colors.accentPrimary} />
+        <Text style={[styles.permissionLoadingText, { color: theme.colors.textSecondary }]}>カメラを準備中…</Text>
+      </View>
+    );
   }
 
-  // ── Permission denied ──
   if (!permission.granted) {
-    // On iOS the system prompt appears only once. Once the user has denied and
-    // can no longer be asked, send them to the Settings app instead.
     const mustUseSettings = !permission.canAskAgain;
     return (
-      <View style={[styles.container, styles.permissionContainer, { backgroundColor: theme.colors.canvas }]}>
+      <ScrollView
+        style={[styles.container, { backgroundColor: theme.colors.canvas }]}
+        contentContainerStyle={[
+          styles.permissionContainer,
+          {
+            paddingTop: Math.max(insets.top + 24, 40),
+            paddingBottom: Math.max(insets.bottom + 24, 40),
+          },
+        ]}
+        showsVerticalScrollIndicator={false}
+        bounces={false}
+      >
         <View
           style={[
             styles.permissionIconWrap,
@@ -374,10 +404,11 @@ export default function ScanScreen() {
               borderColor: theme.colors.borderSubtle,
             },
           ]}
+          accessibilityElementsHidden
         >
           <Ionicons name="camera-outline" size={36} color={theme.colors.accentPrimary} />
         </View>
-        <Text style={[styles.permissionTitle, { color: theme.colors.textPrimary }]}>カメラへのアクセスが必要です</Text>
+        <Text style={[styles.permissionTitle, { color: theme.colors.textPrimary }]} accessibilityRole="header">カメラへのアクセスが必要です</Text>
         <Text style={[styles.permissionDesc, { color: theme.colors.textSecondary }]}>
           {mustUseSettings
             ? '設定アプリからカメラへのアクセスを許可してください。'
@@ -400,16 +431,13 @@ export default function ScanScreen() {
         <View style={styles.permissionSafetyWrap}>
           <DisclaimerBanner compact />
         </View>
-      </View>
+      </ScrollView>
     );
   }
 
-  // ── Main camera UI ──
   return (
     <View style={styles.container}>
-      {/* Camera area */}
       <View style={styles.cameraArea}>
-        {/* Real camera preview */}
         <CameraView
           ref={cameraRef}
           style={StyleSheet.absoluteFill}
@@ -417,19 +445,22 @@ export default function ScanScreen() {
           flash={flash}
         />
 
-        {/* Dim overlay during scan */}
         {scanState === 'scanning' && (
           <View style={[StyleSheet.absoluteFill, styles.scanningDim]} />
         )}
 
-        {/* Top controls: flash / mode / flip */}
         <View style={[styles.topControls, { top: insets.top + 8 }]}>
           <Pressable
-            style={({ pressed }) => [styles.controlBtn, pressed && styles.cameraControlPressed]}
+            style={({ pressed }) => [
+              styles.controlBtn,
+              scanState === 'scanning' && styles.cameraControlDisabled,
+              pressed && scanState !== 'scanning' && styles.cameraControlPressed,
+            ]}
             onPress={() => setFlash((f) => (f === 'off' ? 'on' : 'off'))}
+            disabled={scanState === 'scanning'}
             accessibilityRole="button"
             accessibilityLabel={flash === 'off' ? 'フラッシュをオンにする' : 'フラッシュをオフにする'}
-            accessibilityState={{ selected: flash === 'on' }}
+            accessibilityState={{ selected: flash === 'on', disabled: scanState === 'scanning' }}
           >
             <Ionicons
               name={flash === 'off' ? 'flash-off' : 'flash'}
@@ -441,7 +472,7 @@ export default function ScanScreen() {
           {!demoMode ? (
             <View style={styles.aiModeBadge} accessible accessibilityRole="text" accessibilityLabel="AI解析モード">
               <Ionicons name="hardware-chip-outline" size={13} color="#FFFFFF" />
-              <Text style={styles.aiModeText}>AI解析</Text>
+              <Text style={styles.aiModeText} maxFontSizeMultiplier={1.4}>AI解析</Text>
             </View>
           ) : (
             <View
@@ -451,32 +482,33 @@ export default function ScanScreen() {
               accessibilityLabel="デモモード"
             >
               <Ionicons name="flask-outline" size={13} color="#FFFFFF" />
-              <Text style={styles.aiModeText}>デモモード</Text>
+              <Text style={styles.aiModeText} maxFontSizeMultiplier={1.4}>デモモード</Text>
             </View>
           )}
 
           <Pressable
-            style={({ pressed }) => [styles.controlBtn, pressed && styles.cameraControlPressed]}
-            onPress={() =>
-              setFacing((f) => (f === 'back' ? 'front' : 'back'))
-            }
+            style={({ pressed }) => [
+              styles.controlBtn,
+              scanState === 'scanning' && styles.cameraControlDisabled,
+              pressed && scanState !== 'scanning' && styles.cameraControlPressed,
+            ]}
+            onPress={() => setFacing((f) => (f === 'back' ? 'front' : 'back'))}
+            disabled={scanState === 'scanning'}
             accessibilityRole="button"
             accessibilityLabel="カメラを切り替える"
+            accessibilityState={{ disabled: scanState === 'scanning' }}
           >
             <Ionicons name="camera-reverse-outline" size={22} color="#FFFFFF" />
           </Pressable>
         </View>
 
-        {/* Viewfinder */}
         <View style={styles.viewfinderWrapper}>
-          <View style={[styles.viewfinder, { width: viewfinderSize, height: viewfinderSize }]}>
-            {/* Corner markers */}
+          <View style={[styles.viewfinder, { width: viewfinderSize, height: viewfinderSize }]} accessibilityElementsHidden>
             <View style={styles.cornerTL} />
             <View style={styles.cornerTR} />
             <View style={styles.cornerBL} />
             <View style={styles.cornerBR} />
 
-            {/* Scan line */}
             {scanState === 'scanning' && (
               <Animated.View
                 style={[
@@ -487,9 +519,14 @@ export default function ScanScreen() {
             )}
           </View>
 
-          {/* Status label */}
-          <View style={styles.statusLabel} accessibilityLiveRegion="polite">
-            <View style={styles.statusTextRow}>
+          <View
+            style={styles.statusLabel}
+            accessible
+            accessibilityRole="text"
+            accessibilityLabel={cameraStatusLabel}
+            accessibilityLiveRegion="polite"
+          >
+            <View style={styles.statusTextRow} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
               <Ionicons
                 name={
                   scanState === 'idle' ? 'leaf-outline' :
@@ -499,37 +536,26 @@ export default function ScanScreen() {
                 size={14}
                 color="#FFFFFF"
               />
-              <Text style={styles.statusText}>
-                {scanState === 'idle'
-                  ? (photos.length === 0
-                      ? '植物にカメラをかざしてください'
-                      : `${photos.length}枚 撮影済み — 続けて撮影するか候補を確認してください`)
-                  : scanState === 'scanning'
-                  ? (!demoMode ? REAL_STAGE_LABEL[processingStage] : DEMO_STAGE_LABEL[processingStage])
-                  : '候補を確認できます'}
-              </Text>
+              <Text style={styles.statusText}>{cameraStatusLabel}</Text>
             </View>
           </View>
         </View>
 
-        {/* Hint bar */}
         <View style={styles.hintBar}>
           {scanState !== 'scanning' && (
             <Ionicons name="shield-outline" size={14} color="rgba(255,255,255,0.82)" />
           )}
           <Text style={styles.hintText}>
             {scanState === 'scanning'
-              ? (!demoMode ? REAL_STAGE_LABEL[processingStage] : DEMO_STAGE_LABEL[processingStage])
+              ? '処理が終わるまで、そのままお待ちください'
               : 'AIの候補は参考情報です。採取・摂取はアプリだけで判断しないでください'}
           </Text>
         </View>
       </View>
 
-      {/* Control area */}
       <View style={[styles.controlArea, { backgroundColor: theme.colors.canvas }]}>
         {scanState === 'idle' && (
           <>
-            {/* Captured-photo thumbnail strip with organ tagging (§7.4) */}
             {photos.length > 0 && (
               <ScrollView
                 horizontal
@@ -547,7 +573,7 @@ export default function ScanScreen() {
                     <Pressable
                       style={({ pressed }) => [
                         styles.photoOrganChip,
-                        { backgroundColor: theme.colors.accentPrimaryPressed },
+                        { backgroundColor: theme.colors.accentPrimary },
                         pressed && styles.buttonPressed,
                       ]}
                       hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
@@ -555,7 +581,7 @@ export default function ScanScreen() {
                       accessibilityRole="button"
                       accessibilityLabel={`部位: ${ORGAN_LABEL[p.organ]}。タップで変更`}
                     >
-                      <Text style={styles.photoOrganChipText}>{ORGAN_LABEL[p.organ]}</Text>
+                      <Text style={[styles.photoOrganChipText, { color: theme.colors.textOnAccent }]}>{ORGAN_LABEL[p.organ]}</Text>
                     </Pressable>
                     <Pressable
                       style={({ pressed }) => [styles.photoDeleteBtn, pressed && styles.cameraControlPressed]}
@@ -571,7 +597,7 @@ export default function ScanScreen() {
               </ScrollView>
             )}
 
-            <View style={styles.captureRow}>
+            <View style={[styles.captureRow, compactControls && styles.captureRowStacked]}>
               <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
                 <Pressable
                   style={[
@@ -581,12 +607,16 @@ export default function ScanScreen() {
                   ]}
                   onPress={handleCapturePhoto}
                   disabled={capturing || photos.length >= MAX_CAPTURE_PHOTOS}
-                  accessibilityLabel="写真を撮影"
+                  accessibilityLabel={capturing ? '写真を撮影中' : '写真を撮影'}
                   accessibilityRole="button"
-                  accessibilityState={{ disabled: capturing || photos.length >= MAX_CAPTURE_PHOTOS }}
+                  accessibilityState={{ disabled: capturing || photos.length >= MAX_CAPTURE_PHOTOS, busy: capturing }}
                 >
                   <View style={styles.scanBtnInner}>
-                    <Ionicons name="camera-outline" size={32} color={theme.colors.textOnAccent} />
+                    {capturing ? (
+                      <ActivityIndicator color={theme.colors.textOnAccent} />
+                    ) : (
+                      <Ionicons name="camera-outline" size={32} color={theme.colors.textOnAccent} />
+                    )}
                   </View>
                 </Pressable>
               </Animated.View>
@@ -595,29 +625,32 @@ export default function ScanScreen() {
                 <Pressable
                   style={({ pressed }) => [
                     styles.identifyBtn,
-                    { backgroundColor: theme.colors.accentPrimaryPressed },
+                    compactControls && styles.identifyBtnStacked,
+                    { backgroundColor: theme.colors.accentPrimary },
                     pressed && styles.buttonPressed,
                   ]}
                   onPress={handleIdentify}
                   accessibilityLabel={`${photos.length}枚の写真から植物候補を確認する`}
                   accessibilityRole="button"
                 >
-                  <Ionicons name="search-outline" size={21} color="#FFFFFF" />
-                  <Text style={styles.identifyBtnText}>候補を確認（{photos.length}枚）</Text>
+                  <Ionicons name="search-outline" size={21} color={theme.colors.textOnAccent} />
+                  <Text style={[styles.identifyBtnText, { color: theme.colors.textOnAccent }]} numberOfLines={2}>候補を確認（{photos.length}枚）</Text>
                 </Pressable>
               )}
             </View>
-            <Text style={[styles.scanLabel, { color: theme.colors.textSecondary }]}>
-              {photos.length >= MAX_CAPTURE_PHOTOS
-                ? `最大${MAX_CAPTURE_PHOTOS}枚まで撮影できます`
-                : `全体・葉・花など、角度を変えて撮影できます（${photos.length}枚）`}
+            <Text style={[styles.scanLabel, { color: theme.colors.textSecondary }]} accessibilityLiveRegion={capturing ? 'polite' : 'none'}>
+              {capturing
+                ? '写真を保存中…'
+                : photos.length >= MAX_CAPTURE_PHOTOS
+                  ? `最大${MAX_CAPTURE_PHOTOS}枚まで撮影できます`
+                  : `全体・葉・花など、角度を変えて撮影できます（${photos.length}枚）`}
             </Text>
           </>
         )}
 
         {scanState === 'scanning' && (
           <>
-            <View style={[styles.scanBtn, styles.scanBtnDisabled]}>
+            <View style={[styles.scanBtn, styles.scanBtnDisabled]} accessibilityElementsHidden>
               <View style={styles.scanBtnInner}>
                 <Animated.View style={[{ transform: [{ rotate: spin }] }]}>
                   <Ionicons name="cog-outline" size={32} color="#FFFFFF" />
@@ -626,9 +659,10 @@ export default function ScanScreen() {
             </View>
             <Text
               style={[styles.scanLabel, { color: theme.colors.textSecondary }]}
-              accessibilityLiveRegion="polite"
+              accessibilityElementsHidden
+              importantForAccessibility="no-hide-descendants"
             >
-              {!demoMode ? REAL_STAGE_LABEL[processingStage] : DEMO_STAGE_LABEL[processingStage]}
+              {photos.length}枚の写真を確認しています
             </Text>
           </>
         )}
@@ -638,7 +672,7 @@ export default function ScanScreen() {
             <Pressable
               style={({ pressed }) => [
                 styles.scanBtn,
-                { backgroundColor: theme.colors.accentPrimaryPressed, shadowColor: theme.colors.shadow },
+                { backgroundColor: theme.colors.accentPrimary, shadowColor: theme.colors.shadow },
                 pressed && styles.buttonPressed,
               ]}
               onPress={() => setModalVisible(true)}
@@ -646,7 +680,7 @@ export default function ScanScreen() {
               accessibilityLabel="植物候補を表示"
             >
               <View style={styles.scanBtnInner}>
-                <Ionicons name="leaf-outline" size={32} color="#FFFFFF" />
+                <Ionicons name="leaf-outline" size={32} color={theme.colors.textOnAccent} />
               </View>
             </Pressable>
             <Text style={[styles.scanLabel, { color: theme.colors.textSecondary }]}>植物候補を表示</Text>
@@ -658,7 +692,6 @@ export default function ScanScreen() {
         </View>
       </View>
 
-      {/* Result Modal */}
       <ScanResultModal
         visible={modalVisible}
         plant={result?.plant ?? null}
@@ -666,6 +699,7 @@ export default function ScanScreen() {
         isNewDiscovery={result?.isNewDiscovery ?? false}
         usedRealAI={usedRealAI}
         isDemo={demoMode}
+        isSaving={savingObservation}
         reason={result?.reason}
         candidates={result?.candidates}
         selectedPlantId={result?.plant.id}
@@ -681,12 +715,23 @@ export default function ScanScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0D1117' },
 
-  // ── Permission screen ──
+  permissionLoading: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 28,
+  },
+  permissionLoadingText: {
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
   permissionContainer: {
+    flexGrow: 1,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 28,
-    paddingVertical: 40,
   },
   permissionIconWrap: {
     width: 72,
@@ -715,6 +760,7 @@ const styles = StyleSheet.create({
     minHeight: 52,
     borderRadius: 16,
     paddingHorizontal: 28,
+    paddingVertical: 10,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 20,
@@ -722,6 +768,8 @@ const styles = StyleSheet.create({
   permissionBtnText: {
     fontWeight: '800',
     fontSize: 16,
+    lineHeight: 22,
+    textAlign: 'center',
   },
   permissionSafetyWrap: {
     width: '100%',
@@ -730,7 +778,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
 
-  // ── Camera area ──
   cameraArea: {
     flex: 1,
     position: 'relative',
@@ -740,7 +787,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.25)',
   },
 
-  // Top controls
   topControls: {
     position: 'absolute',
     left: 16,
@@ -760,6 +806,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  cameraControlDisabled: { opacity: 0.5 },
   cameraControlPressed: {
     opacity: 0.65,
   },
@@ -784,7 +831,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 
-  // Viewfinder
   viewfinderWrapper: {
     flex: 1,
     justifyContent: 'center',
@@ -854,7 +900,6 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
 
-  // Hint bar
   hintBar: {
     position: 'absolute',
     bottom: 12,
@@ -879,7 +924,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
-  // ── Control area ──
   controlArea: {
     paddingTop: 16,
     paddingBottom: 18,
@@ -889,7 +933,6 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 24,
   },
 
-  // Multi-photo strip (§7.4)
   photoStrip: { width: '100%', marginBottom: 8 },
   photoStripContent: {
     gap: 12,
@@ -912,7 +955,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#FFFFFF',
   },
-  photoOrganChipText: { fontSize: 11, fontWeight: '800', color: '#FFFFFF' },
+  photoOrganChipText: { fontSize: 11, fontWeight: '800' },
   photoDeleteBtn: {
     position: 'absolute',
     top: -8,
@@ -935,6 +978,7 @@ const styles = StyleSheet.create({
     gap: 14,
     marginBottom: 8,
   },
+  captureRowStacked: { flexDirection: 'column' },
   identifyBtn: {
     minHeight: 52,
     flexDirection: 'row',
@@ -943,8 +987,11 @@ const styles = StyleSheet.create({
     gap: 8,
     borderRadius: 16,
     paddingHorizontal: 18,
+    paddingVertical: 9,
+    maxWidth: '100%',
   },
-  identifyBtnText: { color: '#FFFFFF', fontWeight: '800', fontSize: 15 },
+  identifyBtnStacked: { width: '100%' },
+  identifyBtnText: { fontWeight: '800', fontSize: 15, lineHeight: 21, textAlign: 'center', flexShrink: 1 },
 
   scanBtn: {
     width: 80,
