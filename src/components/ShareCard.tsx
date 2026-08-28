@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
+  AccessibilityInfo,
   Alert,
+  findNodeHandle,
   Modal,
   Pressable,
   ScrollView,
@@ -81,6 +83,7 @@ export function ShareCard(props: ShareCardProps) {
   const insets = useSafeAreaInsets();
   const { width, fontScale } = useWindowDimensions();
   const compactCard = width < 360 || fontScale >= 1.3;
+  const titleRef = useRef<React.ElementRef<typeof Text>>(null);
   const pct = totalCount > 0 ? Math.min(discoveredCount / totalCount, 1) : 0;
   const spokenSummary = [
     `${playerName}の観察サマリー`,
@@ -91,6 +94,15 @@ export function ShareCard(props: ShareCardProps) {
     `${season}のフィールドノート`,
     ...(streak >= 2 ? [`${streak}日継続`] : []),
   ].join('。');
+
+  useEffect(() => {
+    if (!visible) return;
+    const timer = setTimeout(() => {
+      const node = findNodeHandle(titleRef.current);
+      if (node) AccessibilityInfo.setAccessibilityFocus(node);
+    }, 260);
+    return () => clearTimeout(timer);
+  }, [visible]);
 
   async function handleShare() {
     const message = buildShareText({ ...rest, unlockedAchievements });
@@ -133,11 +145,20 @@ export function ShareCard(props: ShareCardProps) {
           <View style={[styles.handle, { backgroundColor: theme.colors.borderStrong }]} accessibilityElementsHidden />
 
           <View style={styles.sheetTitleRow}>
-            <View style={[styles.sheetTitleIcon, { backgroundColor: theme.colors.surfaceSecondary }]}>
+            <View
+              style={[styles.sheetTitleIcon, { backgroundColor: theme.colors.surfaceSecondary }]}
+              accessibilityElementsHidden
+              importantForAccessibility="no-hide-descendants"
+            >
               <Ionicons name="leaf-outline" size={20} color={theme.colors.accentPrimary} />
             </View>
             <View style={styles.sheetTitleText}>
-              <Text style={[styles.sheetTitle, { color: theme.colors.textPrimary }]} accessibilityRole="header">
+              <Text
+                ref={titleRef}
+                style={[styles.sheetTitle, { color: theme.colors.textPrimary }]}
+                accessibilityRole="header"
+                accessibilityLabel="観察サマリー。今までの記録を、ひとつのカードに"
+              >
                 観察サマリー
               </Text>
               <Text style={[styles.sheetSubtitle, { color: theme.colors.textTertiary }]}>
@@ -168,7 +189,7 @@ export function ShareCard(props: ShareCardProps) {
               accessibilityLabel={spokenSummary}
             >
               <View style={[styles.cardBrandRow, compactCard && styles.cardBrandRowCompact]}>
-                <View style={styles.brandMark}>
+                <View style={styles.brandMark} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
                   <Ionicons name="leaf" size={16} color="#E4F4E6" />
                 </View>
                 <Text style={styles.cardAppName}>薬育ポケット</Text>
