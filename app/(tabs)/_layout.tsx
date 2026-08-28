@@ -70,6 +70,11 @@ export default function TabLayout() {
         // stuck on yesterday / the previous month.
         key={sessionDate || 'hydrating'}
         screenOptions={{
+          // Every tab already owns an immersive/custom top area (home hero,
+          // camera controls, collection header, profile hero). Keeping the
+          // navigator header would duplicate hierarchy and consume vertical
+          // space, especially on smaller phones.
+          headerShown: false,
           tabBarActiveTintColor: theme.colors.accentPrimary,
           tabBarInactiveTintColor: theme.colors.textTertiary,
           tabBarHideOnKeyboard: true,
@@ -93,10 +98,6 @@ export default function TabLayout() {
             fontSize: theme.type.caption1,
             fontWeight: theme.weight.secondary,
           },
-          headerStyle: { backgroundColor: theme.colors.accentPrimary },
-          headerTintColor: theme.colors.textOnAccent,
-          headerTitleStyle: { fontWeight: theme.weight.primary, fontSize: theme.type.headline },
-          headerShadowVisible: false,
         }}
       >
         <Tabs.Screen
