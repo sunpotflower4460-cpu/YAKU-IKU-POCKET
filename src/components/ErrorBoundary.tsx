@@ -1,10 +1,14 @@
 import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '../constants/colors';
+import { Theme, useTheme } from '../theme/ThemeProvider';
 
 interface Props {
   children: React.ReactNode;
+}
+
+interface BoundaryProps extends Props {
+  theme: Theme;
 }
 
 interface State {
@@ -13,10 +17,9 @@ interface State {
 
 /**
  * Top-level error boundary. Catches unexpected render errors anywhere in the
- * tree and shows a recoverable fallback instead of a blank white screen
- * (which would otherwise be an instant App Store rejection).
+ * tree and shows a recoverable fallback instead of a blank screen.
  */
-export class ErrorBoundary extends React.Component<Props, State> {
+class ErrorBoundaryImpl extends React.Component<BoundaryProps, State> {
   state: State = { hasError: false };
 
   static getDerivedStateFromError(): State {
@@ -33,17 +36,51 @@ export class ErrorBoundary extends React.Component<Props, State> {
   };
 
   render() {
+    const { theme } = this.props;
+
     if (this.state.hasError) {
       return (
-        <View style={styles.container}>
-          <Ionicons name="leaf-outline" size={56} color={Colors.textMuted} />
-          <Text style={styles.title}>問題が発生しました</Text>
-          <Text style={styles.desc}>
-            予期せぬエラーが発生しました。お手数ですが、もう一度お試しください。
+        <View style={[styles.container, { backgroundColor: theme.colors.canvas }]}>
+          <View
+            style={[
+              styles.iconWrap,
+              {
+                backgroundColor: theme.colors.surfaceSecondary,
+                borderColor: theme.colors.borderSubtle,
+              },
+            ]}
+            accessibilityElementsHidden
+          >
+            <Ionicons name="leaf-outline" size={36} color={theme.colors.accentPrimary} />
+          </View>
+
+          <Text
+            style={[styles.title, { color: theme.colors.textPrimary }]}
+            accessibilityRole="header"
+          >
+            うまく表示できませんでした
           </Text>
-          <Pressable style={styles.btn} onPress={this.handleReset}>
-            <Text style={styles.btnText}>再読み込み</Text>
+          <Text style={[styles.desc, { color: theme.colors.textSecondary }]}>
+            一時的な表示エラーが発生しました。下のボタンでもう一度画面を開き直せます。
+          </Text>
+
+          <Pressable
+            style={({ pressed }) => [
+              styles.btn,
+              { backgroundColor: theme.colors.accentPrimary },
+              pressed && styles.btnPressed,
+            ]}
+            onPress={this.handleReset}
+            accessibilityRole="button"
+            accessibilityLabel="もう一度試す"
+          >
+            <Ionicons name="refresh" size={19} color={theme.colors.textOnAccent} />
+            <Text style={[styles.btnText, { color: theme.colors.textOnAccent }]}>もう一度試す</Text>
           </Pressable>
+
+          <Text style={[styles.helper, { color: theme.colors.textTertiary }]}>
+            同じ画面で繰り返す場合は、一度アプリを閉じてから開き直してください。
+          </Text>
         </View>
       );
     }
@@ -51,37 +88,65 @@ export class ErrorBoundary extends React.Component<Props, State> {
   }
 }
 
+export function ErrorBoundary({ children }: Props) {
+  const theme = useTheme();
+  return <ErrorBoundaryImpl theme={theme}>{children}</ErrorBoundaryImpl>;
+}
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 32,
-    backgroundColor: Colors.bg,
+    paddingHorizontal: 28,
+    paddingVertical: 40,
+  },
+  iconWrap: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    borderWidth: StyleSheet.hairlineWidth,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
   },
   title: {
-    marginTop: 16,
-    fontSize: 18,
+    fontSize: 22,
+    lineHeight: 29,
     fontWeight: '800',
-    color: Colors.text,
+    textAlign: 'center',
   },
   desc: {
-    marginTop: 8,
-    fontSize: 14,
-    lineHeight: 20,
+    marginTop: 9,
+    fontSize: 15,
+    lineHeight: 23,
     textAlign: 'center',
-    color: Colors.textMuted,
+    maxWidth: 420,
   },
   btn: {
+    minHeight: 52,
     marginTop: 24,
-    backgroundColor: Colors.primary,
-    paddingHorizontal: 28,
-    paddingVertical: 12,
-    borderRadius: 24,
+    minWidth: 190,
+    paddingHorizontal: 22,
+    borderRadius: 16,
+    flexDirection: 'row',
+    gap: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  btnPressed: {
+    opacity: 0.82,
+    transform: [{ scale: 0.99 }],
   },
   btnText: {
-    color: Colors.textWhite,
-    fontSize: 15,
-    fontWeight: '700',
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  helper: {
+    marginTop: 14,
+    fontSize: 12,
+    lineHeight: 18,
+    textAlign: 'center',
+    maxWidth: 380,
   },
 });
