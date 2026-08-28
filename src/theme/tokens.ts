@@ -40,6 +40,25 @@ export const type = {
   caption2: 11,
 } as const;
 
+/**
+ * Paired line-height scale. Keeping this explicit prevents platform/font
+ * defaults from changing vertical rhythm while still allowing Dynamic Type to
+ * scale both font size and line height together.
+ */
+export const lineHeight = {
+  display: 41,
+  title1: 34,
+  title2: 28,
+  title3: 25,
+  headline: 22,
+  body: 25,
+  callout: 22,
+  subheadline: 21,
+  footnote: 18,
+  caption1: 16,
+  caption2: 15,
+} as const;
+
 /** Font weights, kept coarse to avoid overusing bold. */
 export const weight = {
   primary: '800' as const,
