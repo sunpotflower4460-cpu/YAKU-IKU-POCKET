@@ -16,20 +16,20 @@ export function PrimaryButton({ label, loading, fullWidth, disabled, style, ...r
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={label}
-      accessibilityState={{ disabled: isDisabled, busy: loading }}
+      accessibilityLabel={loading ? `${label}、処理中` : label}
+      accessibilityState={{ disabled: isDisabled, busy: !!loading }}
       disabled={isDisabled}
-      style={({ pressed }) => [
+      style={(state) => [
         styles.base,
         {
           minHeight: theme.minTapTarget + 8,
           borderRadius: theme.radius.pill,
           paddingHorizontal: theme.space[6],
-          backgroundColor: pressed ? theme.colors.accentPrimaryPressed : theme.colors.accentPrimary,
+          backgroundColor: state.pressed ? theme.colors.accentPrimaryPressed : theme.colors.accentPrimary,
           opacity: isDisabled ? 0.5 : 1,
           alignSelf: fullWidth ? 'stretch' : 'flex-start',
         },
-        typeof style === 'function' ? undefined : style,
+        typeof style === 'function' ? style(state) : style,
       ]}
       {...rest}
     >
