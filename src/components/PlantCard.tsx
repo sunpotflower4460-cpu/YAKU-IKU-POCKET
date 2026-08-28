@@ -133,6 +133,8 @@ export function PlantCard({
             styles.emojiWrap,
             { backgroundColor: discovered ? rarityBg : theme.colors.surfaceSecondary },
           ]}
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
         >
           {showPhoto ? (
             <Image
@@ -156,12 +158,14 @@ export function PlantCard({
             { color: discovered ? theme.colors.textPrimary : theme.colors.textTertiary },
           ]}
           numberOfLines={largeText ? undefined : 2}
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
         >
           {discovered ? plant.name : '？？？'}
         </Text>
 
-        <RarityStars rarity={plant.rarity} size="sm" />
-        {discovered && <DangerBadge danger={plant.danger} size="sm" />}
+        <RarityStars rarity={plant.rarity} size="sm" accessible={false} />
+        {discovered && <DangerBadge danger={plant.danger} size="sm" accessible={false} />}
 
         {!discovered && (
           <View
@@ -172,6 +176,8 @@ export function PlantCard({
                 borderColor: theme.colors.borderSubtle,
               },
             ]}
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
           >
             <Text
               style={[styles.hintChipText, { color: theme.colors.accentSecondary }]}
@@ -186,6 +192,7 @@ export function PlantCard({
           <View
             style={[styles.noteBadge, { backgroundColor: theme.colors.surfaceSecondary }]}
             accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
           >
             <Ionicons name="create-outline" size={13} color={theme.colors.accentPrimary} />
           </View>
@@ -212,6 +219,8 @@ export function PlantCard({
             name={isFavorite ? 'heart' : 'heart-outline'}
             size={18}
             color={isFavorite ? '#D9363E' : theme.colors.textTertiary}
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
           />
         </Pressable>
       )}
