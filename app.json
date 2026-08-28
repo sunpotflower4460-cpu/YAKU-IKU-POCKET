@@ -6,7 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "yakuiku",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
@@ -17,7 +17,7 @@
       "bundleIdentifier": "com.ueki.yakuiku-pocket",
       "buildNumber": "1",
       "infoPlist": {
-        "NSCameraUsageDescription": "植物をスキャンして図鑑に収録するためにカメラを使用します。",
+        "NSCameraUsageDescription": "植物を撮影し、候補を確認して観察記録を残すためにカメラを使用します。",
         "ITSAppUsesNonExemptEncryption": false
       }
     },
@@ -40,7 +40,7 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "植物をスキャンして図鑑に収録するためにカメラを使用します。"
+          "cameraPermission": "植物を撮影し、候補を確認して観察記録を残すためにカメラを使用します。"
         }
       ]
     ],
