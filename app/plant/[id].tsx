@@ -101,8 +101,16 @@ export default function PlantDetailScreen() {
   const [heroImgError, setHeroImgError] = useState(false);
 
   useEffect(() => {
+    // A store update that exactly matches the text the user just saved is the
+    // save confirmation, not a reason to erase the persistent "保存済み" state.
+    // Only resync when the incoming store value genuinely differs from the
+    // local editor (for example after loading another persisted value).
+    if (savedNote === noteText) return;
     setNoteText(savedNote);
     setNoteSaved(false);
+    // `noteText` is intentionally excluded: edits must not be overwritten
+    // until the persisted source itself changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [savedNote]);
 
   function handleSaveNote() {
@@ -393,22 +401,12 @@ export default function PlantDetailScreen() {
             <RarityStars rarity={plant.rarity} size="lg" />
             <Text style={[styles.rarityLabel, { color: theme.colors.textPrimary }]}>{RARITY_LABEL[plant.rarity]}</Text>
           </View>
-          <Text style={[styles.rarityXpHint, { color: theme.colors.textTertiary }]}>
-            初めて記録すると +{RARITY_XP[plant.rarity]}XP
-          </Text>
+          <Text style={[styles.rarityXpHint, { color: theme.colors.textTertiary }]}>初めて記録すると +{RARITY_XP[plant.rarity]}XP</Text>
         </Section>
 
         {plant.warningNote && (
           <Section icon={plant.danger === 'RED' ? 'shield-outline' : 'warning-outline'} title={plant.danger === 'RED' ? '安全情報' : '注意事項'}>
-            <View
-              style={[
-                styles.warningNote,
-                {
-                  backgroundColor: theme.colors.surfaceSecondary,
-                  borderColor: plant.danger === 'RED' ? theme.colors.statusDanger : theme.colors.statusCaution,
-                },
-              ]}
-            >
+            <View style={[styles.warningNote, { backgroundColor: theme.colors.surfaceSecondary, borderColor: plant.danger === 'RED' ? theme.colors.statusDanger : theme.colors.statusCaution }]}>
               <Text style={[styles.warningNoteText, { color: theme.colors.textPrimary }]}>{plant.warningNote}</Text>
             </View>
           </Section>
@@ -475,11 +473,7 @@ export default function PlantDetailScreen() {
                 {plant.effects.map((effect) => (
                   <Pressable
                     key={effect}
-                    style={({ pressed }) => [
-                      styles.effectTag,
-                      { backgroundColor: theme.colors.surfaceSecondary, borderColor: theme.colors.borderStrong },
-                      pressed && styles.pressed,
-                    ]}
+                    style={({ pressed }) => [styles.effectTag, { backgroundColor: theme.colors.surfaceSecondary, borderColor: theme.colors.borderStrong }, pressed && styles.pressed]}
                     onPress={() => {
                       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                       router.push(`/(tabs)/zukan?filterEffect=${encodeURIComponent(effect)}`);
@@ -492,9 +486,7 @@ export default function PlantDetailScreen() {
                   </Pressable>
                 ))}
               </View>
-              <Text style={[styles.effectsCaveat, { color: theme.colors.textTertiary }]}>
-                伝統的な言い伝え・慣習的な利用の紹介です。医学的な効果を保証するものではありません。
-              </Text>
+              <Text style={[styles.effectsCaveat, { color: theme.colors.textTertiary }]}>伝統的な言い伝え・慣習的な利用の紹介です。医学的な効果を保証するものではありません。</Text>
             </>
           )}
 
@@ -515,9 +507,7 @@ export default function PlantDetailScreen() {
                   accessibilityLabel={`参考資料を開く ${sourceHostLabel(url)}`}
                 >
                   <Ionicons name="open-outline" size={17} color={theme.colors.accentPrimary} />
-                  <Text style={[styles.sourceRefText, { color: theme.colors.textPrimary }]} numberOfLines={2}>
-                    {sourceHostLabel(url)}
-                  </Text>
+                  <Text style={[styles.sourceRefText, { color: theme.colors.textPrimary }]} numberOfLines={2}>{sourceHostLabel(url)}</Text>
                   <Ionicons name="chevron-forward" size={15} color={theme.colors.textTertiary} />
                 </Pressable>
               ))}
@@ -535,9 +525,7 @@ export default function PlantDetailScreen() {
           {!latestScan ? (
             <View style={[styles.emptyCallout, { backgroundColor: theme.colors.surfaceSecondary }]}>
               <Ionicons name="camera-outline" size={18} color={theme.colors.textTertiary} />
-              <Text style={[styles.tierEmptyText, { color: theme.colors.textSecondary, flex: 1 }]}>
-                観察を記録すると、この植物の入手経路に応じた案内を確認できます。
-              </Text>
+              <Text style={[styles.tierEmptyText, { color: theme.colors.textSecondary, flex: 1 }]}>観察を記録すると、この植物の入手経路に応じた案内を確認できます。</Text>
             </View>
           ) : (
             <>
@@ -569,13 +557,9 @@ export default function PlantDetailScreen() {
                     {unlocked ? (
                       <Text style={[styles.useCardSummary, { color: theme.colors.textSecondary }]}>{use.summary}</Text>
                     ) : isCategoryUnlocked(use.category, achievedGate) ? (
-                      <Text style={[styles.tierEmptyText, { color: theme.colors.textTertiary }]}>
-                        選択中の入手経路「{bestOrigin ? ORIGIN_LABEL[bestOrigin] : '未選択'}」では、この用途を表示できません。
-                      </Text>
+                      <Text style={[styles.tierEmptyText, { color: theme.colors.textTertiary }]}>選択中の入手経路「{bestOrigin ? ORIGIN_LABEL[bestOrigin] : '未選択'}」では、この用途を表示できません。</Text>
                     ) : (
-                      <Text style={[styles.tierEmptyText, { color: theme.colors.textTertiary }]}>
-                        「{USE_GATE_LABEL[requiredGateForCategory(use.category)]}」以上の確認レベルで表示されます。
-                      </Text>
+                      <Text style={[styles.tierEmptyText, { color: theme.colors.textTertiary }]}>「{USE_GATE_LABEL[requiredGateForCategory(use.category)]}」以上の確認レベルで表示されます。</Text>
                     )}
                     {unlocked && use.warnings.map((warning) => (
                       <View key={warning} style={styles.useWarningRow}>
@@ -621,11 +605,7 @@ export default function PlantDetailScreen() {
               accessibilityLabel="実践記録"
             />
             <Pressable
-              style={({ pressed }) => [
-                styles.practiceAddBtn,
-                { backgroundColor: practiceCanSave ? theme.colors.accentPrimary : theme.colors.surfaceTertiary },
-                pressed && practiceCanSave && styles.pressed,
-              ]}
+              style={({ pressed }) => [styles.practiceAddBtn, { backgroundColor: practiceCanSave ? theme.colors.accentPrimary : theme.colors.surfaceTertiary }, pressed && practiceCanSave && styles.pressed]}
               onPress={handleSavePracticeRecord}
               disabled={!practiceCanSave}
               accessibilityRole="button"
@@ -674,11 +654,7 @@ export default function PlantDetailScreen() {
               style={({ pressed }) => [
                 styles.noteSaveBtn,
                 {
-                  backgroundColor: noteSaved
-                    ? theme.colors.surfaceSecondary
-                    : noteCanSave
-                      ? theme.colors.accentPrimary
-                      : theme.colors.surfaceTertiary,
+                  backgroundColor: noteSaved ? theme.colors.surfaceSecondary : noteCanSave ? theme.colors.accentPrimary : theme.colors.surfaceTertiary,
                 },
                 pressed && noteCanSave && styles.pressed,
               ]}
@@ -704,11 +680,7 @@ export default function PlantDetailScreen() {
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.relatedList}>
               {relatedPlants.map((related) => {
-                const statusColor = related.danger === 'RED'
-                  ? theme.colors.statusDanger
-                  : related.danger === 'YELLOW'
-                    ? theme.colors.statusCaution
-                    : theme.colors.statusVerified;
+                const statusColor = related.danger === 'RED' ? theme.colors.statusDanger : related.danger === 'YELLOW' ? theme.colors.statusCaution : theme.colors.statusVerified;
                 return (
                   <Pressable
                     key={related.id}
@@ -743,15 +715,7 @@ export default function PlantDetailScreen() {
   );
 }
 
-function Section({
-  icon,
-  title,
-  children,
-}: {
-  icon: React.ComponentProps<typeof Ionicons>['name'];
-  title: string;
-  children: React.ReactNode;
-}) {
+function Section({ icon, title, children }: { icon: React.ComponentProps<typeof Ionicons>['name']; title: string; children: React.ReactNode }) {
   const theme = useTheme();
   return (
     <View style={[styles.section, { backgroundColor: theme.colors.surfacePrimary, borderColor: theme.colors.borderSubtle, shadowColor: theme.colors.shadow }]}>
@@ -764,15 +728,7 @@ function Section({
   );
 }
 
-function InfoRow({
-  icon,
-  label,
-  value,
-}: {
-  icon: React.ComponentProps<typeof Ionicons>['name'];
-  label: string;
-  value: string;
-}) {
+function InfoRow({ icon, label, value }: { icon: React.ComponentProps<typeof Ionicons>['name']; label: string; value: string }) {
   const theme = useTheme();
   return (
     <View style={styles.infoRow} accessible accessibilityLabel={`${label} ${value}`}>
