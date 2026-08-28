@@ -22,7 +22,7 @@ export function DisclaimerBanner({ compact = false }: Props) {
         ]}
         accessible
         accessibilityRole="text"
-        accessibilityLabel="安全ガイド。AIの候補は参考情報です。採取や摂取はアプリだけで判断せず、専門家に確認してください。"
+        accessibilityLabel="安全ガイド。AIの候補は参考情報です。採取や摂取はアプリだけで判断せず、必ず専門家に確認を。"
       >
         <View
           style={[styles.iconWrapCompact, { backgroundColor: theme.colors.surfaceTertiary }]}
@@ -36,7 +36,7 @@ export function DisclaimerBanner({ compact = false }: Props) {
           accessibilityElementsHidden
           importantForAccessibility="no-hide-descendants"
         >
-          AIの候補は参考情報です。採取・摂取はアプリだけで判断せず、専門家に確認してください。
+          AIの候補は参考情報です。採取・摂取はアプリだけで判断せず、必ず専門家に確認を。
         </Text>
       </View>
     );
@@ -81,7 +81,7 @@ export function DisclaimerBanner({ compact = false }: Props) {
 
       <View style={[styles.rule, { backgroundColor: theme.colors.borderSubtle }]} accessibilityElementsHidden />
 
-      <SafetyPoint text="野草を採取・摂取する前に、専門家へ確認する" />
+      <SafetyPoint text="野草を採取・摂取する前に、必ず専門家に確認を" />
       <SafetyPoint text="写真やAIの候補だけで「食べられる」と決めない" />
       <SafetyPoint text="体調や安全に不安がある場合は、利用より確認を優先する" />
     </View>
