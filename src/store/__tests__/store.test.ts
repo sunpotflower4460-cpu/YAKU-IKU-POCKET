@@ -63,6 +63,30 @@ describe('recordObservation (atomic)', () => {
     expect(s.scanHistory).toHaveLength(2);
     expect(s.xp).toBe((RARITY_XP[plant.rarity] ?? 100) + XP_PER_RESCAN);
   });
+
+  it('does not save or award XP twice for the same persisted photo', () => {
+    const plant = PLANTS[0];
+    const { recordObservation } = useGameStore.getState();
+    recordObservation(plant.id, 'file:///documents/observations/same.jpg');
+    recordObservation(plant.id, 'file:///documents/observations/same.jpg');
+
+    const s = useGameStore.getState();
+    expect(s.scanHistory).toHaveLength(1);
+    expect(s.discoveredPlantIds).toEqual([plant.id]);
+    expect(s.xp).toBe(RARITY_XP[plant.rarity] ?? 100);
+  });
+
+  it('fails closed for an unknown plant id', () => {
+    const { recordObservation, discoverPlant, addScan } = useGameStore.getState();
+    recordObservation('__missing__', 'file://ghost.jpg');
+    discoverPlant('__missing__');
+    addScan('__missing__', 'file://ghost-2.jpg');
+
+    const s = useGameStore.getState();
+    expect(s.discoveredPlantIds).toEqual([]);
+    expect(s.scanHistory).toEqual([]);
+    expect(s.xp).toBe(0);
+  });
 });
 
 describe('Fieldbook settings (PR13)', () => {
@@ -102,6 +126,13 @@ describe('unidentified observations (v3 §6.1 "そのまま記録する", PR17)'
     expect(s.unidentifiedObservations[0].note).toBe('よく分からない葉っぱ');
     expect(s.xp).toBe(0);
     expect(s.discoveredPlantIds).toEqual([]);
+  });
+
+  it('does not duplicate the same saved photo', () => {
+    const { recordUnidentifiedObservation } = useGameStore.getState();
+    recordUnidentifiedObservation('file://mystery.jpg');
+    recordUnidentifiedObservation('file://mystery.jpg');
+    expect(useGameStore.getState().unidentifiedObservations).toHaveLength(1);
   });
 
   it('deleteUnidentifiedObservation removes only the targeted entry', () => {
@@ -164,6 +195,11 @@ describe('暮らし: setScanOrigin / practiceRecords (PR22)', () => {
 
     deletePracticeRecord(s1.practiceRecords[0].id);
     expect(useGameStore.getState().practiceRecords).toHaveLength(0);
+  });
+
+  it('does not create journal records for an unknown plant id', () => {
+    useGameStore.getState().addPracticeRecord('__missing__', 'general', 'ghost');
+    expect(useGameStore.getState().practiceRecords).toEqual([]);
   });
 });
 
