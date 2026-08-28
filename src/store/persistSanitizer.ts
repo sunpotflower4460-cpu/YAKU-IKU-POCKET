@@ -5,10 +5,10 @@ import { SourceOrigin } from '../types/plantUse';
 import { TraitCheck, TraitCheckState } from '../types/traitCheck';
 
 const KNOWN_PLANT_IDS = new Set(PLANTS.map((plant) => plant.id));
-const KNOWN_CHALLENGE_IDS = new Set([
-  ...CHALLENGES.map((challenge) => challenge.id),
-  ...Object.values(SEASONAL_CHALLENGES).flat().map((challenge) => challenge.id),
-]);
+const DAILY_CHALLENGE_IDS = new Set(CHALLENGES.map((challenge) => challenge.id));
+const SEASONAL_CHALLENGE_IDS = new Set(
+  Object.values(SEASONAL_CHALLENGES).flat().map((challenge) => challenge.id)
+);
 const DANGER_LEVELS = new Set(['GREEN', 'YELLOW', 'RED']);
 const PLANT_CATEGORIES = new Set(['野草', 'スパイス・ハーブ']);
 const THEME_MODES = new Set(['system', 'light', 'dark']);
@@ -22,6 +22,9 @@ const SOURCE_ORIGINS = new Set<SourceOrigin>([
   'store_bought_herb',
   'unknown',
 ]);
+const LOCAL_DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
+const LOCAL_MONTH_RE = /^\d{4}-\d{2}$/;
+const MAX_RAW_RECORDS_TO_INSPECT = 1000;
 
 export interface PersistedUserData {
   discoveredPlantIds: string[];
@@ -57,15 +60,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function finiteNonNegativeNumber(value: unknown): number | undefined {
-  return typeof value === 'number' && Number.isFinite(value) && value >= 0
+function nonNegativeSafeInteger(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
     ? value
     : undefined;
-}
-
-function finiteNonNegativeInteger(value: unknown): number | undefined {
-  const number = finiteNonNegativeNumber(value);
-  return number !== undefined ? Math.floor(number) : undefined;
 }
 
 function uniqueStrings(
@@ -74,20 +72,31 @@ function uniqueStrings(
   max = 1000
 ): string[] | undefined {
   if (!Array.isArray(value)) return undefined;
-  return [...new Set(
-    value
-      .filter((item): item is string => typeof item === 'string' && predicate(item))
-      .slice(0, max)
-  )];
+  const result: string[] = [];
+  const seen = new Set<string>();
+  for (const item of value.slice(0, MAX_RAW_RECORDS_TO_INSPECT)) {
+    if (typeof item !== 'string' || !predicate(item) || seen.has(item)) continue;
+    seen.add(item);
+    result.push(item);
+    if (result.length >= max) break;
+  }
+  return result;
 }
 
 function sanitizeTraitChecks(value: unknown): TraitCheck[] | undefined {
   if (!Array.isArray(value)) return undefined;
   const checks: TraitCheck[] = [];
+  const seenTraitIds = new Set<string>();
   for (const raw of value.slice(0, 50)) {
-    if (!isRecord(raw) || typeof raw.traitId !== 'string' || !TRAIT_STATES.has(raw.state as TraitCheckState)) {
+    if (
+      !isRecord(raw) ||
+      typeof raw.traitId !== 'string' ||
+      seenTraitIds.has(raw.traitId) ||
+      !TRAIT_STATES.has(raw.state as TraitCheckState)
+    ) {
       continue;
     }
+    seenTraitIds.add(raw.traitId);
     checks.push({
       traitId: raw.traitId,
       state: raw.state as TraitCheckState,
@@ -101,9 +110,11 @@ function sanitizeScanRecord(value: unknown): ScanRecord | null {
   if (
     !isRecord(value) ||
     typeof value.id !== 'string' ||
+    value.id.length === 0 ||
     typeof value.plantId !== 'string' ||
     !KNOWN_PLANT_IDS.has(value.plantId) ||
-    typeof value.scannedAt !== 'string'
+    typeof value.scannedAt !== 'string' ||
+    value.scannedAt.length === 0
   ) {
     return null;
   }
@@ -113,8 +124,8 @@ function sanitizeScanRecord(value: unknown): ScanRecord | null {
     plantId: value.plantId,
     scannedAt: value.scannedAt,
   };
-  if (typeof value.imageUri === 'string') record.imageUri = value.imageUri;
-  if (typeof value.revisitAt === 'string') record.revisitAt = value.revisitAt;
+  if (typeof value.imageUri === 'string' && value.imageUri.length > 0) record.imageUri = value.imageUri;
+  if (typeof value.revisitAt === 'string' && LOCAL_DAY_RE.test(value.revisitAt)) record.revisitAt = value.revisitAt;
   if (typeof value.sourceOrigin === 'string' && SOURCE_ORIGINS.has(value.sourceOrigin as SourceOrigin)) {
     record.sourceOrigin = value.sourceOrigin as SourceOrigin;
   }
@@ -125,24 +136,64 @@ function sanitizeScanRecord(value: unknown): ScanRecord | null {
 
 function sanitizeScanHistory(value: unknown): ScanRecord[] | undefined {
   if (!Array.isArray(value)) return undefined;
-  return value
-    .map(sanitizeScanRecord)
-    .filter((record): record is ScanRecord => record !== null)
-    .slice(0, 100);
+  const result: ScanRecord[] = [];
+  const seenIds = new Set<string>();
+  const seenImageUris = new Set<string>();
+
+  // Persisted history is newest-first. On duplicate IDs or image URIs, keep the
+  // newest valid entry so future updates/deletes have one unambiguous owner.
+  for (const raw of value.slice(0, MAX_RAW_RECORDS_TO_INSPECT)) {
+    const record = sanitizeScanRecord(raw);
+    if (!record || seenIds.has(record.id)) continue;
+    if (record.imageUri && seenImageUris.has(record.imageUri)) continue;
+    seenIds.add(record.id);
+    if (record.imageUri) seenImageUris.add(record.imageUri);
+    result.push(record);
+    if (result.length >= 100) break;
+  }
+  return result;
 }
 
-function sanitizeUnidentified(value: unknown): UnidentifiedObservation[] | undefined {
+function sanitizeUnidentified(
+  value: unknown,
+  reservedImageUris: ReadonlySet<string>
+): UnidentifiedObservation[] | undefined {
   if (!Array.isArray(value)) return undefined;
   const result: UnidentifiedObservation[] = [];
-  for (const raw of value.slice(0, 100)) {
-    if (!isRecord(raw) || typeof raw.id !== 'string' || typeof raw.observedAt !== 'string') continue;
+  const seenIds = new Set<string>();
+  const seenImageUris = new Set<string>();
+
+  for (const raw of value.slice(0, MAX_RAW_RECORDS_TO_INSPECT)) {
+    if (
+      !isRecord(raw) ||
+      typeof raw.id !== 'string' ||
+      raw.id.length === 0 ||
+      seenIds.has(raw.id) ||
+      typeof raw.observedAt !== 'string' ||
+      raw.observedAt.length === 0
+    ) {
+      continue;
+    }
+    const imageUri = typeof raw.imageUri === 'string' && raw.imageUri.length > 0
+      ? raw.imageUri
+      : undefined;
+    // If an old/corrupt save assigned one photo to both an identified and an
+    // unidentified entry, prefer the identified history owner. This restores
+    // the same one-photo/one-observation invariant enforced by new writes.
+    if (imageUri && (reservedImageUris.has(imageUri) || seenImageUris.has(imageUri))) continue;
+
+    seenIds.add(raw.id);
+    if (imageUri) seenImageUris.add(imageUri);
     result.push({
       id: raw.id,
       observedAt: raw.observedAt,
-      ...(typeof raw.imageUri === 'string' ? { imageUri: raw.imageUri } : {}),
+      ...(imageUri ? { imageUri } : {}),
       ...(typeof raw.note === 'string' ? { note: raw.note } : {}),
-      ...(typeof raw.revisitAt === 'string' ? { revisitAt: raw.revisitAt } : {}),
+      ...(typeof raw.revisitAt === 'string' && LOCAL_DAY_RE.test(raw.revisitAt)
+        ? { revisitAt: raw.revisitAt }
+        : {}),
     });
+    if (result.length >= 100) break;
   }
   return result;
 }
@@ -150,18 +201,23 @@ function sanitizeUnidentified(value: unknown): UnidentifiedObservation[] | undef
 function sanitizePracticeRecords(value: unknown): PracticeRecord[] | undefined {
   if (!Array.isArray(value)) return undefined;
   const result: PracticeRecord[] = [];
-  for (const raw of value.slice(0, 200)) {
+  const seenIds = new Set<string>();
+  for (const raw of value.slice(0, MAX_RAW_RECORDS_TO_INSPECT)) {
     if (
       !isRecord(raw) ||
       typeof raw.id !== 'string' ||
+      raw.id.length === 0 ||
+      seenIds.has(raw.id) ||
       typeof raw.plantId !== 'string' ||
       !KNOWN_PLANT_IDS.has(raw.plantId) ||
       typeof raw.category !== 'string' ||
       typeof raw.createdAt !== 'string' ||
+      raw.createdAt.length === 0 ||
       typeof raw.note !== 'string'
     ) {
       continue;
     }
+    seenIds.add(raw.id);
     result.push({
       id: raw.id,
       plantId: raw.plantId,
@@ -169,6 +225,7 @@ function sanitizePracticeRecords(value: unknown): PracticeRecord[] | undefined {
       createdAt: raw.createdAt,
       note: raw.note,
     });
+    if (result.length >= 200) break;
   }
   return result;
 }
@@ -187,33 +244,53 @@ function sanitizePlantNotes(value: unknown): Record<string, string> | undefined 
  * while fields have the wrong runtime shape (manual edits, partial writes,
  * old/broken app versions). Returning only validated fields lets Zustand merge
  * them over today's safe defaults instead of hydrating crash-prone values.
+ *
+ * Where the data is internally inconsistent but recoverable, repair it rather
+ * than throwing user history away (for example, a valid scan whose plant ID is
+ * missing from the discovered collection after a partial write).
  */
 export function sanitizePersistedGameState(value: unknown): SanitizedPersistedUserData {
   if (!isRecord(value)) return {};
   const out: SanitizedPersistedUserData = {};
 
-  const discoveredPlantIds = uniqueStrings(value.discoveredPlantIds, (id) => KNOWN_PLANT_IDS.has(id));
-  if (discoveredPlantIds) out.discoveredPlantIds = discoveredPlantIds;
   const scanHistory = sanitizeScanHistory(value.scanHistory);
   if (scanHistory) out.scanHistory = scanHistory;
+
+  const rawDiscovered = uniqueStrings(value.discoveredPlantIds, (id) => KNOWN_PLANT_IDS.has(id)) ?? [];
+  const repairedDiscovered = [...new Set([
+    ...rawDiscovered,
+    ...(scanHistory?.map((record) => record.plantId) ?? []),
+  ])];
+  // If either persisted collection/history field was present, write the repaired
+  // collection (possibly empty) so malformed ghost IDs do not survive merge.
+  if (Array.isArray(value.discoveredPlantIds) || Array.isArray(value.scanHistory)) {
+    out.discoveredPlantIds = repairedDiscovered;
+  }
+
   if (typeof value.playerName === 'string') out.playerName = value.playerName;
 
-  const xp = finiteNonNegativeInteger(value.xp);
+  const xp = nonNegativeSafeInteger(value.xp);
   if (xp !== undefined) out.xp = xp;
-  const streak = finiteNonNegativeInteger(value.streak);
+  const streak = nonNegativeSafeInteger(value.streak);
   if (streak !== undefined) out.streak = streak;
-  const todayScanCount = finiteNonNegativeInteger(value.todayScanCount);
+  const todayScanCount = nonNegativeSafeInteger(value.todayScanCount);
   if (todayScanCount !== undefined) out.todayScanCount = todayScanCount;
-  const todayNewCount = finiteNonNegativeInteger(value.todayNewCount);
+  const todayNewCount = nonNegativeSafeInteger(value.todayNewCount);
   if (todayNewCount !== undefined) out.todayNewCount = todayNewCount;
-  const todayMaxRarity = finiteNonNegativeInteger(value.todayMaxRarity);
-  if (todayMaxRarity !== undefined) out.todayMaxRarity = todayMaxRarity;
-  const lastCelebrated = finiteNonNegativeInteger(value.lastCelebrated);
-  if (lastCelebrated !== undefined) out.lastCelebrated = lastCelebrated;
+  const todayMaxRarity = nonNegativeSafeInteger(value.todayMaxRarity);
+  if (todayMaxRarity !== undefined && todayMaxRarity <= 5) out.todayMaxRarity = todayMaxRarity;
+  const lastCelebrated = nonNegativeSafeInteger(value.lastCelebrated);
+  if (lastCelebrated !== undefined) out.lastCelebrated = Math.min(lastCelebrated, PLANTS.length);
 
-  if (typeof value.lastLoginDate === 'string') out.lastLoginDate = value.lastLoginDate;
-  if (typeof value.todayDate === 'string') out.todayDate = value.todayDate;
-  if (typeof value.seasonalQuestMonth === 'string') out.seasonalQuestMonth = value.seasonalQuestMonth;
+  if (typeof value.lastLoginDate === 'string' && LOCAL_DAY_RE.test(value.lastLoginDate)) {
+    out.lastLoginDate = value.lastLoginDate;
+  }
+  if (typeof value.todayDate === 'string' && LOCAL_DAY_RE.test(value.todayDate)) {
+    out.todayDate = value.todayDate;
+  }
+  if (typeof value.seasonalQuestMonth === 'string' && LOCAL_MONTH_RE.test(value.seasonalQuestMonth)) {
+    out.seasonalQuestMonth = value.seasonalQuestMonth;
+  }
 
   const todayDangers = uniqueStrings(value.todayDangers, (item) => DANGER_LEVELS.has(item), 3);
   if (todayDangers) out.todayDangers = todayDangers;
@@ -222,13 +299,13 @@ export function sanitizePersistedGameState(value: unknown): SanitizedPersistedUs
 
   const claimedChallengeIds = uniqueStrings(
     value.claimedChallengeIds,
-    (id) => KNOWN_CHALLENGE_IDS.has(id),
+    (id) => DAILY_CHALLENGE_IDS.has(id),
     CHALLENGES.length
   );
   if (claimedChallengeIds) out.claimedChallengeIds = claimedChallengeIds;
   const claimedSeasonalQuestIds = uniqueStrings(
     value.claimedSeasonalQuestIds,
-    (id) => KNOWN_CHALLENGE_IDS.has(id),
+    (id) => SEASONAL_CHALLENGE_IDS.has(id),
     20
   );
   if (claimedSeasonalQuestIds) out.claimedSeasonalQuestIds = claimedSeasonalQuestIds;
@@ -251,8 +328,15 @@ export function sanitizePersistedGameState(value: unknown): SanitizedPersistedUs
     out.themeOverride = value.themeOverride as PersistedUserData['themeOverride'];
   }
 
-  const unidentifiedObservations = sanitizeUnidentified(value.unidentifiedObservations);
+  const identifiedImageUris = new Set(
+    scanHistory?.flatMap((record) => record.imageUri ? [record.imageUri] : []) ?? []
+  );
+  const unidentifiedObservations = sanitizeUnidentified(
+    value.unidentifiedObservations,
+    identifiedImageUris
+  );
   if (unidentifiedObservations) out.unidentifiedObservations = unidentifiedObservations;
+
   const practiceRecords = sanitizePracticeRecords(value.practiceRecords);
   if (practiceRecords) out.practiceRecords = practiceRecords;
 
