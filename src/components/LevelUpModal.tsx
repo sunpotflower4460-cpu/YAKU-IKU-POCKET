@@ -51,7 +51,10 @@ export function LevelUpModal({ visible, level, title, onClose }: Props) {
   const reduceMotion = useReduceMotion();
   const { height, fontScale } = useWindowDimensions();
   const compactLayout = height < 650 || fontScale >= 1.3;
-  const cardMaxHeight = Math.max(360, height - 32);
+  // The overlay itself reserves 16pt above and below. Never give the card a
+  // max-height taller than that remaining viewport, including short web
+  // windows and device split/landscape configurations.
+  const cardMaxHeight = Math.max(1, height - 32);
   const cardScale = useRef(new Animated.Value(0.97)).current;
   const cardOpacity = useRef(new Animated.Value(0)).current;
   const levelScale = useRef(new Animated.Value(0.9)).current;
