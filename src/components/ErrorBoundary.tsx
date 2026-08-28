@@ -1,5 +1,13 @@
 import React from 'react';
-import { ScrollView, StyleSheet, Text, View, Pressable } from 'react-native';
+import {
+  AccessibilityInfo,
+  findNodeHandle,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -25,6 +33,8 @@ interface State {
  */
 class ErrorBoundaryImpl extends React.Component<BoundaryProps, State> {
   state: State = { hasError: false };
+  private titleRef = React.createRef<React.ElementRef<typeof Text>>();
+  private focusTimer: ReturnType<typeof setTimeout> | null = null;
 
   static getDerivedStateFromError(): State {
     return { hasError: true };
@@ -35,7 +45,24 @@ class ErrorBoundaryImpl extends React.Component<BoundaryProps, State> {
     console.error('[ErrorBoundary] Unhandled render error:', error);
   }
 
+  componentDidUpdate(_prevProps: BoundaryProps, prevState: State) {
+    if (!prevState.hasError && this.state.hasError) {
+      this.focusTimer = setTimeout(() => {
+        const node = findNodeHandle(this.titleRef.current);
+        if (node) AccessibilityInfo.setAccessibilityFocus(node);
+      }, 80);
+    }
+  }
+
+  componentWillUnmount() {
+    if (this.focusTimer) clearTimeout(this.focusTimer);
+  }
+
   handleReset = () => {
+    if (this.focusTimer) {
+      clearTimeout(this.focusTimer);
+      this.focusTimer = null;
+    }
     this.setState({ hasError: false });
   };
 
@@ -73,9 +100,11 @@ class ErrorBoundaryImpl extends React.Component<BoundaryProps, State> {
             </View>
 
             <Text
+              ref={this.titleRef}
               style={[styles.title, { color: theme.colors.textPrimary }]}
               accessibilityRole="header"
               accessibilityLiveRegion="assertive"
+              accessibilityLabel="うまく表示できませんでした"
             >
               うまく表示できませんでした
             </Text>
@@ -92,6 +121,7 @@ class ErrorBoundaryImpl extends React.Component<BoundaryProps, State> {
               onPress={this.handleReset}
               accessibilityRole="button"
               accessibilityLabel="もう一度試す"
+              accessibilityHint="エラー画面を閉じて、アプリの表示をやり直します"
             >
               <Ionicons name="refresh" size={19} color={theme.colors.textOnAccent} />
               <Text style={[styles.btnText, { color: theme.colors.textOnAccent }]}>もう一度試す</Text>
