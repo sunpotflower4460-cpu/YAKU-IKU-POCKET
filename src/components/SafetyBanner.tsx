@@ -13,6 +13,10 @@ interface Props {
  * pairs iconography, explicit labels and text. Each warning remains a separate
  * accessibility stop so screen-reader users can inspect the same detail that
  * sighted users see instead of hearing one oversized summary element.
+ *
+ * This component is intentionally not a live region: callers such as the scan
+ * result already announce the result context. Static safety detail should be
+ * explored in document order instead of interrupting with duplicate alerts.
  */
 export function SafetyBanner({ warnings }: Props) {
   const theme = useTheme();
@@ -33,8 +37,7 @@ export function SafetyBanner({ warnings }: Props) {
       <View
         style={styles.headerRow}
         accessible
-        accessibilityRole="text"
-        accessibilityLiveRegion="polite"
+        accessibilityRole="header"
         accessibilityLabel={`類似種に関する安全情報。有毒または危険な類似種が${warnings.length}件あります。`}
       >
         <View
@@ -124,7 +127,7 @@ export function SafetyBanner({ warnings }: Props) {
       <View
         style={[styles.footer, { borderTopColor: theme.colors.borderSubtle }]}
         accessible
-        accessibilityRole="alert"
+        accessibilityRole="text"
         accessibilityLabel="この観察結果を採取や摂取の判断に使用しないでください。"
       >
         <Ionicons
@@ -167,7 +170,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  headerTextWrap: { flex: 1 },
+  headerTextWrap: { flex: 1, minWidth: 0 },
   eyebrow: {
     fontSize: 11,
     lineHeight: 15,
@@ -209,18 +212,21 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   severityChip: {
+    maxWidth: '100%',
     borderWidth: StyleSheet.hairlineWidth,
     borderRadius: 999,
     paddingHorizontal: 7,
-    paddingVertical: 3,
+    paddingVertical: 4,
   },
   severityChipStacked: {
     marginLeft: 22,
   },
   severityText: {
+    flexShrink: 1,
     fontSize: 11,
     lineHeight: 15,
     fontWeight: '800',
+    textAlign: 'center',
   },
   itemNote: {
     fontSize: 13,
@@ -237,6 +243,7 @@ const styles = StyleSheet.create({
   },
   footerText: {
     flex: 1,
+    minWidth: 0,
     fontSize: 13,
     lineHeight: 19,
     fontWeight: '700',
