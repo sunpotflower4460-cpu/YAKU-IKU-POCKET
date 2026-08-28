@@ -58,6 +58,7 @@ export function PlantCard({
 
   const isLegendary = plant.rarity === 5;
   const isSuperRare = plant.rarity === 4;
+  const elevatedRareCard = discovered && (isLegendary || isSuperRare);
   const showPhoto = discovered && !!imageUri && !imgError;
 
   function handlePressIn() {
@@ -87,7 +88,7 @@ export function PlantCard({
 
   const accessibilityLabel = discovered
     ? `${plant.name}。珍しさの目安5段階中${plant.rarity}。${DANGER_LABEL[plant.danger]}${isFavorite ? '。お気に入り' : ''}${hasNote ? '。観察メモあり' : ''}`
-    : `未発見の植物。${familyHint ? `ヒントは${familyHint}。` : ''}珍しさの目安5段階中${plant.rarity}`;
+    : `未記録の植物。${familyHint ? `ヒントは${familyHint}。` : ''}珍しさの目安5段階中${plant.rarity}`;
 
   return (
     <Animated.View
@@ -96,11 +97,9 @@ export function PlantCard({
         {
           borderRadius: theme.radius.card,
           shadowColor: theme.colors.shadow,
-          shadowOpacity: theme.mode === 'dark'
-            ? 0.22
-            : (isLegendary || isSuperRare) && discovered
-              ? 0.16
-              : 0.08,
+          shadowOpacity: elevatedRareCard ? (theme.mode === 'dark' ? 0.18 : 0.12) : 0,
+          shadowRadius: elevatedRareCard ? 6 : 0,
+          elevation: elevatedRareCard ? 2 : 0,
           transform: [{ scale: scaleAnim }],
         },
       ]}
@@ -121,11 +120,11 @@ export function PlantCard({
         onPressOut={handlePressOut}
         accessibilityRole="button"
         accessibilityLabel={accessibilityLabel}
-        accessibilityHint={discovered ? '詳細を見る' : '発見のヒントを見る'}
+        accessibilityHint={discovered ? '詳細を見る' : '観察のヒントを見る'}
       >
         <View style={[styles.rarityStrip, { backgroundColor: rarityColor }]} />
 
-        {(isLegendary || isSuperRare) && discovered && (
+        {elevatedRareCard && (
           <View style={[styles.rarityGlow, { backgroundColor: `${rarityColor}12` }]} />
         )}
 
@@ -156,7 +155,7 @@ export function PlantCard({
             largeText && styles.nameLargeText,
             { color: discovered ? theme.colors.textPrimary : theme.colors.textTertiary },
           ]}
-          numberOfLines={largeText ? 3 : 2}
+          numberOfLines={largeText ? undefined : 2}
         >
           {discovered ? plant.name : '？？？'}
         </Text>
@@ -231,8 +230,6 @@ const styles = StyleSheet.create({
     flex: 1,
     margin: 5,
     shadowOffset: { width: 0, height: 3 },
-    shadowRadius: 8,
-    elevation: 4,
   },
   card: {
     borderRadius: 17,
