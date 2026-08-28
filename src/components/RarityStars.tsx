@@ -28,7 +28,7 @@ export function RarityStars({ rarity, size = 'md' }: Props) {
       style={styles.container}
       accessible
       accessibilityRole="text"
-      accessibilityLabel={`見つけやすさの目安、5段階中${safeRarity}`}
+      accessibilityLabel={`珍しさの目安、5段階中${safeRarity}`}
     >
       <View
         style={styles.stars}
