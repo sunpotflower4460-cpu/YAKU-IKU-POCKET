@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LookalikeRisk } from '../data/safety';
 import { useTheme } from '../theme/ThemeProvider';
@@ -16,6 +16,8 @@ interface Props {
  */
 export function SafetyBanner({ warnings }: Props) {
   const theme = useTheme();
+  const { width, fontScale } = useWindowDimensions();
+  const stackSeverity = fontScale >= 1.3 || width < 350;
   if (warnings.length === 0) return null;
 
   return (
@@ -27,12 +29,12 @@ export function SafetyBanner({ warnings }: Props) {
           borderColor: `${theme.colors.statusDanger}66`,
         },
       ]}
-      accessibilityLiveRegion="polite"
     >
       <View
         style={styles.headerRow}
         accessible
         accessibilityRole="text"
+        accessibilityLiveRegion="polite"
         accessibilityLabel={`類似種に関する安全情報。有毒または危険な類似種が${warnings.length}件あります。`}
       >
         <View
@@ -69,7 +71,11 @@ export function SafetyBanner({ warnings }: Props) {
               accessibilityRole="text"
               accessibilityLabel={`${warning.name}。${severityLabel}。${warning.note}`}
             >
-              <View style={styles.itemTitleRow} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+              <View
+                style={[styles.itemTitleRow, stackSeverity && styles.itemTitleRowStacked]}
+                accessibilityElementsHidden
+                importantForAccessibility="no-hide-descendants"
+              >
                 <Ionicons
                   name={warning.severity === 'high_risk' ? 'alert-circle' : 'information-circle-outline'}
                   size={16}
@@ -81,6 +87,7 @@ export function SafetyBanner({ warnings }: Props) {
                 <View
                   style={[
                     styles.severityChip,
+                    stackSeverity && styles.severityChipStacked,
                     {
                       borderColor: warning.severity === 'high_risk'
                         ? `${theme.colors.statusDanger}55`
@@ -190,8 +197,13 @@ const styles = StyleSheet.create({
     gap: 6,
     marginBottom: 5,
   },
+  itemTitleRowStacked: {
+    flexWrap: 'wrap',
+    alignItems: 'flex-start',
+  },
   itemName: {
     flex: 1,
+    minWidth: 120,
     fontSize: 14,
     lineHeight: 20,
     fontWeight: '800',
@@ -201,6 +213,9 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     paddingHorizontal: 7,
     paddingVertical: 3,
+  },
+  severityChipStacked: {
+    marginLeft: 22,
   },
   severityText: {
     fontSize: 11,
