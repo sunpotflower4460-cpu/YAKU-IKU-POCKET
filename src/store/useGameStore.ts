@@ -6,6 +6,7 @@ import { TraitCheck } from '../types/traitCheck';
 import { SourceOrigin } from '../types/plantUse';
 import { generateId } from '../utils/id';
 import { PLANTS } from '../data/plants';
+import { CHALLENGES, SEASONAL_CHALLENGES } from '../data/challenges';
 import { todayLocalStr, localDateStrOffset } from '../utils/date';
 import { clearObservationPhotos, deleteObservationPhoto } from '../utils/observationPhotoStorage';
 
@@ -21,12 +22,20 @@ export const RARITY_XP: Record<number, number> = {
 export const XP_PER_RESCAN = 15; // re-scanning a known plant
 export const XP_PER_LEVEL = 500;
 
+const PLANT_BY_ID = new Map(PLANTS.map((plant) => [plant.id, plant]));
+const DAILY_CHALLENGE_XP = new Map(CHALLENGES.map((challenge) => [challenge.id, challenge.xpReward]));
+const SEASONAL_CHALLENGE_XP = new Map(
+  Object.values(SEASONAL_CHALLENGES)
+    .flat()
+    .map((challenge) => [challenge.id, challenge.xpReward])
+);
+
 function todayStr(): string {
   return todayLocalStr(); // YYYY-MM-DD (device-local, JST-aware)
 }
 
 function findKnownPlant(plantId: string) {
-  return PLANTS.find((p) => p.id === plantId);
+  return PLANT_BY_ID.get(plantId);
 }
 
 function cleanupDroppedPhotos(records: Array<{ imageUri?: string }>): void {
@@ -422,10 +431,13 @@ export const useGameStore = create<GameState>()(
       },
 
       // ── Claim a completed daily quest ─────────────────────────────────────
-      claimChallenge: (challengeId: string, xpReward: number) => {
+      claimChallenge: (challengeId: string) => {
+        const xpReward = DAILY_CHALLENGE_XP.get(challengeId);
+        // The reward amount is data-owned. Never trust an amount supplied by a
+        // caller; stale/buggy UI must not be able to mint arbitrary XP.
+        if (xpReward === undefined) return;
+
         set((state) => {
-          // Guard against double-claiming the same reward (the UI hides the
-          // button, but the store must be the source of truth).
           if (state.claimedChallengeIds.includes(challengeId)) return state;
           return {
             claimedChallengeIds: [...state.claimedChallengeIds, challengeId],
@@ -435,7 +447,10 @@ export const useGameStore = create<GameState>()(
       },
 
       // ── Claim a completed seasonal quest ──────────────────────────────────
-      claimSeasonalChallenge: (challengeId: string, xpReward: number) => {
+      claimSeasonalChallenge: (challengeId: string) => {
+        const xpReward = SEASONAL_CHALLENGE_XP.get(challengeId);
+        if (xpReward === undefined) return;
+
         set((state) => {
           if (state.claimedSeasonalQuestIds.includes(challengeId)) return state;
           return {
