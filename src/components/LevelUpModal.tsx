@@ -1,6 +1,8 @@
 import React, { useEffect, useRef } from 'react';
 import {
+  AccessibilityInfo,
   Animated,
+  findNodeHandle,
   Modal,
   Pressable,
   ScrollView,
@@ -38,6 +40,7 @@ export function LevelUpModal({ visible, level, title, onClose }: Props) {
   const cardScale = useRef(new Animated.Value(0.97)).current;
   const cardOpacity = useRef(new Animated.Value(0)).current;
   const levelScale = useRef(new Animated.Value(0.9)).current;
+  const contextHeadingRef = useRef<React.ElementRef<typeof Text>>(null);
   const motifAnims = useRef(
     Array.from({ length: MOTIF_COUNT }, () => ({
       opacity: new Animated.Value(0),
@@ -111,6 +114,16 @@ export function LevelUpModal({ visible, level, title, onClose }: Props) {
       levelAnimation.stop();
     };
   }, [visible, reduceMotion, cardScale, cardOpacity, levelScale, motifAnims, theme.motion.stateChange]);
+
+  useEffect(() => {
+    if (!visible) return;
+    const delay = reduceMotion ? 60 : theme.motion.stateChange + 100;
+    const timer = setTimeout(() => {
+      const node = findNodeHandle(contextHeadingRef.current);
+      if (node) AccessibilityInfo.setAccessibilityFocus(node);
+    }, delay);
+    return () => clearTimeout(timer);
+  }, [visible, reduceMotion, theme.motion.stateChange]);
 
   function handleContinue() {
     Haptics.selectionAsync();
@@ -190,11 +203,17 @@ export function LevelUpModal({ visible, level, title, onClose }: Props) {
                 ))}
               </View>
 
-              <Text style={styles.eyebrow}>成長の記録</Text>
+              <Text
+                ref={contextHeadingRef}
+                style={styles.eyebrow}
+                accessibilityRole="header"
+                accessibilityLabel={`成長の記録。レベル${level}。${title}`}
+              >
+                成長の記録
+              </Text>
 
               <Animated.Text
                 style={[styles.levelNum, { transform: [{ scale: levelScale }] }]}
-                accessibilityRole="header"
                 accessibilityLabel={`レベル${level}`}
               >
                 Level {level}
