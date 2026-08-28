@@ -85,6 +85,7 @@ export default function ScanScreen() {
   const [photos, setPhotos] = useState<CapturedPhoto[]>([]);
   const [capturing, setCapturing] = useState(false);
   const [savingObservation, setSavingObservation] = useState(false);
+  const [savingUnidentified, setSavingUnidentified] = useState(false);
   const [result, setResult] = useState<{
     plant: Plant;
     confidence: number;
@@ -95,6 +96,7 @@ export default function ScanScreen() {
   const [modalVisible, setModalVisible] = useState(false);
 
   const photoUri = photos[0]?.uri ?? null;
+  const cameraControlsLocked = scanState === 'scanning' || savingUnidentified;
 
   // Animations
   const reduceMotion = useReduceMotion();
@@ -148,7 +150,7 @@ export default function ScanScreen() {
   // Idle pulse — restrained enough to signal the primary action without
   // making the camera screen feel gamey or visually restless.
   useEffect(() => {
-    if (scanState === 'idle' && !reduceMotion) {
+    if (scanState === 'idle' && !reduceMotion && !savingUnidentified) {
       const pulseLoop = Animated.loop(
         Animated.sequence([
           Animated.timing(pulseAnim, { toValue: 1.035, duration: 1000, useNativeDriver: true }),
@@ -160,24 +162,26 @@ export default function ScanScreen() {
     } else {
       pulseAnim.setValue(1);
     }
-  }, [scanState, reduceMotion, pulseAnim]);
+  }, [scanState, reduceMotion, savingUnidentified, pulseAnim]);
 
   const spin = spinAnim.interpolate({
     inputRange: [0, 1],
     outputRange: ['0deg', '360deg'],
   });
   const processingLabel = !demoMode ? REAL_STAGE_LABEL[processingStage] : DEMO_STAGE_LABEL[processingStage];
-  const cameraStatusLabel = scanState === 'idle'
-    ? (photos.length === 0
-        ? '植物にカメラをかざしてください'
-        : `${photos.length}枚 撮影済み。続けて撮影するか候補を確認してください`)
-    : scanState === 'scanning'
-      ? processingLabel
-      : '候補を確認できます';
+  const cameraStatusLabel = savingUnidentified
+    ? '未特定の観察記録を保存中...'
+    : scanState === 'idle'
+      ? (photos.length === 0
+          ? '植物にカメラをかざしてください'
+          : `${photos.length}枚 撮影済み。続けて撮影するか候補を確認してください`)
+      : scanState === 'scanning'
+        ? processingLabel
+        : '候補を確認できます';
 
   // ── Capture one photo and add it to the set (§7.4 複数写真) ──
   async function handleCapturePhoto() {
-    if (capturing || photos.length >= MAX_CAPTURE_PHOTOS || !cameraRef.current) return;
+    if (capturing || savingUnidentified || photos.length >= MAX_CAPTURE_PHOTOS || !cameraRef.current) return;
     setCapturing(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     try {
@@ -203,11 +207,13 @@ export default function ScanScreen() {
   }
 
   function handleRemovePhoto(id: string) {
+    if (savingUnidentified) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setPhotos((prev) => prev.filter((p) => p.id !== id));
   }
 
   function handleCycleOrgan(id: string) {
+    if (savingUnidentified) return;
     Haptics.selectionAsync();
     setPhotos((prev) =>
       prev.map((p) => {
@@ -220,7 +226,7 @@ export default function ScanScreen() {
 
   // ── Identify from the captured photo set ──
   async function handleIdentify() {
-    if (scanState !== 'idle' || photos.length === 0) return;
+    if (scanState !== 'idle' || photos.length === 0 || savingUnidentified) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setScanState('scanning');
 
@@ -352,15 +358,28 @@ export default function ScanScreen() {
   // Save the photos as a Fieldbook entry with no plant match — "判定不能でも
   // 記録価値を失わせない" (v3 §5 Flow A / §6.1「そのまま記録する」).
   async function handleSaveUnidentified() {
-    const durableUri = photoUri ? await persistObservationPhoto(photoUri) : undefined;
-    recordUnidentifiedObservation(durableUri);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    setScanState('idle');
-    setPhotos([]);
+    if (savingUnidentified) return;
+    setSavingUnidentified(true);
+    try {
+      const durableUri = photoUri ? await persistObservationPhoto(photoUri) : undefined;
+      recordUnidentifiedObservation(durableUri);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setScanState('idle');
+      setPhotos([]);
+    } catch (err) {
+      console.error('[UnidentifiedObservationSave] Error:', err);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert(
+        '観察記録を保存できませんでした',
+        '写真はそのまま残しています。通信や端末の空き容量を確認して、もう一度お試しください。'
+      );
+    } finally {
+      setSavingUnidentified(false);
+    }
   }
 
   function handleScanAgain() {
-    if (savingObservation) return;
+    if (savingObservation || savingUnidentified) return;
     setModalVisible(false);
     setResult(null);
     setScanState('idle');
@@ -445,7 +464,7 @@ export default function ScanScreen() {
           flash={flash}
         />
 
-        {scanState === 'scanning' && (
+        {(scanState === 'scanning' || savingUnidentified) && (
           <View style={[StyleSheet.absoluteFill, styles.scanningDim]} />
         )}
 
@@ -453,14 +472,14 @@ export default function ScanScreen() {
           <Pressable
             style={({ pressed }) => [
               styles.controlBtn,
-              scanState === 'scanning' && styles.cameraControlDisabled,
-              pressed && scanState !== 'scanning' && styles.cameraControlPressed,
+              cameraControlsLocked && styles.cameraControlDisabled,
+              pressed && !cameraControlsLocked && styles.cameraControlPressed,
             ]}
             onPress={() => setFlash((f) => (f === 'off' ? 'on' : 'off'))}
-            disabled={scanState === 'scanning'}
+            disabled={cameraControlsLocked}
             accessibilityRole="button"
             accessibilityLabel={flash === 'off' ? 'フラッシュをオンにする' : 'フラッシュをオフにする'}
-            accessibilityState={{ selected: flash === 'on', disabled: scanState === 'scanning' }}
+            accessibilityState={{ selected: flash === 'on', disabled: cameraControlsLocked }}
           >
             <Ionicons
               name={flash === 'off' ? 'flash-off' : 'flash'}
@@ -489,14 +508,14 @@ export default function ScanScreen() {
           <Pressable
             style={({ pressed }) => [
               styles.controlBtn,
-              scanState === 'scanning' && styles.cameraControlDisabled,
-              pressed && scanState !== 'scanning' && styles.cameraControlPressed,
+              cameraControlsLocked && styles.cameraControlDisabled,
+              pressed && !cameraControlsLocked && styles.cameraControlPressed,
             ]}
             onPress={() => setFacing((f) => (f === 'back' ? 'front' : 'back'))}
-            disabled={scanState === 'scanning'}
+            disabled={cameraControlsLocked}
             accessibilityRole="button"
             accessibilityLabel="カメラを切り替える"
-            accessibilityState={{ disabled: scanState === 'scanning' }}
+            accessibilityState={{ disabled: cameraControlsLocked }}
           >
             <Ionicons name="camera-reverse-outline" size={22} color="#FFFFFF" />
           </Pressable>
@@ -527,28 +546,34 @@ export default function ScanScreen() {
             accessibilityLiveRegion="polite"
           >
             <View style={styles.statusTextRow} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-              <Ionicons
-                name={
-                  scanState === 'idle' ? 'leaf-outline' :
-                  scanState === 'scanning' ? (!demoMode ? 'hardware-chip-outline' : 'flask-outline') :
-                  'checkmark-circle-outline'
-                }
-                size={14}
-                color="#FFFFFF"
-              />
+              {savingUnidentified ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Ionicons
+                  name={
+                    scanState === 'idle' ? 'leaf-outline' :
+                    scanState === 'scanning' ? (!demoMode ? 'hardware-chip-outline' : 'flask-outline') :
+                    'checkmark-circle-outline'
+                  }
+                  size={14}
+                  color="#FFFFFF"
+                />
+              )}
               <Text style={styles.statusText}>{cameraStatusLabel}</Text>
             </View>
           </View>
         </View>
 
         <View style={styles.hintBar}>
-          {scanState !== 'scanning' && (
+          {scanState !== 'scanning' && !savingUnidentified && (
             <Ionicons name="shield-outline" size={14} color="rgba(255,255,255,0.82)" />
           )}
           <Text style={styles.hintText}>
-            {scanState === 'scanning'
-              ? '処理が終わるまで、そのままお待ちください'
-              : 'AIの候補は参考情報です。採取・摂取はアプリだけで判断しないでください'}
+            {savingUnidentified
+              ? '保存が終わるまで写真をそのまま残しています'
+              : scanState === 'scanning'
+                ? '処理が終わるまで、そのままお待ちください'
+                : 'AIの候補は参考情報です。採取・摂取はアプリだけで判断しないでください'}
           </Text>
         </View>
       </View>
@@ -574,21 +599,30 @@ export default function ScanScreen() {
                       style={({ pressed }) => [
                         styles.photoOrganChip,
                         { backgroundColor: theme.colors.accentPrimary },
-                        pressed && styles.buttonPressed,
+                        savingUnidentified && styles.controlDisabled,
+                        pressed && !savingUnidentified && styles.buttonPressed,
                       ]}
                       hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
                       onPress={() => handleCycleOrgan(p.id)}
+                      disabled={savingUnidentified}
                       accessibilityRole="button"
                       accessibilityLabel={`部位: ${ORGAN_LABEL[p.organ]}。タップで変更`}
+                      accessibilityState={{ disabled: savingUnidentified }}
                     >
                       <Text style={[styles.photoOrganChipText, { color: theme.colors.textOnAccent }]}>{ORGAN_LABEL[p.organ]}</Text>
                     </Pressable>
                     <Pressable
-                      style={({ pressed }) => [styles.photoDeleteBtn, pressed && styles.cameraControlPressed]}
+                      style={({ pressed }) => [
+                        styles.photoDeleteBtn,
+                        savingUnidentified && styles.controlDisabled,
+                        pressed && !savingUnidentified && styles.cameraControlPressed,
+                      ]}
                       hitSlop={8}
                       onPress={() => handleRemovePhoto(p.id)}
+                      disabled={savingUnidentified}
                       accessibilityRole="button"
                       accessibilityLabel="この写真を削除"
+                      accessibilityState={{ disabled: savingUnidentified }}
                     >
                       <Ionicons name="close" size={15} color="#FFFFFF" />
                     </Pressable>
@@ -603,16 +637,16 @@ export default function ScanScreen() {
                   style={[
                     styles.scanBtn,
                     { backgroundColor: theme.colors.accentPrimary, shadowColor: theme.colors.shadow },
-                    (capturing || photos.length >= MAX_CAPTURE_PHOTOS) && styles.scanBtnDisabled,
+                    (capturing || savingUnidentified || photos.length >= MAX_CAPTURE_PHOTOS) && styles.scanBtnDisabled,
                   ]}
                   onPress={handleCapturePhoto}
-                  disabled={capturing || photos.length >= MAX_CAPTURE_PHOTOS}
-                  accessibilityLabel={capturing ? '写真を撮影中' : '写真を撮影'}
+                  disabled={capturing || savingUnidentified || photos.length >= MAX_CAPTURE_PHOTOS}
+                  accessibilityLabel={savingUnidentified ? '未特定の観察記録を保存中' : capturing ? '写真を撮影中' : '写真を撮影'}
                   accessibilityRole="button"
-                  accessibilityState={{ disabled: capturing || photos.length >= MAX_CAPTURE_PHOTOS, busy: capturing }}
+                  accessibilityState={{ disabled: capturing || savingUnidentified || photos.length >= MAX_CAPTURE_PHOTOS, busy: capturing || savingUnidentified }}
                 >
                   <View style={styles.scanBtnInner}>
-                    {capturing ? (
+                    {capturing || savingUnidentified ? (
                       <ActivityIndicator color={theme.colors.textOnAccent} />
                     ) : (
                       <Ionicons name="camera-outline" size={32} color={theme.colors.textOnAccent} />
@@ -627,23 +661,28 @@ export default function ScanScreen() {
                     styles.identifyBtn,
                     compactControls && styles.identifyBtnStacked,
                     { backgroundColor: theme.colors.accentPrimary },
-                    pressed && styles.buttonPressed,
+                    savingUnidentified && styles.controlDisabled,
+                    pressed && !savingUnidentified && styles.buttonPressed,
                   ]}
                   onPress={handleIdentify}
-                  accessibilityLabel={`${photos.length}枚の写真から植物候補を確認する`}
+                  disabled={savingUnidentified}
+                  accessibilityLabel={savingUnidentified ? '未特定の観察記録を保存中' : `${photos.length}枚の写真から植物候補を確認する`}
                   accessibilityRole="button"
+                  accessibilityState={{ disabled: savingUnidentified, busy: savingUnidentified }}
                 >
                   <Ionicons name="search-outline" size={21} color={theme.colors.textOnAccent} />
                   <Text style={[styles.identifyBtnText, { color: theme.colors.textOnAccent }]} numberOfLines={2}>候補を確認（{photos.length}枚）</Text>
                 </Pressable>
               )}
             </View>
-            <Text style={[styles.scanLabel, { color: theme.colors.textSecondary }]} accessibilityLiveRegion={capturing ? 'polite' : 'none'}>
-              {capturing
-                ? '写真を保存中…'
-                : photos.length >= MAX_CAPTURE_PHOTOS
-                  ? `最大${MAX_CAPTURE_PHOTOS}枚まで撮影できます`
-                  : `全体・葉・花など、角度を変えて撮影できます（${photos.length}枚）`}
+            <Text style={[styles.scanLabel, { color: theme.colors.textSecondary }]} accessibilityLiveRegion={capturing || savingUnidentified ? 'polite' : 'none'}>
+              {savingUnidentified
+                ? '未特定の観察記録を保存中…'
+                : capturing
+                  ? '写真を保存中…'
+                  : photos.length >= MAX_CAPTURE_PHOTOS
+                    ? `最大${MAX_CAPTURE_PHOTOS}枚まで撮影できます`
+                    : `全体・葉・花など、角度を変えて撮影できます（${photos.length}枚）`}
             </Text>
           </>
         )}
@@ -673,11 +712,14 @@ export default function ScanScreen() {
               style={({ pressed }) => [
                 styles.scanBtn,
                 { backgroundColor: theme.colors.accentPrimary, shadowColor: theme.colors.shadow },
-                pressed && styles.buttonPressed,
+                savingUnidentified && styles.controlDisabled,
+                pressed && !savingUnidentified && styles.buttonPressed,
               ]}
               onPress={() => setModalVisible(true)}
+              disabled={savingUnidentified}
               accessibilityRole="button"
               accessibilityLabel="植物候補を表示"
+              accessibilityState={{ disabled: savingUnidentified }}
             >
               <View style={styles.scanBtnInner}>
                 <Ionicons name="leaf-outline" size={32} color={theme.colors.textOnAccent} />
@@ -1032,6 +1074,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     overflow: 'hidden',
   },
+  controlDisabled: { opacity: 0.58 },
   buttonPressed: {
     opacity: 0.82,
     transform: [{ scale: 0.99 }],
