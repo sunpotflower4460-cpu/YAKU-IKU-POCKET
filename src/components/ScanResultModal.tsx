@@ -88,8 +88,9 @@ export function ScanResultModal({
   onScanAgain,
 }: Props) {
   const theme = useTheme();
-  const { width } = useWindowDimensions();
-  const stackActions = width < 380;
+  const { width, fontScale } = useWindowDimensions();
+  const stackActions = width < 380 || fontScale >= 1.3;
+  const stackTraitActions = width < 390 || fontScale >= 1.25;
   const showCompare = !!candidates && candidates.length > 1;
   const candidateSafety = candidates ? assessCandidateSafety(candidates) : null;
   const reduceMotion = useReduceMotion();
@@ -251,6 +252,7 @@ export function ScanResultModal({
               />
             )}
             <LinearGradient colors={gradientColors} style={StyleSheet.absoluteFill} />
+            <View style={styles.headerContrastScrim} pointerEvents="none" />
 
             {isRare && (
               <Animated.View
@@ -301,7 +303,7 @@ export function ScanResultModal({
 
             {imageUri && (
               <View style={styles.photoLabel}>
-                <Ionicons name="camera-outline" size={12} color="rgba(255,255,255,0.88)" />
+                <Ionicons name="camera-outline" size={12} color="#FFFFFF" />
                 <Text style={styles.photoLabelText}>撮影した写真を背景に表示中</Text>
               </View>
             )}
@@ -411,7 +413,10 @@ export function ScanResultModal({
                     >
                       <Text style={[styles.traitItemLabel, { color: theme.colors.textPrimary }]}>{item.label}</Text>
                       <Text style={[styles.traitItemHint, { color: theme.colors.textSecondary }]}>{item.referenceHint}</Text>
-                      <View style={styles.traitItemBtnRow}>
+                      <View
+                        style={[styles.traitItemBtnRow, stackTraitActions && styles.traitItemBtnRowStacked]}
+                        accessibilityRole="radiogroup"
+                      >
                         {(
                           [
                             { key: 'match', label: '一致' },
@@ -420,14 +425,17 @@ export function ScanResultModal({
                           ] as { key: TraitCheckState; label: string }[]
                         ).map((option) => {
                           const selected = state === option.key;
+                          const optionColor = traitStateColor(option.key);
                           return (
                             <Pressable
                               key={option.key}
                               style={({ pressed }) => [
                                 styles.traitItemBtn,
+                                stackTraitActions && styles.traitItemBtnStacked,
                                 {
-                                  backgroundColor: selected ? traitStateColor(option.key) : theme.colors.surfaceSecondary,
-                                  borderColor: selected ? traitStateColor(option.key) : theme.colors.borderSubtle,
+                                  backgroundColor: selected ? theme.colors.surfacePrimary : theme.colors.surfaceSecondary,
+                                  borderColor: selected ? optionColor : theme.colors.borderSubtle,
+                                  borderWidth: selected ? 2 : StyleSheet.hairlineWidth,
                                 },
                                 pressed && styles.cardPressed,
                               ]}
@@ -435,11 +443,12 @@ export function ScanResultModal({
                                 Haptics.selectionAsync();
                                 setTraitStates((prev) => ({ ...prev, [item.id]: option.key }));
                               }}
-                              accessibilityRole="button"
+                              accessibilityRole="radio"
                               accessibilityState={{ selected }}
                               accessibilityLabel={`${item.label}: ${option.label}`}
                             >
-                              <Text style={[styles.traitItemBtnText, { color: selected ? '#FFFFFF' : theme.colors.textSecondary }]}>{option.label}</Text>
+                              {selected && <Ionicons name="checkmark" size={15} color={optionColor} />}
+                              <Text style={[styles.traitItemBtnText, { color: selected ? optionColor : theme.colors.textSecondary }]}>{option.label}</Text>
                             </Pressable>
                           );
                         })}
@@ -470,6 +479,7 @@ export function ScanResultModal({
                   styles.alertBox,
                   { backgroundColor: `${theme.colors.statusCaution}10`, borderColor: `${theme.colors.statusCaution}55` },
                 ]}
+                accessibilityRole="alert"
               >
                 <Ionicons name="warning-outline" size={18} color={theme.colors.statusCaution} />
                 <Text style={[styles.alertText, { color: theme.colors.statusCaution }]}>扱いに注意が必要な植物候補です。利用前に必ず安全情報を確認してください。</Text>
@@ -661,23 +671,24 @@ const styles = StyleSheet.create({
     elevation: 18,
   },
   gradientHeader: { paddingTop: 18, paddingBottom: 18, paddingHorizontal: 20, alignItems: 'center', position: 'relative', overflow: 'hidden' },
+  headerContrastScrim: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.40)' },
   sparkleOverlay: { position: 'absolute', inset: 0, backgroundColor: '#FFFFFF' },
-  closeBtn: { position: 'absolute', top: 10, right: 10, width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(0,0,0,0.24)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.22)', justifyContent: 'center', alignItems: 'center', zIndex: 2 },
-  glassPressed: { backgroundColor: 'rgba(0,0,0,0.38)' },
-  newLabel: { minHeight: 30, flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(255,255,255,0.16)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.25)', borderRadius: 999, paddingHorizontal: 12, marginBottom: 9 },
+  closeBtn: { position: 'absolute', top: 10, right: 10, width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(0,0,0,0.32)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.28)', justifyContent: 'center', alignItems: 'center', zIndex: 2 },
+  glassPressed: { backgroundColor: 'rgba(0,0,0,0.46)' },
+  newLabel: { minHeight: 30, flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(0,0,0,0.24)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.30)', borderRadius: 999, paddingHorizontal: 12, marginBottom: 9 },
   newLabelText: { color: '#FFFFFF', fontWeight: '800', fontSize: 12, lineHeight: 16 },
-  emojiContainer: { width: 88, height: 88, borderRadius: 44, backgroundColor: 'rgba(255,255,255,0.12)', justifyContent: 'center', alignItems: 'center', marginBottom: 9, borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.26)' },
-  dangerEmojiContainer: { backgroundColor: 'rgba(120,0,0,0.20)', borderColor: 'rgba(255,255,255,0.32)' },
+  emojiContainer: { width: 88, height: 88, borderRadius: 44, backgroundColor: 'rgba(255,255,255,0.12)', justifyContent: 'center', alignItems: 'center', marginBottom: 9, borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.30)' },
+  dangerEmojiContainer: { backgroundColor: 'rgba(120,0,0,0.28)', borderColor: 'rgba(255,255,255,0.36)' },
   emoji: { fontSize: 50 },
-  plantName: { fontSize: 24, lineHeight: 31, fontWeight: '900', color: '#FFFFFF', textAlign: 'center', textShadowColor: 'rgba(0,0,0,0.22)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 },
-  plantNameEn: { fontSize: 14, lineHeight: 19, color: 'rgba(255,255,255,0.86)', fontWeight: '600', marginTop: 1 },
-  plantNameLatin: { fontSize: 11, lineHeight: 15, color: 'rgba(255,255,255,0.66)', fontStyle: 'italic', marginTop: 1, marginBottom: 9 },
+  plantName: { fontSize: 24, lineHeight: 31, fontWeight: '900', color: '#FFFFFF', textAlign: 'center', textShadowColor: 'rgba(0,0,0,0.28)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 },
+  plantNameEn: { fontSize: 14, lineHeight: 19, color: 'rgba(255,255,255,0.90)', fontWeight: '600', marginTop: 1 },
+  plantNameLatin: { fontSize: 11, lineHeight: 15, color: 'rgba(255,255,255,0.88)', fontStyle: 'italic', marginTop: 1, marginBottom: 9 },
   headerBadgeRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: 'center' },
-  rarityLabelBadge: { backgroundColor: 'rgba(0,0,0,0.20)', borderRadius: 999, paddingHorizontal: 9, paddingVertical: 4 },
+  rarityLabelBadge: { backgroundColor: 'rgba(0,0,0,0.34)', borderRadius: 999, paddingHorizontal: 9, paddingVertical: 4 },
   rarityLabelText: { color: '#FFFFFF', fontSize: 11, lineHeight: 14, fontWeight: '800' },
-  headerStarsWrap: { backgroundColor: 'rgba(255,255,255,0.84)', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 4 },
-  photoLabel: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 8, backgroundColor: 'rgba(0,0,0,0.30)', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
-  photoLabelText: { color: 'rgba(255,255,255,0.88)', fontSize: 10, lineHeight: 14, fontWeight: '600' },
+  headerStarsWrap: { backgroundColor: 'rgba(255,255,255,0.92)', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 4 },
+  photoLabel: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 8, backgroundColor: 'rgba(0,0,0,0.44)', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
+  photoLabelText: { color: '#FFFFFF', fontSize: 10, lineHeight: 14, fontWeight: '600' },
   content: { padding: 16, alignItems: 'center' },
   badgeRow: { flexDirection: 'row', gap: 10, alignItems: 'center', marginBottom: 14, justifyContent: 'center' },
   compareContainer: { width: '100%', marginBottom: 16 },
@@ -689,7 +700,7 @@ const styles = StyleSheet.create({
   candidateCard: { minHeight: 72, flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 15, borderWidth: 1.5, padding: 10 },
   candidateEmojiWrap: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
   candidateEmoji: { fontSize: 25 },
-  candidateNameRow: { flexDirection: 'row', alignItems: 'baseline', gap: 6 },
+  candidateNameRow: { flexDirection: 'row', alignItems: 'baseline', gap: 6, flexWrap: 'wrap' },
   candidateRank: { fontSize: 10, lineHeight: 14, fontWeight: '800' },
   candidateName: { fontSize: 14, lineHeight: 19, fontWeight: '800' },
   candidateLatin: { fontSize: 11, lineHeight: 15, fontStyle: 'italic', marginTop: 1 },
@@ -706,7 +717,9 @@ const styles = StyleSheet.create({
   traitItemLabel: { fontSize: 13, lineHeight: 18, fontWeight: '800' },
   traitItemHint: { fontSize: 12, lineHeight: 18, marginTop: 3, marginBottom: 10 },
   traitItemBtnRow: { flexDirection: 'row', gap: 7 },
-  traitItemBtn: { flex: 1, minHeight: 44, borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
+  traitItemBtnRowStacked: { flexDirection: 'column' },
+  traitItemBtn: { flex: 1, minHeight: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8, flexDirection: 'row', gap: 5 },
+  traitItemBtnStacked: { flex: 0, width: '100%' },
   traitItemBtnText: { fontSize: 12, lineHeight: 16, fontWeight: '700', textAlign: 'center' },
   alertBox: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, borderWidth: StyleSheet.hairlineWidth, borderRadius: 14, padding: 11, marginBottom: 12, width: '100%' },
   alertText: { flex: 1, fontWeight: '700', fontSize: 13, lineHeight: 19 },
