@@ -86,8 +86,8 @@ export function PlantCard({
   }
 
   const accessibilityLabel = discovered
-    ? `${plant.name}。見つけやすさの目安5段階中${plant.rarity}。${DANGER_LABEL[plant.danger]}${isFavorite ? '。お気に入り' : ''}${hasNote ? '。観察メモあり' : ''}`
-    : `未発見の植物。${familyHint ? `ヒントは${familyHint}。` : ''}見つけやすさの目安5段階中${plant.rarity}`;
+    ? `${plant.name}。珍しさの目安5段階中${plant.rarity}。${DANGER_LABEL[plant.danger]}${isFavorite ? '。お気に入り' : ''}${hasNote ? '。観察メモあり' : ''}`
+    : `未発見の植物。${familyHint ? `ヒントは${familyHint}。` : ''}珍しさの目安5段階中${plant.rarity}`;
 
   return (
     <Animated.View
