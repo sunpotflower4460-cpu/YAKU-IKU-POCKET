@@ -8,12 +8,14 @@ import { ThemeProvider, useTheme } from '../src/theme/ThemeProvider';
 
 function ThemedStack() {
   const theme = useTheme();
+  const detailHeader = theme.mode === 'dark' ? '#10281A' : '#174F2A';
+
   return (
     <>
-      {/* All primary routes start on a dark/colored top surface (custom tab
-          heroes/camera or the plant-detail accent header), so light status-bar
-          content gives reliable contrast in both theme modes. ErrorBoundary
-          overrides this when it presents its light recovery screen. */}
+      {/* Primary routes begin on dark, nature-toned top surfaces. Keeping the
+          navigation chrome dark in both theme modes makes status-bar and back
+          controls consistently legible instead of turning the dark-theme
+          detail header into a bright accent strip. */}
       <StatusBar style="light" />
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
@@ -21,8 +23,8 @@ function ThemedStack() {
           name="plant/[id]"
           options={{
             title: '植物詳細',
-            headerStyle: { backgroundColor: theme.colors.accentPrimary },
-            headerTintColor: theme.colors.textOnAccent,
+            headerStyle: { backgroundColor: detailHeader },
+            headerTintColor: '#FFFFFF',
             headerTitleStyle: { fontWeight: '700' },
             headerShadowVisible: false,
             presentation: 'card',
