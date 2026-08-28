@@ -10,14 +10,22 @@ interface Props extends PressableProps {
 }
 
 /** Level A primary CTA. One per screen — do not use for secondary actions. */
-export function PrimaryButton({ label, loading, fullWidth, disabled, style, ...rest }: Props) {
+export function PrimaryButton({
+  label,
+  loading,
+  fullWidth,
+  disabled,
+  accessibilityState,
+  style,
+  ...rest
+}: Props) {
   const theme = useTheme();
   const isDisabled = disabled || loading;
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={loading ? `${label}、処理中` : label}
-      accessibilityState={{ disabled: isDisabled, busy: !!loading }}
+      accessibilityState={{ ...accessibilityState, disabled: !!isDisabled, busy: !!loading }}
       disabled={isDisabled}
       style={(state) => [
         styles.base,
