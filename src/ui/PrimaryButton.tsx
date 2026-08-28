@@ -26,6 +26,7 @@ export function PrimaryButton({
       accessibilityRole="button"
       accessibilityLabel={loading ? `${label}、処理中` : label}
       accessibilityState={{ ...accessibilityState, disabled: !!isDisabled, busy: !!loading }}
+      accessibilityLiveRegion={loading ? 'polite' : undefined}
       disabled={isDisabled}
       style={(state) => [
         styles.base,
@@ -33,6 +34,7 @@ export function PrimaryButton({
           minHeight: theme.minTapTarget + 8,
           borderRadius: theme.radius.pill,
           paddingHorizontal: theme.space[6],
+          paddingVertical: theme.space[2],
           backgroundColor: state.pressed ? theme.colors.accentPrimaryPressed : theme.colors.accentPrimary,
           opacity: isDisabled && !loading ? 0.5 : 1,
           alignSelf: fullWidth ? 'stretch' : 'flex-start',
@@ -42,7 +44,12 @@ export function PrimaryButton({
       {...rest}
     >
       {loading && <ActivityIndicator size="small" color={theme.colors.textOnAccent} />}
-      <DynamicText variant="headline" weight="secondary" color={theme.colors.textOnAccent}>
+      <DynamicText
+        variant="headline"
+        weight="secondary"
+        color={theme.colors.textOnAccent}
+        style={styles.label}
+      >
         {label}
       </DynamicText>
     </Pressable>
@@ -55,5 +62,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
+    maxWidth: '100%',
+  },
+  label: {
+    flexShrink: 1,
+    textAlign: 'center',
   },
 });
