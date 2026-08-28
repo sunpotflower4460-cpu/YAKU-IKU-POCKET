@@ -837,8 +837,9 @@ function FilterChip({
       style={({ pressed }) => [
         styles.chip,
         {
-          backgroundColor: active ? activeColor : theme.colors.surfaceSecondary,
+          backgroundColor: active ? theme.colors.surfacePrimary : theme.colors.surfaceSecondary,
           borderColor: active ? activeColor : theme.colors.borderSubtle,
+          borderWidth: active ? 2 : StyleSheet.hairlineWidth,
         },
         pressed && styles.rowPressed,
       ]}
@@ -850,7 +851,10 @@ function FilterChip({
       accessibilityState={{ selected: active }}
       accessibilityLabel={`${label}${active ? '、選択中' : ''}`}
     >
-      <Text style={[styles.chipText, { color: active ? '#FFFFFF' : theme.colors.textSecondary }]}>{label}</Text>
+      {active && (
+        <Ionicons name="checkmark" size={14} color={theme.colors.textPrimary} accessibilityElementsHidden />
+      )}
+      <Text style={[styles.chipText, { color: active ? theme.colors.textPrimary : theme.colors.textSecondary }]}>{label}</Text>
     </Pressable>
   );
 }
@@ -910,7 +914,7 @@ const styles = StyleSheet.create({
   filterRow: { gap: 5 },
   filterLabel: { fontSize: 12, lineHeight: 17, fontWeight: '700' },
   filterChips: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
-  chip: { minHeight: 44, paddingHorizontal: 12, borderRadius: 999, borderWidth: StyleSheet.hairlineWidth, justifyContent: 'center' },
+  chip: { minHeight: 44, paddingHorizontal: 12, borderRadius: 999, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5 },
   chipText: { fontSize: 12, lineHeight: 17, fontWeight: '700' },
 
   countRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 9, paddingBottom: 5, gap: 8 },
