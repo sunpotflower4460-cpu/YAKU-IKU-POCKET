@@ -19,9 +19,13 @@ jest.mock('expo-file-system', () => ({
 }));
 
 describe('persistObservationPhoto', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
+  beforeEach(async () => {
     (Platform as unknown as { OS: string }).OS = 'ios';
+    mockDeleteAsync.mockResolvedValue(undefined);
+    // Reset the module's in-memory dedupe/directory state between tests too,
+    // not only Jest's mock call history.
+    await clearObservationPhotos();
+    jest.clearAllMocks();
   });
 
   it('copies the cache photo into the documents dir and returns the new URI', async () => {
@@ -47,6 +51,27 @@ describe('persistObservationPhoto', () => {
       'file:///mock-documents/observations/',
       { intermediates: true }
     );
+  });
+
+  it('serializes first-use directory creation for different concurrent photos', async () => {
+    mockGetInfoAsync.mockResolvedValue({ exists: false });
+    let resolveMakeDir!: () => void;
+    mockMakeDirectoryAsync.mockImplementation(
+      () => new Promise<void>((resolve) => { resolveMakeDir = resolve; })
+    );
+    mockCopyAsync.mockResolvedValue(undefined);
+
+    const first = persistObservationPhoto('file:///cache/parallel-a.jpg');
+    const second = persistObservationPhoto('file:///cache/parallel-b.jpg');
+
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(mockGetInfoAsync).toHaveBeenCalledTimes(1);
+    expect(mockMakeDirectoryAsync).toHaveBeenCalledTimes(1);
+
+    resolveMakeDir();
+    await Promise.all([first, second]);
+    expect(mockCopyAsync).toHaveBeenCalledTimes(2);
   });
 
   it('deduplicates concurrent copies of the same camera URI', async () => {
