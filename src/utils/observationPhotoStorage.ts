@@ -16,10 +16,13 @@ const OBSERVATIONS_DIR = FileSystem.documentDirectory
 
 // A save button can be tapped twice while the first filesystem copy is still
 // pending. Reuse the same in-flight copy for the same camera URI so both calls
-// resolve to one durable URI instead of creating two files. The store also
-// treats one durable photo as one observation, giving us defence in depth
-// against accidental double-save / double-XP races.
+// resolve to one durable URI instead of creating two files. A second tap can
+// also already be queued when the first copy finishes, so keep a short-lived
+// cache of completed copies as well. The store treats one durable photo as one
+// observation, giving us defence in depth against double-save / double-XP.
 const inFlightCopies = new Map<string, Promise<string>>();
+const recentCopies = new Map<string, { uri: string; expiresAt: number }>();
+const RECENT_COPY_TTL_MS = 10_000;
 
 const SAFE_IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'heic', 'heif', 'webp']);
 
@@ -55,10 +58,17 @@ async function copyToDurableStorage(cacheUri: string): Promise<string> {
  * Copy a captured photo into persistent storage and return the durable URI.
  * Returns the original URI unchanged on web or on any copy failure — a
  * missing durable copy should never block saving the observation itself.
- * Concurrent calls for the same source URI share one copy operation.
+ * Concurrent and immediately-repeated calls for the same source URI share the
+ * same result so a queued second tap cannot create another durable file.
  */
 export async function persistObservationPhoto(cacheUri: string): Promise<string> {
   if (Platform.OS === 'web' || !OBSERVATIONS_DIR) return cacheUri;
+
+  const recent = recentCopies.get(cacheUri);
+  if (recent) {
+    if (recent.expiresAt > Date.now()) return recent.uri;
+    recentCopies.delete(cacheUri);
+  }
 
   const existing = inFlightCopies.get(cacheUri);
   if (existing) return existing;
@@ -66,7 +76,9 @@ export async function persistObservationPhoto(cacheUri: string): Promise<string>
   const copyPromise = copyToDurableStorage(cacheUri);
   inFlightCopies.set(cacheUri, copyPromise);
   try {
-    return await copyPromise;
+    const uri = await copyPromise;
+    recentCopies.set(cacheUri, { uri, expiresAt: Date.now() + RECENT_COPY_TTL_MS });
+    return uri;
   } finally {
     if (inFlightCopies.get(cacheUri) === copyPromise) {
       inFlightCopies.delete(cacheUri);
@@ -100,6 +112,7 @@ export async function deleteObservationPhoto(uri?: string): Promise<void> {
 /** Remove every durable observation photo created by this app. */
 export async function clearObservationPhotos(): Promise<void> {
   inFlightCopies.clear();
+  recentCopies.clear();
   if (
     Platform.OS === 'web' ||
     !OBSERVATIONS_DIR ||
