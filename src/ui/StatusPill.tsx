@@ -33,27 +33,37 @@ export function StatusPill({ kind, label }: Props) {
     danger: theme.colors.statusDanger,
   };
   const color = colorMap[kind];
+  // Keep semantic colour in the icon/border, while the label uses the normal
+  // text token in light mode so every 12pt status remains above WCAG AA.
+  const labelColor = theme.mode === 'dark' ? color : theme.colors.textPrimary;
+
   return (
     <View
       style={[styles.base, { backgroundColor: color + '22', borderColor: color, borderRadius: theme.radius.pill }]}
+      accessible
+      accessibilityRole="text"
       accessibilityLabel={label}
     >
-      <Ionicons name={ICON[kind]} size={12} color={color} />
-      <DynamicText variant="caption1" weight="secondary" color={color}>
-        {label}
-      </DynamicText>
+      <View style={styles.inner} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+        <Ionicons name={ICON[kind]} size={12} color={color} />
+        <DynamicText variant="caption1" weight="secondary" color={labelColor}>
+          {label}
+        </DynamicText>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   base: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
     borderWidth: 1,
     paddingHorizontal: 8,
     paddingVertical: 3,
     alignSelf: 'flex-start',
+  },
+  inner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
 });
