@@ -21,18 +21,26 @@ function findButtonByText(root: TestRenderer.ReactTestInstance, label: string): 
     .find((node) => allText(node).some((t) => t.includes(label)))!;
 }
 
-// ScanResultModal starts continuous entry animations (scale/shimmer/sparkle)
-// on mount; unmount after each test so their timers don't fire once the test
-// (and its Jest environment) has already finished.
+function renderModal(element: React.ReactElement) {
+  act(() => {
+    renderer = TestRenderer.create(element);
+  });
+  return renderer!;
+}
+
+// ScanResultModal starts entry animations/state synchronization on mount;
+// unmount inside act so no state/timer work leaks beyond a test boundary.
 let renderer: TestRenderer.ReactTestRenderer | null = null;
 afterEach(() => {
-  renderer?.unmount();
+  if (renderer) {
+    act(() => renderer?.unmount());
+  }
   renderer = null;
 });
 
 describe('ScanResultModal — candidate compare (§7.5)', () => {
   it('shows the single-result view (no compare header) when only one candidate exists', () => {
-    renderer = TestRenderer.create(
+    renderModal(
       <ScanResultModal
         visible
         plant={PLANTS[0]}
@@ -46,13 +54,13 @@ describe('ScanResultModal — candidate compare (§7.5)', () => {
         onScanAgain={() => {}}
       />
     );
-    const texts = allText(renderer.root);
-    expect(texts.some((t) => t.includes('候補を') && t.includes('件に絞りました'))).toBe(false);
+    const texts = allText(renderer!.root);
+    expect(texts.some((t) => t.includes('候補が') && t.includes('件あります'))).toBe(false);
   });
 
   it('shows the compare header and every candidate name when multiple candidates exist', () => {
     const [a, b] = PLANTS;
-    renderer = TestRenderer.create(
+    renderModal(
       <ScanResultModal
         visible
         plant={a}
@@ -66,16 +74,16 @@ describe('ScanResultModal — candidate compare (§7.5)', () => {
         onScanAgain={() => {}}
       />
     );
-    const texts = allText(renderer.root);
-    expect(texts.some((t) => t.includes('候補を2件に絞りました'))).toBe(true);
+    const texts = allText(renderer!.root);
+    expect(texts.some((t) => t.includes('候補が2件あります'))).toBe(true);
     expect(texts.some((t) => t.includes(a.name))).toBe(true);
     expect(texts.some((t) => t.includes(b.name))).toBe(true);
   });
 
   it('shows the cross-candidate safety block when a dangerous plant is among the candidates', () => {
     const trikabuto = getPlantById('p024')!; // トリカブト, RED
-    const tanpopo = getPlantById('p001')!; // safe
-    renderer = TestRenderer.create(
+    const tanpopo = getPlantById('p001')!; // non-RED comparison candidate
+    renderModal(
       <ScanResultModal
         visible
         plant={tanpopo}
@@ -89,14 +97,15 @@ describe('ScanResultModal — candidate compare (§7.5)', () => {
         onScanAgain={() => {}}
       />
     );
-    const texts = allText(renderer.root);
-    expect(texts.some((t) => t.includes('危険植物、または有毒な類似種が含まれます'))).toBe(true);
+    const texts = allText(renderer!.root);
+    expect(texts.some((t) => t.includes('候補の中に危険植物、または有毒な類似種があります'))).toBe(true);
+    expect(texts.some((t) => t.includes('採取・摂取の判断には使用しないでください'))).toBe(true);
   });
 
   it('calls onSelectCandidate when a candidate card is pressed', () => {
     const [a, b] = PLANTS;
     const onSelect = jest.fn();
-    renderer = TestRenderer.create(
+    renderModal(
       <ScanResultModal
         visible
         plant={a}
@@ -111,10 +120,10 @@ describe('ScanResultModal — candidate compare (§7.5)', () => {
         onScanAgain={() => {}}
       />
     );
-    const secondCandidateButton = renderer.root.findAll(
+    const secondCandidateButton = renderer!.root.findAll(
       (node) => node.props.accessibilityLabel?.startsWith(`候補2: ${b.name}`)
     )[0];
-    secondCandidateButton.props.onPress();
+    act(() => secondCandidateButton.props.onPress());
     expect(onSelect).toHaveBeenCalledTimes(1);
     expect(onSelect.mock.calls[0][0].plant.id).toBe(b.id);
   });
@@ -122,7 +131,7 @@ describe('ScanResultModal — candidate compare (§7.5)', () => {
 
 describe('ScanResultModal — 現物確認チェックリスト (v3 §7.3, PR18)', () => {
   it('shows the checklist for a real-AI, non-demo result and hides it for demo results', () => {
-    renderer = TestRenderer.create(
+    renderModal(
       <ScanResultModal
         visible
         plant={PLANTS[0]}
@@ -134,11 +143,12 @@ describe('ScanResultModal — 現物確認チェックリスト (v3 §7.3, PR18)
         onScanAgain={() => {}}
       />
     );
-    const texts = allText(renderer.root);
+    const texts = allText(renderer!.root);
     expect(texts.some((t) => t.includes('目の前の植物と見比べる'))).toBe(true);
-    renderer.unmount();
+    act(() => renderer?.unmount());
+    renderer = null;
 
-    renderer = TestRenderer.create(
+    renderModal(
       <ScanResultModal
         visible
         plant={PLANTS[0]}
@@ -151,39 +161,35 @@ describe('ScanResultModal — 現物確認チェックリスト (v3 §7.3, PR18)
         onScanAgain={() => {}}
       />
     );
-    const demoTexts = allText(renderer.root);
+    const demoTexts = allText(renderer!.root);
     expect(demoTexts.some((t) => t.includes('目の前の植物と見比べる'))).toBe(false);
   });
 
   it('updates the match/mismatch/unknown summary as the user taps and passes checks through onAddToZukan', () => {
     const onAdd = jest.fn();
-    act(() => {
-      renderer = TestRenderer.create(
-        <ScanResultModal
-          visible
-          plant={PLANTS[0]}
-          confidence={80}
-          isNewDiscovery={false}
-          usedRealAI
-          imageUri={undefined}
-          onAddToZukan={onAdd}
-          onScanAgain={() => {}}
-        />
-      );
-    });
+    renderModal(
+      <ScanResultModal
+        visible
+        plant={PLANTS[0]}
+        confidence={80}
+        isNewDiscovery={false}
+        usedRealAI
+        imageUri={undefined}
+        onAddToZukan={onAdd}
+        onScanAgain={() => {}}
+      />
+    );
     const matchButtons = renderer!.root.findAll(
       (node) => typeof node.props.accessibilityLabel === 'string' && node.props.accessibilityLabel.startsWith('生育場所: 一致')
     );
-    act(() => {
-      matchButtons[0].props.onPress();
-    });
+    act(() => matchButtons[0].props.onPress());
 
     const texts = allText(renderer!.root);
     expect(texts.some((t) => t.includes('一致 1') && t.includes('未確認'))).toBe(true);
 
     // Trigger save via the primary CTA and confirm the checklist state is forwarded.
     act(() => {
-      findButtonByText(renderer!.root, '観察記録として保存').props.onPress();
+      findButtonByText(renderer!.root, '記録に保存').props.onPress();
     });
 
     expect(onAdd).toHaveBeenCalledTimes(1);
@@ -193,28 +199,24 @@ describe('ScanResultModal — 現物確認チェックリスト (v3 §7.3, PR18)
 
   it('resets the checklist when the selected candidate changes', () => {
     const [a, b] = PLANTS;
-    act(() => {
-      renderer = TestRenderer.create(
-        <ScanResultModal
-          visible
-          plant={a}
-          confidence={80}
-          isNewDiscovery={false}
-          usedRealAI
-          candidates={[candidate(a.id, 1, 80), candidate(b.id, 2, 60)]}
-          selectedPlantId={a.id}
-          imageUri={undefined}
-          onAddToZukan={() => {}}
-          onScanAgain={() => {}}
-        />
-      );
-    });
+    renderModal(
+      <ScanResultModal
+        visible
+        plant={a}
+        confidence={80}
+        isNewDiscovery={false}
+        usedRealAI
+        candidates={[candidate(a.id, 1, 80), candidate(b.id, 2, 60)]}
+        selectedPlantId={a.id}
+        imageUri={undefined}
+        onAddToZukan={() => {}}
+        onScanAgain={() => {}}
+      />
+    );
     const matchButtons = renderer!.root.findAll(
       (node) => typeof node.props.accessibilityLabel === 'string' && node.props.accessibilityLabel.startsWith('生育場所: 一致')
     );
-    act(() => {
-      matchButtons[0].props.onPress();
-    });
+    act(() => matchButtons[0].props.onPress());
     expect(allText(renderer!.root).some((t) => t.includes('一致 1'))).toBe(true);
 
     act(() => {
