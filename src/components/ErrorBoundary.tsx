@@ -2,6 +2,7 @@ import React from 'react';
 import { ScrollView, StyleSheet, Text, View, Pressable } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Theme, useTheme } from '../theme/ThemeProvider';
 
 interface Props {
@@ -10,6 +11,8 @@ interface Props {
 
 interface BoundaryProps extends Props {
   theme: Theme;
+  safeTop: number;
+  safeBottom: number;
 }
 
 interface State {
@@ -37,7 +40,7 @@ class ErrorBoundaryImpl extends React.Component<BoundaryProps, State> {
   };
 
   render() {
-    const { theme } = this.props;
+    const { theme, safeTop, safeBottom } = this.props;
 
     if (this.state.hasError) {
       return (
@@ -45,7 +48,13 @@ class ErrorBoundaryImpl extends React.Component<BoundaryProps, State> {
           <StatusBar style={theme.mode === 'dark' ? 'light' : 'dark'} />
           <ScrollView
             style={{ backgroundColor: theme.colors.canvas }}
-            contentContainerStyle={styles.container}
+            contentContainerStyle={[
+              styles.container,
+              {
+                paddingTop: Math.max(40, safeTop + 24),
+                paddingBottom: Math.max(40, safeBottom + 24),
+              },
+            ]}
             showsVerticalScrollIndicator={false}
             bounces={false}
           >
@@ -101,7 +110,12 @@ class ErrorBoundaryImpl extends React.Component<BoundaryProps, State> {
 
 export function ErrorBoundary({ children }: Props) {
   const theme = useTheme();
-  return <ErrorBoundaryImpl theme={theme}>{children}</ErrorBoundaryImpl>;
+  const insets = useSafeAreaInsets();
+  return (
+    <ErrorBoundaryImpl theme={theme} safeTop={insets.top} safeBottom={insets.bottom}>
+      {children}
+    </ErrorBoundaryImpl>
+  );
 }
 
 const styles = StyleSheet.create({
@@ -111,7 +125,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 28,
-    paddingVertical: 40,
   },
   iconWrap: {
     width: 72,
