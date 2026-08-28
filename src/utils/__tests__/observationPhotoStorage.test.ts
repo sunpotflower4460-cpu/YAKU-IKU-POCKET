@@ -64,8 +64,7 @@ describe('persistObservationPhoto', () => {
     const first = persistObservationPhoto('file:///cache/parallel-a.jpg');
     const second = persistObservationPhoto('file:///cache/parallel-b.jpg');
 
-    await Promise.resolve();
-    await Promise.resolve();
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
     expect(mockGetInfoAsync).toHaveBeenCalledTimes(1);
     expect(mockMakeDirectoryAsync).toHaveBeenCalledTimes(1);
 
@@ -84,8 +83,7 @@ describe('persistObservationPhoto', () => {
     const first = persistObservationPhoto('file:///cache/same.jpg');
     const second = persistObservationPhoto('file:///cache/same.jpg');
 
-    await Promise.resolve();
-    await Promise.resolve();
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
     expect(mockCopyAsync).toHaveBeenCalledTimes(1);
 
     resolveCopy();
