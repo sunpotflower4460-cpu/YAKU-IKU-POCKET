@@ -31,6 +31,8 @@ import { getPlayerTitle } from '../../src/utils/playerTitle';
 import { XP_PER_LEVEL } from '../../src/store/useGameStore';
 import { getCurrentSeason, SEASON_CONFIG, seasonForDate } from '../../src/utils/season';
 import { todayLocalStr, localDayFromISO } from '../../src/utils/date';
+import { normalizeForSearch } from '../../src/utils/kana';
+import { useReduceMotion } from '../../src/utils/reduceMotion';
 import { PRIVACY_POLICY_URL, TERMS_URL, SUPPORT_EMAIL, APP_VERSION } from '../../src/constants/app';
 import { ScanRecord } from '../../src/types';
 
@@ -68,7 +70,7 @@ const ACHIEVEMENTS: AchievementDef[] = [
     check: (ctx) => PLANTS.filter((p) => p.category === '野草' && ctx.discoveredPlantIds.includes(p.id)).length >= 10,
   },
   {
-    id: 'rare_finder', icon: 'star-outline', label: '珍しい発見', desc: '見つけやすさ★5の植物を記録した',
+    id: 'rare_finder', icon: 'star-outline', label: '珍しい発見', desc: '珍しさ★5の植物を記録した',
     check: (ctx) => PLANTS.filter((p) => p.rarity === 5).some((p) => ctx.discoveredPlantIds.includes(p.id)),
   },
   {
@@ -107,8 +109,12 @@ const ACHIEVEMENTS: AchievementDef[] = [
 
 function formatScanDate(iso: string): string {
   const d = new Date(iso);
+  if (!Number.isFinite(d.getTime())) return '日時不明';
+
   const now = new Date();
   const diffMs = now.getTime() - d.getTime();
+  if (diffMs < 0) return `${d.getMonth() + 1}/${d.getDate()}`;
+
   const diffH = Math.floor(diffMs / 3_600_000);
   const diffD = Math.floor(diffMs / 86_400_000);
   if (diffH < 1) return 'たった今';
@@ -121,6 +127,7 @@ export default function ProfileScreen() {
   const router = useRouter();
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  const reduceMotion = useReduceMotion();
   const { width, fontScale } = useWindowDimensions();
   const compactLayout = width < 380 || fontScale >= 1.3;
   const singleColumnStats = width < 340 || fontScale >= 1.6;
@@ -161,6 +168,7 @@ export default function ProfileScreen() {
   const rarity5Count = PLANTS.filter((p) => p.rarity === 5 && discoveredPlantIds.includes(p.id)).length;
 
   const trimmedSearch = historySearch.trim();
+  const normalizedHistorySearch = normalizeForSearch(trimmedSearch);
   const allScansWithPlant = useMemo(
     () => scanHistory.flatMap((record) => {
       const plant = PLANTS.find((p) => p.id === record.plantId);
@@ -169,20 +177,20 @@ export default function ProfileScreen() {
     [scanHistory]
   );
   const recentScans = useMemo(() => {
-    if (!trimmedSearch) return allScansWithPlant.slice(0, 10);
-    const query = trimmedSearch.toLowerCase();
+    if (!normalizedHistorySearch) return allScansWithPlant.slice(0, 10);
     return allScansWithPlant.filter(
       ({ plant }) =>
-        plant.name.toLowerCase().includes(query) ||
-        plant.nameEn.toLowerCase().includes(query) ||
-        (plantNotes[plant.id] ?? '').toLowerCase().includes(query)
+        normalizeForSearch(plant.name).includes(normalizedHistorySearch) ||
+        normalizeForSearch(plant.nameEn).includes(normalizedHistorySearch) ||
+        normalizeForSearch(plantNotes[plant.id] ?? '').includes(normalizedHistorySearch)
     );
-  }, [allScansWithPlant, trimmedSearch, plantNotes]);
+  }, [allScansWithPlant, normalizedHistorySearch, plantNotes]);
   const matchingUnidentified = useMemo(() => {
-    if (!trimmedSearch) return [];
-    const query = trimmedSearch.toLowerCase();
-    return unidentifiedObservations.filter((observation) => (observation.note ?? '').toLowerCase().includes(query));
-  }, [unidentifiedObservations, trimmedSearch]);
+    if (!normalizedHistorySearch) return [];
+    return unidentifiedObservations.filter((observation) =>
+      normalizeForSearch(observation.note ?? '').includes(normalizedHistorySearch)
+    );
+  }, [unidentifiedObservations, normalizedHistorySearch]);
 
   const seasonCounts = useMemo(() => {
     const counts: Record<string, number> = { 春: 0, 夏: 0, 秋: 0, 冬: 0 };
@@ -618,7 +626,7 @@ export default function ProfileScreen() {
         seasonIcon={seasonCfg.icon}
       />
 
-      <Modal visible={editNameVisible} transparent animationType="fade" onRequestClose={() => setEditNameVisible(false)}>
+      <Modal visible={editNameVisible} transparent animationType={reduceMotion ? 'none' : 'fade'} onRequestClose={() => setEditNameVisible(false)}>
         <KeyboardAvoidingView
           style={[styles.modalOverlay, { backgroundColor: theme.colors.overlay }]}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -643,9 +651,13 @@ export default function ProfileScreen() {
               returnKeyType="done"
               onSubmitEditing={handleSaveName}
               accessibilityLabel="名前"
-              accessibilityHint="20文字まで入力できます"
+              accessibilityHint={`20文字まで入力できます。残り${20 - tempName.length}文字`}
             />
-            <Text style={[styles.nameCounter, { color: theme.colors.textTertiary }]} accessibilityLiveRegion="polite">
+            <Text
+              style={[styles.nameCounter, { color: theme.colors.textTertiary }]}
+              accessibilityElementsHidden
+              importantForAccessibility="no-hide-descendants"
+            >
               {tempName.length}/20
             </Text>
             <View style={[styles.modalBtns, compactLayout && styles.modalBtnsStacked]}>
@@ -677,7 +689,7 @@ export default function ProfileScreen() {
         </KeyboardAvoidingView>
       </Modal>
 
-      <Modal visible={sourcesVisible} transparent animationType="fade" onRequestClose={() => setSourcesVisible(false)}>
+      <Modal visible={sourcesVisible} transparent animationType={reduceMotion ? 'none' : 'fade'} onRequestClose={() => setSourcesVisible(false)}>
         <View style={[styles.modalOverlay, { backgroundColor: theme.colors.overlay }]}>
           <Pressable style={StyleSheet.absoluteFill} onPress={() => setSourcesVisible(false)} accessible={false} />
           <View
