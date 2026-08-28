@@ -29,7 +29,7 @@ export function Skeleton({ width = '100%', height = 16, radius, style }: Props) 
     );
     loop.start();
     return () => loop.stop();
-  }, [reduceMotion]);
+  }, [reduceMotion, opacity]);
 
   return (
     <Animated.View
