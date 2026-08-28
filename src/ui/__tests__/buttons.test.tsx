@@ -35,6 +35,23 @@ describe('shared buttons — accessibility state composition', () => {
     expect(button.props.accessibilityLabel).toBe('保存、処理中');
   });
 
+  it('does not let passthrough props erase primary loading semantics', () => {
+    const root = render(
+      <PrimaryButton
+        label="保存"
+        loading
+        accessibilityRole="link"
+        accessibilityLabel="上書きラベル"
+        accessibilityLiveRegion="none"
+        onPress={() => {}}
+      />
+    );
+    const button = root.find((node) => node.props.accessibilityRole === 'button');
+    expect(button.props.accessibilityLabel).toBe('保存、処理中');
+    expect(button.props.accessibilityLiveRegion).toBe('polite');
+    expect(button.props.accessibilityState).toEqual({ disabled: true, busy: true });
+  });
+
   it('preserves caller state while adding secondary disabled semantics', () => {
     const root = render(
       <SecondaryButton
@@ -48,12 +65,31 @@ describe('shared buttons — accessibility state composition', () => {
     expect(button.props.accessibilityState).toEqual({ expanded: true, disabled: true });
   });
 
+  it('keeps secondary visible-copy semantics authoritative', () => {
+    const root = render(
+      <SecondaryButton
+        label="候補"
+        accessibilityRole="link"
+        accessibilityLabel="別ラベル"
+        onPress={() => {}}
+      />
+    );
+    const button = root.find((node) => node.props.accessibilityRole === 'button');
+    expect(button.props.accessibilityLabel).toBe('候補');
+  });
+
   it('uses the 44pt control itself rather than implicit overlapping hitSlop', () => {
     const root = render(
-      <IconButton icon="close" accessibilityLabel="閉じる" onPress={() => {}} />
+      <IconButton
+        icon="close"
+        accessibilityLabel="閉じる"
+        accessibilityRole="link"
+        onPress={() => {}}
+      />
     );
     const button = root.find((node) => node.props.accessibilityRole === 'button');
     expect(button.props.hitSlop).toBeUndefined();
     expect(button.props.accessibilityState).toEqual({ disabled: false });
+    expect(button.props.accessibilityLabel).toBe('閉じる');
   });
 });
