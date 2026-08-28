@@ -1,7 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import {
-  AccessibilityInfo,
-  findNodeHandle,
   View,
   Text,
   StyleSheet,
@@ -10,7 +8,6 @@ import {
   Pressable,
   TextInput,
   Modal,
-  Platform,
   ScrollView,
   useWindowDimensions,
 } from 'react-native';
@@ -39,20 +36,6 @@ type FilterSeason = 'all' | 'current';
 type SortRarity = 'none' | 'desc' | 'asc';
 type FilterRarity = 'all' | '3up' | '4up' | '5only';
 type ViewMode = 'grid' | 'list' | 'family';
-
-type WebFocusable = {
-  focus?: () => void;
-  isConnected?: boolean;
-};
-
-type WebDocumentLike = {
-  activeElement?: WebFocusable | null;
-  body?: WebFocusable | null;
-};
-
-function getWebDocument(): WebDocumentLike | undefined {
-  return (globalThis as unknown as { document?: WebDocumentLike }).document;
-}
 
 /** Every family present in the dataset, sorted — powers the "科で探す" filter (§7.6). */
 const FAMILY_OPTIONS: string[] = Array.from(
@@ -111,10 +94,6 @@ export default function ZukanScreen() {
   const decodedInitialEffect = initialFilterEffect ? decodeURIComponent(initialFilterEffect) : null;
   const [filterEffect, setFilterEffect] = useState<string | null>(decodedInitialEffect);
   const appliedEffectParam = useRef<string | undefined>(initialFilterEffect);
-  const hintTitleRef = useRef<React.ElementRef<typeof Text>>(null);
-  const hintCloseButtonRef = useRef<React.ElementRef<typeof Pressable>>(null);
-  const previousWebFocusRef = useRef<WebFocusable | null>(null);
-  const hintWasVisibleRef = useRef(false);
 
   // Deep links can update params while this screen is mounted. Applying the
   // state change during render causes an extra render and can become unstable
@@ -125,36 +104,6 @@ export default function ZukanScreen() {
       setFilterEffect(decodeURIComponent(initialFilterEffect));
     }
   }, [initialFilterEffect]);
-
-  useEffect(() => {
-    const visible = hintPlant !== null;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-
-    if (visible && !hintWasVisibleRef.current) {
-      if (Platform.OS === 'web') {
-        timer = setTimeout(() => {
-          const target = hintCloseButtonRef.current as unknown as WebFocusable | null;
-          target?.focus?.();
-        }, 0);
-      } else {
-        timer = setTimeout(() => {
-          const node = findNodeHandle(hintTitleRef.current);
-          if (node) AccessibilityInfo.setAccessibilityFocus(node);
-        }, reduceMotion ? 70 : 320);
-      }
-    } else if (!visible && hintWasVisibleRef.current && Platform.OS === 'web') {
-      const target = previousWebFocusRef.current;
-      previousWebFocusRef.current = null;
-      timer = setTimeout(() => {
-        if (target?.isConnected !== false) target?.focus?.();
-      }, 0);
-    }
-
-    hintWasVisibleRef.current = visible;
-    return () => {
-      if (timer) clearTimeout(timer);
-    };
-  }, [hintPlant, reduceMotion]);
 
   const activeFilterCount = [
     filterDiscovered !== 'all',
@@ -191,19 +140,6 @@ export default function ZukanScreen() {
     const trimmed = q.trim();
     if (!trimmed) return;
     setRecentSearches((prev) => [trimmed, ...prev.filter((s) => s !== trimmed)].slice(0, 5));
-  }
-
-  function openHint(item: Plant) {
-    if (Platform.OS === 'web') {
-      const doc = getWebDocument();
-      const active = doc?.activeElement;
-      if (active && active !== doc?.body) previousWebFocusRef.current = active;
-    }
-    setHintPlant(item);
-  }
-
-  function closeHint() {
-    setHintPlant(null);
   }
 
   const currentSeason = getCurrentSeason();
@@ -285,7 +221,7 @@ export default function ZukanScreen() {
       router.push(`/plant/${item.id}`);
     } else {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      openHint(item);
+      setHintPlant(item);
     }
   }
 
@@ -294,7 +230,7 @@ export default function ZukanScreen() {
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
         <View style={styles.headerTitleRow}>
-          <Ionicons name="leaf-outline" size={20} color="#FFFFFF" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" />
+          <Ionicons name="leaf-outline" size={20} color="#FFFFFF" />
           <Text style={styles.headerTitle}>観察図鑑</Text>
         </View>
         <Text style={styles.headerSub}>{discoveredCount}/{PLANTS.length} 種類を記録</Text>
@@ -314,15 +250,15 @@ export default function ZukanScreen() {
                 accessibilityRole="text"
                 accessibilityLabel={`珍しさ5段階中${rarity}、${total}種類中${found}種類を記録`}
               >
-                <View style={styles.rarityStarsRow} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+                <View style={styles.rarityStarsRow} accessibilityElementsHidden>
                   {Array.from({ length: rarity }, (_, i) => (
                     <Ionicons key={i} name="star" size={9} color={rarityColor} />
                   ))}
                 </View>
-                <View style={styles.rarityMiniBar} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+                <View style={styles.rarityMiniBar} accessibilityElementsHidden>
                   <View style={[styles.rarityMiniFill, { width: `${pct * 100}%`, backgroundColor: rarityColor }]} />
                 </View>
-                <Text maxFontSizeMultiplier={1.5} style={styles.rarityCount} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">{found}/{total}</Text>
+                <Text maxFontSizeMultiplier={1.5} style={styles.rarityCount}>{found}/{total}</Text>
               </View>
             );
           })}
@@ -330,7 +266,7 @@ export default function ZukanScreen() {
 
         {/* Search */}
         <View style={styles.searchBox}>
-          <Ionicons name="search-outline" size={18} color="rgba(255,255,255,0.84)" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" />
+          <Ionicons name="search-outline" size={18} color="rgba(255,255,255,0.84)" />
           <TextInput
             style={styles.searchInput}
             placeholder="記録済みの植物を検索"
@@ -348,7 +284,7 @@ export default function ZukanScreen() {
               accessibilityRole="button"
               accessibilityLabel="検索文字をクリア"
             >
-              <Ionicons name="close" size={18} color="#FFFFFF" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" />
+              <Ionicons name="close" size={18} color="#FFFFFF" />
             </Pressable>
           )}
         </View>
@@ -356,7 +292,7 @@ export default function ZukanScreen() {
         {/* Recent searches */}
         {search.length === 0 && recentSearches.length > 0 && (
           <View style={styles.recentSearchRow}>
-            <Ionicons name="time-outline" size={13} color="rgba(255,255,255,0.84)" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" />
+            <Ionicons name="time-outline" size={13} color="rgba(255,255,255,0.84)" />
             {recentSearches.map((q) => (
               <Pressable
                 key={q}
@@ -392,9 +328,9 @@ export default function ZukanScreen() {
           accessibilityLabel="観察の内訳"
           accessibilityState={{ expanded: statsOpen }}
         >
-          <Ionicons name="stats-chart-outline" size={17} color={theme.colors.accentPrimary} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" />
+          <Ionicons name="stats-chart-outline" size={17} color={theme.colors.accentPrimary} />
           <Text style={[styles.statsToggleText, { color: theme.colors.textPrimary }]}>観察の内訳</Text>
-          <Ionicons name={statsOpen ? 'chevron-up' : 'chevron-down'} size={16} color={theme.colors.textTertiary} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" />
+          <Ionicons name={statsOpen ? 'chevron-up' : 'chevron-down'} size={16} color={theme.colors.textTertiary} />
         </Pressable>
         {statsOpen && (
           <View style={styles.statsGrid}>
@@ -430,14 +366,14 @@ export default function ZukanScreen() {
             accessibilityLabel="フィルター"
             accessibilityState={{ expanded: filtersOpen }}
           >
-            <Ionicons name="options-outline" size={17} color={theme.colors.accentPrimary} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" />
+            <Ionicons name="options-outline" size={17} color={theme.colors.accentPrimary} />
             <Text style={[styles.filterToggleText, { color: theme.colors.textPrimary }]}>フィルター</Text>
             {activeFilterCount > 0 && (
-              <View style={[styles.filterBadge, { backgroundColor: theme.colors.accentPrimary }]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+              <View style={[styles.filterBadge, { backgroundColor: theme.colors.accentPrimary }]}>
                 <Text style={[styles.filterBadgeText, { color: theme.colors.textOnAccent }]}>{activeFilterCount}</Text>
               </View>
             )}
-            <Ionicons name={filtersOpen ? 'chevron-up' : 'chevron-down'} size={16} color={theme.colors.textTertiary} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" />
+            <Ionicons name={filtersOpen ? 'chevron-up' : 'chevron-down'} size={16} color={theme.colors.textTertiary} />
           </Pressable>
           {activeFilterCount > 0 && (
             <Pressable
@@ -550,7 +486,10 @@ export default function ZukanScreen() {
 
       {/* Count + view mode */}
       <View style={styles.countRow}>
-        <Text style={[styles.countText, { color: theme.colors.textTertiary }]}>
+        <Text
+          style={[styles.countText, { color: theme.colors.textTertiary }]}
+          accessibilityLiveRegion="polite"
+        >
           {filtered.length}種類を表示
         </Text>
         <View
@@ -569,7 +508,7 @@ export default function ZukanScreen() {
       {/* Active effect filter chip */}
       {filterEffect && (
         <View style={styles.activeEffectRow}>
-          <Ionicons name="medical-outline" size={15} color={theme.colors.accentPrimary} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" />
+          <Ionicons name="medical-outline" size={15} color={theme.colors.accentPrimary} />
           <Text style={[styles.activeEffectLabel, { color: theme.colors.textSecondary }]}>用途:</Text>
           <View
             style={[
@@ -587,7 +526,7 @@ export default function ZukanScreen() {
               accessibilityRole="button"
               accessibilityLabel="用途フィルターを解除"
             >
-              <Ionicons name="close" size={16} color={theme.colors.textSecondary} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" />
+              <Ionicons name="close" size={16} color={theme.colors.textSecondary} />
             </Pressable>
           </View>
         </View>
@@ -598,10 +537,10 @@ export default function ZukanScreen() {
         visible={hintPlant !== null}
         transparent
         animationType={reduceMotion ? 'none' : 'slide'}
-        onRequestClose={closeHint}
+        onRequestClose={() => setHintPlant(null)}
       >
         <View style={[styles.hintOverlay, { backgroundColor: theme.colors.overlay }]}>
-          <Pressable style={StyleSheet.absoluteFill} onPress={closeHint} accessible={false} />
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setHintPlant(null)} accessible={false} />
           <View
             style={[
               styles.hintCard,
@@ -612,11 +551,11 @@ export default function ZukanScreen() {
               },
             ]}
             accessibilityViewIsModal
-            onAccessibilityEscape={closeHint}
+            onAccessibilityEscape={() => setHintPlant(null)}
           >
             {hintPlant && (
               <>
-                <View style={styles.hintHandle} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" />
+                <View style={styles.hintHandle} accessibilityElementsHidden />
                 <ScrollView
                   style={styles.hintScroll}
                   contentContainerStyle={styles.hintScrollContent}
@@ -624,13 +563,8 @@ export default function ZukanScreen() {
                   bounces={false}
                 >
                   <View style={styles.hintTitleRow}>
-                    <Ionicons name="search-outline" size={18} color={theme.colors.textSecondary} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" />
-                    <Text
-                      ref={hintTitleRef}
-                      style={[styles.hintTitle, { color: theme.colors.textPrimary }]}
-                      accessibilityRole="header"
-                      accessibilityLabel="未記録の植物のヒント"
-                    >
+                    <Ionicons name="search-outline" size={18} color={theme.colors.textSecondary} />
+                    <Text style={[styles.hintTitle, { color: theme.colors.textPrimary }]} accessibilityRole="header">
                       未記録の植物のヒント
                     </Text>
                   </View>
@@ -641,7 +575,6 @@ export default function ZukanScreen() {
                       { backgroundColor: theme.colors.surfaceSecondary, borderColor: theme.colors.borderStrong },
                     ]}
                     accessibilityElementsHidden
-                    importantForAccessibility="no-hide-descendants"
                   >
                     <Text style={[styles.hintQuestion, { color: theme.colors.textTertiary }]}>？</Text>
                   </View>
@@ -654,11 +587,7 @@ export default function ZukanScreen() {
                     <HintRow icon="folder-outline" label="カテゴリ" value={hintPlant.category === '野草' ? '野草' : 'スパイス・ハーブ'} />
                     <HintRow icon="warning-outline" label="注意区分" value={DANGER_LABEL[hintPlant.danger]} />
                     <View style={[styles.hintRowItem, { borderBottomColor: theme.colors.borderSubtle }]}>
-                      <View
-                        style={styles.hintLabelRow}
-                        accessibilityElementsHidden
-                        importantForAccessibility="no-hide-descendants"
-                      >
+                      <View style={styles.hintLabelRow}>
                         <Ionicons name="star-outline" size={14} color={theme.colors.textTertiary} />
                         <Text style={[styles.hintLabel, { color: theme.colors.textSecondary }]}>珍しさ</Text>
                       </View>
@@ -667,19 +596,18 @@ export default function ZukanScreen() {
                   </View>
 
                   <View style={styles.hintFooterRow}>
-                    <Ionicons name="camera-outline" size={16} color={theme.colors.accentPrimary} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" />
+                    <Ionicons name="camera-outline" size={16} color={theme.colors.accentPrimary} />
                     <Text style={[styles.hintFooter, { color: theme.colors.textSecondary }]}>観察して特徴を見比べよう</Text>
                   </View>
                 </ScrollView>
 
                 <Pressable
-                  ref={hintCloseButtonRef}
                   style={({ pressed }) => [
                     styles.hintCloseBtn,
                     { backgroundColor: theme.colors.accentPrimary },
                     pressed && styles.buttonPressed,
                   ]}
-                  onPress={closeHint}
+                  onPress={() => setHintPlant(null)}
                   accessibilityRole="button"
                   accessibilityLabel="ヒントを閉じる"
                 >
@@ -788,7 +716,7 @@ function EmptyState({ canReset, onReset }: { canReset: boolean; onReset: () => v
           accessibilityRole="button"
           accessibilityLabel="検索とフィルターをすべて解除"
         >
-          <Ionicons name="refresh-outline" size={17} color={theme.colors.accentPrimary} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" />
+          <Ionicons name="refresh-outline" size={17} color={theme.colors.accentPrimary} />
           <Text style={[styles.emptyResetText, { color: theme.colors.accentPrimary }]}>条件をすべて解除</Text>
         </Pressable>
       )}
@@ -823,7 +751,7 @@ function ViewModeBtn({
       accessibilityLabel={`表示切替: ${label}`}
       accessibilityState={{ selected: active }}
     >
-      <Ionicons name={icon} size={16} color={active ? theme.colors.textOnAccent : theme.colors.textTertiary} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" />
+      <Ionicons name={icon} size={16} color={active ? theme.colors.textOnAccent : theme.colors.textTertiary} />
       <Text
         style={[
           styles.viewModeBtnText,
@@ -836,7 +764,7 @@ function ViewModeBtn({
   );
 }
 
-/** Compact row used by the "リスト" and "科でまとめる" view modes (§7.6). */}
+/** Compact row used by the "リスト" and "科でまとめる" view modes (§7.6). */
 function PlantListRow({
   plant,
   discovered,
@@ -867,14 +795,10 @@ function PlantListRow({
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
     >
-      <View
-        style={[styles.listEmojiWrap, { backgroundColor: theme.colors.surfaceSecondary }]}
-        accessibilityElementsHidden
-        importantForAccessibility="no-hide-descendants"
-      >
+      <View style={[styles.listEmojiWrap, { backgroundColor: theme.colors.surfaceSecondary }]}>
         <Text style={styles.listEmoji}>{discovered ? plant.emoji : '？'}</Text>
       </View>
-      <View style={styles.listInfo} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+      <View style={styles.listInfo}>
         <Text style={[styles.listName, { color: theme.colors.textPrimary }]} numberOfLines={2}>
           {discovered ? plant.name : '？？？'}
         </Text>
@@ -882,12 +806,10 @@ function PlantListRow({
           {discovered ? plant.nameLatin : (family ?? '未記録')}
         </Text>
       </View>
-      <RarityStars rarity={plant.rarity} size="sm" accessible={false} />
-      {discovered && <DangerBadge danger={plant.danger} size="sm" accessible={false} />}
-      {discovered && isFavorite && (
-        <Ionicons name="heart" size={16} color="#D9363E" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" />
-      )}
-      <Ionicons name="chevron-forward" size={16} color={theme.colors.textTertiary} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" />
+      <RarityStars rarity={plant.rarity} size="sm" />
+      {discovered && <DangerBadge danger={plant.danger} size="sm" />}
+      {discovered && isFavorite && <Ionicons name="heart" size={16} color="#D9363E" />}
+      <Ionicons name="chevron-forward" size={16} color={theme.colors.textTertiary} />
     </Pressable>
   );
 }
@@ -901,9 +823,9 @@ function StatMini({ label, value, color }: { label: string; value: string; color
       accessibilityRole="text"
       accessibilityLabel={`${label} ${value}`}
     >
-      <View style={[styles.statMiniDot, { backgroundColor: color }]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" />
-      <Text style={[styles.statMiniValue, { color: theme.colors.textPrimary }]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">{value}</Text>
-      <Text style={[styles.statMiniLabel, { color: theme.colors.textTertiary }]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">{label}</Text>
+      <View style={[styles.statMiniDot, { backgroundColor: color }]} />
+      <Text style={[styles.statMiniValue, { color: theme.colors.textPrimary }]}>{value}</Text>
+      <Text style={[styles.statMiniLabel, { color: theme.colors.textTertiary }]}>{label}</Text>
     </View>
   );
 }
@@ -916,7 +838,7 @@ function HintRow({ icon, label, value }: { icon: React.ComponentProps<typeof Ion
         <Ionicons name={icon} size={14} color={theme.colors.textTertiary} />
         <Text style={[styles.hintLabel, { color: theme.colors.textSecondary }]}>{label}</Text>
       </View>
-      <Text style={[styles.hintValue, { color: theme.colors.textPrimary }]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">{value}</Text>
+      <Text style={[styles.hintValue, { color: theme.colors.textPrimary }]} accessibilityElementsHidden importantForAccessibility="no">{value}</Text>
     </View>
   );
 }
@@ -963,7 +885,7 @@ function FilterChip({
       accessibilityLabel={`${label}${active ? '、選択中' : ''}`}
     >
       {active && (
-        <Ionicons name="checkmark" size={14} color={theme.colors.textPrimary} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" />
+        <Ionicons name="checkmark" size={14} color={theme.colors.textPrimary} accessibilityElementsHidden />
       )}
       <Text style={[styles.chipText, { color: active ? theme.colors.textPrimary : theme.colors.textSecondary }]}>{label}</Text>
     </Pressable>
