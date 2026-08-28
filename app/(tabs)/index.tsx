@@ -48,6 +48,7 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { width, fontScale } = useWindowDimensions();
   const compactLayout = width < 360 || fontScale >= 1.3;
+  const singleColumnStats = width < 340 || fontScale >= 1.6;
   const {
     discoveredPlantIds, scanHistory, playerName, getLevel, getXpForCurrentLevel,
     todayScanCount, todayNewCount, todayMaxRarity, todayDangers, todayCategories,
@@ -155,7 +156,7 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
       >
         <LinearGradient
-          colors={['#174F2A', '#226B35', '#2F7F40']}
+          colors={['#123F24', '#1C542C', '#2B6638']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={[styles.hero, { paddingTop: insets.top + 18 }]}
@@ -205,7 +206,12 @@ export default function HomeScreen() {
             </Pressable>
           </View>
 
-          <View style={styles.heroFooterRow} accessible accessibilityRole="text" accessibilityLabel={`今月の観察${thisMonthCount}件。レベル内XP ${xpCurrent}/${XP_PER_LEVEL}`}>
+          <View
+            style={[styles.heroFooterRow, compactLayout && styles.heroFooterRowCompact]}
+            accessible
+            accessibilityRole="text"
+            accessibilityLabel={`今月の観察${thisMonthCount}件。レベル内XP ${xpCurrent}/${XP_PER_LEVEL}`}
+          >
             <Text style={styles.heroFooterText}>今月 {thisMonthCount}件</Text>
             <View style={styles.heroXpTrack} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
               <Animated.View style={[styles.heroXpFill, { width: xpBarWidth }]} />
@@ -221,7 +227,7 @@ export default function HomeScreen() {
             end={{ x: 1, y: 0 }}
             style={styles.milestoneBanner}
           >
-            <View style={styles.milestoneIconWrap}>
+            <View style={styles.milestoneIconWrap} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
               <Ionicons name={pendingMilestone[1] as React.ComponentProps<typeof Ionicons>['name']} size={23} color="#FFFFFF" />
             </View>
             <View style={styles.milestoneText}>
@@ -248,6 +254,7 @@ export default function HomeScreen() {
                   key={plant.id}
                   style={({ pressed }) => [
                     styles.recentCard,
+                    compactLayout && styles.recentCardCompact,
                     {
                       backgroundColor: theme.colors.surfacePrimary,
                       borderColor: theme.colors.borderSubtle,
@@ -261,10 +268,10 @@ export default function HomeScreen() {
                   accessibilityLabel={`${plant.name}の詳細を見る。${DANGER_LABEL[plant.danger]}`}
                 >
                   <Text style={styles.recentEmoji}>{plant.emoji}</Text>
-                  <Text style={[styles.recentName, { color: theme.colors.textPrimary }]} numberOfLines={1}>
+                  <Text style={[styles.recentName, { color: theme.colors.textPrimary }]} numberOfLines={2}>
                     {plant.name}
                   </Text>
-                  <View style={[styles.recentDangerDot, { backgroundColor: statusColor(plant.danger) }]} />
+                  <View style={[styles.recentDangerDot, { backgroundColor: statusColor(plant.danger) }]} accessibilityElementsHidden />
                 </Pressable>
               ))}
             </ScrollView>
@@ -274,16 +281,17 @@ export default function HomeScreen() {
         <View
           style={[
             styles.seasonBanner,
+            compactLayout && styles.seasonBannerCompact,
             {
               backgroundColor: theme.mode === 'dark' ? theme.colors.surfaceSecondary : seasonCfg.bg,
               borderColor: theme.colors.borderSubtle,
             },
           ]}
         >
-          <View style={[styles.seasonIconWrap, { backgroundColor: `${seasonAccent}18` }]}>
+          <View style={[styles.seasonIconWrap, { backgroundColor: `${seasonAccent}18` }]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
             <Ionicons name={seasonCfg.icon as React.ComponentProps<typeof Ionicons>['name']} size={22} color={seasonAccent} />
           </View>
-          <View style={{ flex: 1 }}>
+          <View style={styles.seasonTextBlock}>
             <Text style={[styles.seasonTitle, { color: theme.colors.textPrimary }]}>
               {season}の観察シーズン
             </Text>
@@ -297,7 +305,7 @@ export default function HomeScreen() {
         {spotlightPlants.length > 0 && (
           <View style={styles.section}>
             <View style={styles.sectionRow}>
-              <View style={{ flex: 1 }}>
+              <View style={styles.sectionHeadingGrow}>
                 <SectionTitle icon={seasonCfg.icon as React.ComponentProps<typeof Ionicons>['name']} title="今の季節の注目植物" iconColor={seasonAccent} />
               </View>
               <View style={[styles.sectionBadge, { backgroundColor: `${seasonAccent}18` }]}>
@@ -313,6 +321,7 @@ export default function HomeScreen() {
                     disabled={!found}
                     style={({ pressed }) => [
                       styles.spotlightCard,
+                      compactLayout && styles.spotlightCardCompact,
                       {
                         backgroundColor: found ? theme.colors.surfacePrimary : theme.colors.surfaceSecondary,
                         borderColor: found ? theme.colors.borderSubtle : theme.colors.borderStrong,
@@ -323,7 +332,7 @@ export default function HomeScreen() {
                     ]}
                     onPress={() => router.push(`/plant/${plant.id}`)}
                     accessibilityRole={found ? 'button' : 'text'}
-                    accessibilityLabel={found ? `${plant.name}の詳細を見る` : `未発見の植物。珍しさ5段階中${plant.rarity}`}
+                    accessibilityLabel={found ? `${plant.name}の詳細を見る。${DANGER_LABEL[plant.danger]}` : `未発見の植物。珍しさ5段階中${plant.rarity}`}
                     accessibilityState={{ disabled: !found }}
                   >
                     <RarityStars rarity={plant.rarity} size="sm" />
@@ -332,17 +341,16 @@ export default function HomeScreen() {
                     </Text>
                     <Text
                       style={[styles.spotlightName, { color: found ? theme.colors.textPrimary : theme.colors.textTertiary }]}
-                      numberOfLines={1}
+                      numberOfLines={2}
                     >
                       {found ? plant.name : '？？？'}
                     </Text>
                     {found ? (
                       <View style={[styles.spotlightDangerBadge, { backgroundColor: `${statusColor(plant.danger)}14` }]}>
-                        <View style={[styles.spotlightDangerDot, { backgroundColor: statusColor(plant.danger) }]} />
+                        <View style={[styles.spotlightDangerDot, { backgroundColor: statusColor(plant.danger) }]} accessibilityElementsHidden />
                         <Text
                           style={[styles.spotlightDangerText, { color: statusColor(plant.danger) }]}
-                          numberOfLines={1}
-                          ellipsizeMode="tail"
+                          numberOfLines={2}
                         >
                           {DANGER_LABEL[plant.danger]}
                         </Text>
@@ -372,6 +380,7 @@ export default function HomeScreen() {
                 pct={pct}
                 claimed={claimed}
                 done={done}
+                compact={compactLayout}
                 onClaim={() => claimChallenge(challenge.id, challenge.xpReward)}
               />
             );
@@ -380,17 +389,20 @@ export default function HomeScreen() {
             <View
               style={[
                 styles.questAllDone,
+                compactLayout && styles.questAllDoneCompact,
                 {
                   backgroundColor: theme.colors.surfaceSecondary,
                   borderColor: theme.colors.borderSubtle,
                 },
               ]}
+              accessible
               accessibilityRole="text"
+              accessibilityLabel="今日のチャレンジ完了。明日また新しいテーマが届きます"
             >
-              <View style={[styles.questAllDoneIcon, { backgroundColor: `${theme.colors.statusVerified}18` }]}>
+              <View style={[styles.questAllDoneIcon, { backgroundColor: `${theme.colors.statusVerified}18` }]} accessibilityElementsHidden>
                 <Ionicons name="checkmark-done" size={20} color={theme.colors.statusVerified} />
               </View>
-              <View style={{ flex: 1 }}>
+              <View style={styles.questAllDoneText}>
                 <Text style={[styles.questAllDoneTitle, { color: theme.colors.textPrimary }]}>今日のチャレンジ完了</Text>
                 <Text style={[styles.questAllDoneDesc, { color: theme.colors.textSecondary }]}>
                   明日また新しいテーマが届きます
@@ -402,7 +414,7 @@ export default function HomeScreen() {
 
         <View style={styles.section}>
           <View style={styles.sectionRow}>
-            <View style={{ flex: 1 }}>
+            <View style={styles.sectionHeadingGrow}>
               <SectionTitle icon={seasonCfg.icon as React.ComponentProps<typeof Ionicons>['name']} title="今月の季節クエスト" iconColor={seasonAccent} />
             </View>
             <View style={[styles.sectionBadge, { backgroundColor: theme.colors.surfaceSecondary }]}>
@@ -420,6 +432,7 @@ export default function HomeScreen() {
                 pct={pct}
                 claimed={claimed}
                 done={done}
+                compact={compactLayout}
                 onClaim={() => claimSeasonalChallenge(challenge.id, challenge.xpReward)}
               />
             );
@@ -444,13 +457,13 @@ export default function HomeScreen() {
               ]}
               onPress={() => router.push(`/plant/${learnCard.plant.id}`)}
               accessibilityRole="button"
-              accessibilityLabel={`${learnCard.plant.name}について1分で学ぶ`}
+              accessibilityLabel={`${learnCard.plant.name}について1分で学ぶ。${learnCard.tip}`}
             >
-              <View style={styles.learnCardHeader}>
-                <View style={[styles.learnEmojiWrap, { backgroundColor: theme.colors.surfaceSecondary }]}>
+              <View style={[styles.learnCardHeader, compactLayout && styles.learnCardHeaderCompact]}>
+                <View style={[styles.learnEmojiWrap, { backgroundColor: theme.colors.surfaceSecondary }]} accessibilityElementsHidden>
                   <Text style={styles.learnCardEmoji}>{learnCard.plant.emoji}</Text>
                 </View>
-                <View style={{ flex: 1 }}>
+                <View style={styles.learnCardTextBlock}>
                   <Text style={[styles.learnCardName, { color: theme.colors.textPrimary }]}>{learnCard.plant.name}</Text>
                   {learnCard.isSafetyTip && (
                     <View style={styles.learnCardBadge}>
@@ -461,7 +474,7 @@ export default function HomeScreen() {
                 </View>
                 <Ionicons name="chevron-forward" size={18} color={theme.colors.textTertiary} />
               </View>
-              <Text style={[styles.learnCardTip, { color: theme.colors.textSecondary }]} numberOfLines={3}>
+              <Text style={[styles.learnCardTip, { color: theme.colors.textSecondary }]}>
                 {learnCard.tip}
               </Text>
             </Pressable>
@@ -476,18 +489,24 @@ export default function HomeScreen() {
               value={`${discoveredCount}/${TOTAL_PLANTS}`}
               label="記録した種類"
               color={theme.colors.accentPrimary}
+              compact={compactLayout}
+              singleColumn={singleColumnStats}
             />
             <StatCard
               icon="leaf-outline"
               value={String(greenCount)}
-              label="一般食用"
+              label="一般食用区分"
               color={theme.colors.statusObserved}
+              compact={compactLayout}
+              singleColumn={singleColumnStats}
             />
             <StatCard
               icon="star-outline"
               value={String(uncommonPlants.length)}
               label="珍しい植物"
               color={theme.colors.rarityLegendary}
+              compact={compactLayout}
+              singleColumn={singleColumnStats}
             />
           </View>
           <View
@@ -505,12 +524,14 @@ export default function HomeScreen() {
               discovered={PLANTS.filter((p) => p.category === '野草' && discoveredPlantIds.includes(p.id)).length}
               total={PLANTS.filter((p) => p.category === '野草').length}
               color={theme.colors.statusObserved}
+              compact={compactLayout}
             />
             <ProgressRow
               label="スパイス・ハーブ"
               discovered={PLANTS.filter((p) => p.category === 'スパイス・ハーブ' && discoveredPlantIds.includes(p.id)).length}
               total={PLANTS.filter((p) => p.category === 'スパイス・ハーブ').length}
               color={theme.colors.rarityLegendary}
+              compact={compactLayout}
             />
           </View>
         </View>
@@ -535,8 +556,14 @@ function SectionTitle({
   const theme = useTheme();
   return (
     <View style={styles.sectionTitleRow}>
-      <Ionicons name={icon} size={17} color={iconColor ?? theme.colors.textSecondary} />
-      <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>{title}</Text>
+      <Ionicons
+        name={icon}
+        size={17}
+        color={iconColor ?? theme.colors.textSecondary}
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+      />
+      <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]} accessibilityRole="header">{title}</Text>
     </View>
   );
 }
@@ -546,16 +573,19 @@ function QuestCard({
   pct,
   claimed,
   done,
+  compact,
   onClaim,
 }: {
   challenge: Challenge;
   pct: number;
   claimed: boolean;
   done: boolean;
+  compact: boolean;
   onClaim: () => void;
 }) {
   const theme = useTheme();
   const safePct = Math.max(0, Math.min(pct, 1));
+  const summary = `${challenge.title}。${challenge.desc}。進捗${Math.round(safePct * 100)}パーセント。${claimed ? '報酬受取済み' : done ? '報酬を受け取れます' : `報酬${challenge.xpReward}XP`}`;
   return (
     <View
       style={[
@@ -566,16 +596,19 @@ function QuestCard({
           shadowColor: theme.colors.shadow,
         },
       ]}
-      accessible
-      accessibilityRole="text"
-      accessibilityLabel={`${challenge.title}。${challenge.desc}。進捗${Math.round(safePct * 100)}パーセント。${claimed ? '報酬受取済み' : done ? '報酬を受け取れます' : `報酬${challenge.xpReward}XP`}`}
     >
-      <View style={styles.questHeader}>
+      <View
+        style={[styles.questHeader, compact && styles.questHeaderCompact]}
+        accessible
+        accessibilityRole="text"
+        accessibilityLabel={summary}
+      >
         <View
           style={[
             styles.questIconWrap,
             { backgroundColor: claimed ? theme.colors.surfaceTertiary : theme.colors.surfaceSecondary },
           ]}
+          accessibilityElementsHidden
         >
           <Ionicons
             name={claimed ? 'checkmark' : challenge.icon as React.ComponentProps<typeof Ionicons>['name']}
@@ -583,7 +616,7 @@ function QuestCard({
             color={claimed ? theme.colors.textTertiary : theme.colors.accentPrimary}
           />
         </View>
-        <View style={{ flex: 1 }}>
+        <View style={styles.questTextBlock}>
           <Text style={[styles.questTitle, { color: claimed ? theme.colors.textTertiary : theme.colors.textPrimary }]}>
             {challenge.title}
           </Text>
@@ -591,15 +624,15 @@ function QuestCard({
             {challenge.desc}
           </Text>
         </View>
-        <View style={[styles.questXpBadge, { backgroundColor: theme.colors.surfaceSecondary }]}>
+        <View style={[styles.questXpBadge, compact && styles.questXpBadgeCompact, { backgroundColor: theme.colors.surfaceSecondary }]}>
           <Text style={[styles.questXpText, { color: claimed ? theme.colors.textTertiary : theme.colors.accentPrimary }]}>
             {claimed ? '受取済' : `+${challenge.xpReward} XP`}
           </Text>
         </View>
       </View>
 
-      <View style={styles.questProgressRow}>
-        <View style={[styles.questBarBg, { backgroundColor: theme.colors.surfaceTertiary }]} accessibilityElementsHidden>
+      <View style={[styles.questProgressRow, compact && styles.questProgressRowCompact]}>
+        <View style={[styles.questBarBg, { backgroundColor: theme.colors.surfaceTertiary }]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
           <View
             style={[
               styles.questBarFill,
@@ -614,6 +647,7 @@ function QuestCard({
           <Pressable
             style={({ pressed }) => [
               styles.questClaimBtn,
+              compact && styles.questClaimBtnCompact,
               { backgroundColor: theme.colors.accentPrimary },
               pressed && styles.buttonPressed,
             ]}
@@ -637,17 +671,23 @@ function StatCard({
   value,
   label,
   color,
+  compact,
+  singleColumn,
 }: {
   icon: React.ComponentProps<typeof Ionicons>['name'];
   value: string;
   label: string;
   color: string;
+  compact: boolean;
+  singleColumn: boolean;
 }) {
   const theme = useTheme();
   return (
     <View
       style={[
         styles.statCard,
+        compact && styles.statCardCompact,
+        singleColumn && styles.statCardSingleColumn,
         {
           backgroundColor: theme.colors.surfacePrimary,
           borderColor: theme.colors.borderSubtle,
@@ -658,7 +698,7 @@ function StatCard({
       accessibilityRole="text"
       accessibilityLabel={`${label} ${value}`}
     >
-      <View style={[styles.statIconWrap, { backgroundColor: `${color}14` }]}>
+      <View style={[styles.statIconWrap, { backgroundColor: `${color}14` }]} accessibilityElementsHidden>
         <Ionicons name={icon} size={19} color={color} />
       </View>
       <Text style={[styles.statValue, { color: theme.colors.textPrimary }]}>{value}</Text>
@@ -672,23 +712,25 @@ function ProgressRow({
   discovered,
   total,
   color,
+  compact,
 }: {
   label: string;
   discovered: number;
   total: number;
   color: string;
+  compact: boolean;
 }) {
   const theme = useTheme();
   const pct = total > 0 ? Math.max(0, Math.min(discovered / total, 1)) : 0;
   return (
     <View
-      style={styles.progressRow}
+      style={[styles.progressRow, compact && styles.progressRowCompact]}
       accessible
       accessibilityRole="text"
       accessibilityLabel={`${label} ${discovered}/${total}`}
     >
-      <Text style={[styles.progressLabel, { color: theme.colors.textSecondary }]}>{label}</Text>
-      <View style={[styles.progressBarContainer, { backgroundColor: theme.colors.surfaceTertiary }]} accessibilityElementsHidden>
+      <Text style={[styles.progressLabel, compact && styles.progressLabelCompact, { color: theme.colors.textSecondary }]}>{label}</Text>
+      <View style={[styles.progressBarContainer, { backgroundColor: theme.colors.surfaceTertiary }]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
         <View style={[styles.progressFill, { width: `${pct * 100}%`, backgroundColor: color }]} />
       </View>
       <Text style={[styles.progressValue, { color: theme.colors.textPrimary }]}>
@@ -704,10 +746,10 @@ const styles = StyleSheet.create({
 
   hero: { paddingBottom: 22, paddingHorizontal: 20 },
   heroTopRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 },
-  heroIdentity: { flex: 1 },
-  appEyebrow: { fontSize: 10, lineHeight: 13, fontWeight: '800', color: 'rgba(255,255,255,0.62)', letterSpacing: 1.8, marginBottom: 2 },
+  heroIdentity: { flex: 1, minWidth: 0 },
+  appEyebrow: { fontSize: 10, lineHeight: 13, fontWeight: '800', color: '#E5F1E6', letterSpacing: 1.8, marginBottom: 2 },
   appTitle: { fontSize: 20, lineHeight: 26, fontWeight: '900', color: '#FFFFFF', letterSpacing: 0.2 },
-  playerName: { fontSize: 13, lineHeight: 18, color: '#B7DDBB', marginTop: 2 },
+  playerName: { fontSize: 13, lineHeight: 18, color: '#E5F1E6', marginTop: 2 },
   levelBadgeSmall: {
     minHeight: 32,
     backgroundColor: 'rgba(255,255,255,0.14)',
@@ -717,9 +759,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 11,
     justifyContent: 'center',
   },
-  levelBadgeSmallText: { fontSize: 12, fontWeight: '800', color: '#FFFFFF' },
+  levelBadgeSmallText: { fontSize: 12, lineHeight: 17, fontWeight: '800', color: '#FFFFFF' },
   heroHeadline: { fontSize: 24, fontWeight: '900', color: '#FFFFFF', marginTop: 20, lineHeight: 31, letterSpacing: -0.3 },
-  heroSubline: { fontSize: 13, lineHeight: 19, color: 'rgba(255,255,255,0.72)', marginTop: 3, marginBottom: 18 },
+  heroSubline: { fontSize: 13, lineHeight: 19, color: '#E5F1E6', marginTop: 3, marginBottom: 18 },
   heroActionRow: { flexDirection: 'row', gap: 10 },
   heroActionRowStacked: { flexDirection: 'column' },
   heroActionButtonStacked: { flex: 0, width: '100%' },
@@ -738,7 +780,7 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
   },
   heroPrimaryPressed: { opacity: 0.88, transform: [{ scale: 0.99 }] },
-  heroPrimaryBtnText: { fontSize: 16, fontWeight: '800', color: '#174F2A' },
+  heroPrimaryBtnText: { fontSize: 16, lineHeight: 22, fontWeight: '800', color: '#174F2A', textAlign: 'center' },
   heroSecondaryBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -752,29 +794,32 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.10)',
   },
   heroSecondaryPressed: { backgroundColor: 'rgba(255,255,255,0.18)' },
-  heroSecondaryBtnText: { fontSize: 14, fontWeight: '700', color: '#FFFFFF' },
+  heroSecondaryBtnText: { fontSize: 14, lineHeight: 20, fontWeight: '700', color: '#FFFFFF', textAlign: 'center' },
   heroFooterRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 18 },
-  heroFooterText: { fontSize: 11, lineHeight: 15, color: '#C9E6CC', fontWeight: '600' },
-  heroXpTrack: { flex: 1, height: 5, backgroundColor: 'rgba(255,255,255,0.18)', borderRadius: 3, overflow: 'hidden' },
+  heroFooterRowCompact: { flexWrap: 'wrap' },
+  heroFooterText: { fontSize: 11, lineHeight: 15, color: '#E1EFE2', fontWeight: '600' },
+  heroXpTrack: { flex: 1, minWidth: 80, height: 5, backgroundColor: 'rgba(255,255,255,0.18)', borderRadius: 3, overflow: 'hidden' },
   heroXpFill: { height: '100%', backgroundColor: '#E9D96A', borderRadius: 3 },
 
   milestoneBanner: { flexDirection: 'row', alignItems: 'center', paddingLeft: 16, paddingRight: 8, paddingVertical: 10, gap: 11 },
   milestoneIconWrap: { width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(255,255,255,0.14)', justifyContent: 'center', alignItems: 'center' },
-  milestoneText: { flex: 1 },
+  milestoneText: { flex: 1, minWidth: 0 },
   milestoneTitle: { fontSize: 14, lineHeight: 19, fontWeight: '800', color: '#FFFFFF' },
-  milestoneDesc: { fontSize: 12, lineHeight: 17, color: 'rgba(255,255,255,0.95)', marginTop: 1 },
+  milestoneDesc: { fontSize: 12, lineHeight: 17, color: '#FFF5EC', marginTop: 1 },
   milestoneDismiss: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.12)', justifyContent: 'center', alignItems: 'center' },
   glassPressed: { backgroundColor: 'rgba(255,255,255,0.22)' },
 
   section: { paddingHorizontal: 16, paddingTop: 22 },
-  sectionRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
+  sectionRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginBottom: 10, flexWrap: 'wrap' },
+  sectionHeadingGrow: { flex: 1, minWidth: 190 },
   sectionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 11 },
-  sectionTitle: { fontSize: 16, lineHeight: 21, fontWeight: '800' },
+  sectionTitle: { flexShrink: 1, fontSize: 16, lineHeight: 21, fontWeight: '800' },
   horizontalList: { paddingRight: 16 },
-  sectionBadge: { borderRadius: 999, paddingHorizontal: 9, paddingVertical: 4, alignSelf: 'flex-start' },
+  sectionBadge: { borderRadius: 999, paddingHorizontal: 9, paddingVertical: 5, alignSelf: 'flex-start' },
   sectionBadgeText: { fontSize: 11, lineHeight: 14, fontWeight: '800' },
 
   recentCard: {
+    minHeight: 108,
     borderRadius: 16,
     borderWidth: StyleSheet.hairlineWidth,
     borderTopWidth: 3,
@@ -783,24 +828,29 @@ const styles = StyleSheet.create({
     paddingHorizontal: 9,
     marginRight: 10,
     alignItems: 'center',
-    width: 92,
+    justifyContent: 'center',
+    width: 100,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.07,
     shadowRadius: 6,
     elevation: 2,
   },
+  recentCardCompact: { width: 124, minHeight: 126 },
   recentEmoji: { fontSize: 30, marginBottom: 5 },
-  recentName: { fontSize: 12, lineHeight: 16, fontWeight: '700', textAlign: 'center' },
+  recentName: { fontSize: 12, lineHeight: 17, fontWeight: '700', textAlign: 'center' },
   recentDangerDot: { width: 7, height: 7, borderRadius: 4, marginTop: 6 },
 
   seasonBanner: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 16, marginTop: 22, paddingHorizontal: 14, paddingVertical: 12, gap: 10, borderRadius: 17, borderWidth: StyleSheet.hairlineWidth },
+  seasonBannerCompact: { flexWrap: 'wrap', alignItems: 'flex-start' },
   seasonIconWrap: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
+  seasonTextBlock: { flex: 1, minWidth: 170 },
   seasonTitle: { fontSize: 14, lineHeight: 19, fontWeight: '800' },
   seasonDesc: { fontSize: 12, lineHeight: 17, marginTop: 2 },
-  seasonBadge: { borderRadius: 999, paddingHorizontal: 8, paddingVertical: 4 },
+  seasonBadge: { minHeight: 30, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 5, justifyContent: 'center' },
   seasonBadgeText: { fontSize: 10, lineHeight: 13, fontWeight: '800' },
 
   spotlightCard: {
+    minHeight: 150,
     borderRadius: 17,
     borderWidth: StyleSheet.hairlineWidth,
     paddingTop: 12,
@@ -808,57 +858,72 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     marginRight: 10,
     alignItems: 'center',
-    width: 120,
+    justifyContent: 'center',
+    width: 126,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 6,
     elevation: 2,
   },
+  spotlightCardCompact: { width: 148, minHeight: 172 },
   spotlightCardUnfound: { borderStyle: 'dashed', shadowOpacity: 0, elevation: 0 },
   spotlightEmoji: { fontSize: 34, marginVertical: 6 },
   spotlightEmojiUnfound: { opacity: 0.42 },
-  spotlightName: { fontSize: 12, lineHeight: 16, fontWeight: '700', textAlign: 'center', marginBottom: 7 },
-  spotlightDangerBadge: { borderRadius: 999, paddingHorizontal: 7, paddingVertical: 3, flexDirection: 'row', alignItems: 'center', gap: 4, maxWidth: '100%' },
+  spotlightName: { fontSize: 12, lineHeight: 17, fontWeight: '700', textAlign: 'center', marginBottom: 7 },
+  spotlightDangerBadge: { minHeight: 30, borderRadius: 999, paddingHorizontal: 7, paddingVertical: 4, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, maxWidth: '100%' },
   spotlightDangerDot: { width: 6, height: 6, borderRadius: 3 },
-  spotlightDangerText: { fontSize: 10, lineHeight: 14, fontWeight: '700', maxWidth: 72 },
-  spotlightUnfoundBadge: { borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 },
+  spotlightDangerText: { fontSize: 10, lineHeight: 14, fontWeight: '700', maxWidth: 96, textAlign: 'center' },
+  spotlightUnfoundBadge: { minHeight: 30, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 4, justifyContent: 'center' },
   spotlightUnfoundText: { fontSize: 11, lineHeight: 14, fontWeight: '700' },
 
   learnCard: { borderRadius: 17, padding: 14, borderWidth: StyleSheet.hairlineWidth },
   learnCardHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 9 },
+  learnCardHeaderCompact: { alignItems: 'flex-start' },
   learnEmojiWrap: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   learnCardEmoji: { fontSize: 25 },
+  learnCardTextBlock: { flex: 1, minWidth: 0 },
   learnCardName: { fontSize: 15, lineHeight: 20, fontWeight: '800' },
-  learnCardBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
-  learnCardBadgeText: { fontSize: 11, lineHeight: 15, fontWeight: '700' },
+  learnCardBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2, flexWrap: 'wrap' },
+  learnCardBadgeText: { fontSize: 11, lineHeight: 15, fontWeight: '700', flexShrink: 1 },
   learnCardTip: { fontSize: 13, lineHeight: 20 },
 
   statsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 9, marginBottom: 14 },
   statCard: { flexGrow: 1, flexBasis: 100, minWidth: 100, borderRadius: 17, borderWidth: StyleSheet.hairlineWidth, paddingVertical: 13, paddingHorizontal: 7, alignItems: 'center', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 5, elevation: 2 },
+  statCardCompact: { flexBasis: '46%', minWidth: '46%' },
+  statCardSingleColumn: { flexBasis: '100%', minWidth: '100%' },
   statIconWrap: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center', marginBottom: 7 },
   statValue: { fontSize: 20, fontWeight: '900', lineHeight: 25 },
   statLabel: { fontSize: 11, lineHeight: 15, marginTop: 2, fontWeight: '600', textAlign: 'center' },
   progressCard: { borderRadius: 17, borderWidth: StyleSheet.hairlineWidth, padding: 16, gap: 15, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 5, elevation: 1 },
   progressRow: { flexDirection: 'row', alignItems: 'center', gap: 9 },
+  progressRowCompact: { flexWrap: 'wrap' },
   progressLabel: { fontSize: 12, lineHeight: 17, flexBasis: 108, flexShrink: 1, fontWeight: '600' },
-  progressBarContainer: { flex: 1, height: 8, borderRadius: 4, overflow: 'hidden' },
+  progressLabelCompact: { flexBasis: '100%' },
+  progressBarContainer: { flex: 1, minWidth: 90, height: 8, borderRadius: 4, overflow: 'hidden' },
   progressFill: { height: '100%', borderRadius: 4 },
-  progressValue: { fontSize: 12, lineHeight: 17, fontWeight: '700', width: 38, textAlign: 'right' },
+  progressValue: { fontSize: 12, lineHeight: 17, fontWeight: '700', minWidth: 44, textAlign: 'right' },
 
   questCard: { borderRadius: 17, borderWidth: StyleSheet.hairlineWidth, padding: 14, marginBottom: 10, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 5, elevation: 1 },
   questHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 11 },
+  questHeaderCompact: { flexWrap: 'wrap' },
   questIconWrap: { width: 34, height: 34, borderRadius: 17, justifyContent: 'center', alignItems: 'center' },
+  questTextBlock: { flex: 1, minWidth: 150 },
   questTitle: { fontSize: 14, lineHeight: 19, fontWeight: '800' },
   questDesc: { fontSize: 12, lineHeight: 17, marginTop: 2 },
-  questXpBadge: { borderRadius: 999, paddingHorizontal: 8, paddingVertical: 4, alignSelf: 'flex-start' },
+  questXpBadge: { borderRadius: 999, paddingHorizontal: 8, paddingVertical: 5, alignSelf: 'flex-start' },
+  questXpBadgeCompact: { marginLeft: 44 },
   questXpText: { fontSize: 11, lineHeight: 14, fontWeight: '800' },
   questProgressRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  questBarBg: { flex: 1, height: 7, borderRadius: 4, overflow: 'hidden' },
+  questProgressRowCompact: { flexDirection: 'column', alignItems: 'stretch' },
+  questBarBg: { flex: 1, minHeight: 7, height: 7, borderRadius: 4, overflow: 'hidden' },
   questBarFill: { height: '100%', borderRadius: 4 },
-  questClaimBtn: { minHeight: 44, minWidth: 86, borderRadius: 14, paddingHorizontal: 13, alignItems: 'center', justifyContent: 'center' },
-  questClaimText: { fontSize: 13, lineHeight: 17, fontWeight: '800' },
+  questClaimBtn: { minHeight: 44, minWidth: 86, borderRadius: 14, paddingHorizontal: 13, paddingVertical: 8, alignItems: 'center', justifyContent: 'center' },
+  questClaimBtnCompact: { width: '100%' },
+  questClaimText: { fontSize: 13, lineHeight: 17, fontWeight: '800', textAlign: 'center' },
   questAllDone: { flexDirection: 'row', alignItems: 'center', gap: 11, borderRadius: 17, padding: 14, borderWidth: StyleSheet.hairlineWidth },
+  questAllDoneCompact: { alignItems: 'flex-start' },
   questAllDoneIcon: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
+  questAllDoneText: { flex: 1, minWidth: 0 },
   questAllDoneTitle: { fontSize: 14, lineHeight: 19, fontWeight: '800' },
   questAllDoneDesc: { fontSize: 12, lineHeight: 17, marginTop: 2 },
 
