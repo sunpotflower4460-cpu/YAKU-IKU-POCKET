@@ -6,8 +6,14 @@ import { TraitCheck } from '../types/traitCheck';
 import { SourceOrigin } from '../types/plantUse';
 import { generateId } from '../utils/id';
 import { PLANTS } from '../data/plants';
-import { CHALLENGES, SEASONAL_CHALLENGES } from '../data/challenges';
+import {
+  SEASONAL_CHALLENGES,
+  getChallengePct,
+  getDailyChallenges,
+  ChallengeSnap,
+} from '../data/challenges';
 import { todayLocalStr, localDateStrOffset } from '../utils/date';
+import { getCurrentSeason, getSeasonalPlants } from '../utils/season';
 import { clearObservationPhotos, deleteObservationPhoto } from '../utils/observationPhotoStorage';
 
 // ─── XP constants (exported for display in UI) ──────────────────────────────
@@ -23,12 +29,6 @@ export const XP_PER_RESCAN = 15; // re-scanning a known plant
 export const XP_PER_LEVEL = 500;
 
 const PLANT_BY_ID = new Map(PLANTS.map((plant) => [plant.id, plant]));
-const DAILY_CHALLENGE_XP = new Map(CHALLENGES.map((challenge) => [challenge.id, challenge.xpReward]));
-const SEASONAL_CHALLENGE_XP = new Map(
-  Object.values(SEASONAL_CHALLENGES)
-    .flat()
-    .map((challenge) => [challenge.id, challenge.xpReward])
-);
 
 function todayStr(): string {
   return todayLocalStr(); // YYYY-MM-DD (device-local, JST-aware)
@@ -38,10 +38,37 @@ function findKnownPlant(plantId: string) {
   return PLANT_BY_ID.get(plantId);
 }
 
-function cleanupDroppedPhotos(records: Array<{ imageUri?: string }>): void {
+type PhotoReferenceState = {
+  scanHistory: ScanRecord[];
+  unidentifiedObservations: UnidentifiedObservation[];
+};
+
+function isPhotoReferenced(state: PhotoReferenceState, imageUri: string): boolean {
+  return (
+    state.scanHistory.some((record) => record.imageUri === imageUri) ||
+    state.unidentifiedObservations.some((record) => record.imageUri === imageUri)
+  );
+}
+
+function cleanupDroppedPhotos(
+  records: { imageUri?: string }[],
+  retainedState: PhotoReferenceState
+): void {
   for (const record of records) {
-    if (record.imageUri) void deleteObservationPhoto(record.imageUri);
+    if (record.imageUri && !isPhotoReferenced(retainedState, record.imageUri)) {
+      void deleteObservationPhoto(record.imageUri);
+    }
   }
+}
+
+function dailyChallengeSnapshot(state: GameState): ChallengeSnap {
+  return {
+    todayScanCount: state.todayScanCount,
+    todayNewCount: state.todayNewCount,
+    todayMaxRarity: state.todayMaxRarity,
+    todayDangers: state.todayDangers,
+    todayCategories: state.todayCategories,
+  };
 }
 
 // ─── State shape ─────────────────────────────────────────────────────────────
@@ -116,8 +143,8 @@ interface GameState {
    */
   recordObservation: (plantId: string, imageUri?: string, traitChecks?: TraitCheck[]) => void;
   setPlayerName: (name: string) => void;
-  claimChallenge: (challengeId: string, xpReward: number) => void;
-  claimSeasonalChallenge: (challengeId: string, xpReward: number) => void;
+  claimChallenge: (challengeId: string) => void;
+  claimSeasonalChallenge: (challengeId: string) => void;
   setLastCelebrated: (count: number) => void;
   toggleFavorite: (plantId: string) => void;
   setPlantNote: (plantId: string, note: string) => void;
@@ -132,7 +159,7 @@ interface GameState {
   setScanRevisit: (scanId: string, revisitAt: string | undefined) => void;
   /** Same as `setScanRevisit` for an unidentified (no plant match) observation. */
   setUnidentifiedRevisit: (observationId: string, revisitAt: string | undefined) => void;
-  /** Tag how a specimen was obtained — feeds the 暮らし content gate (v3 §10, PR22). */
+  /** Tag how this specimen was obtained — feeds the 暮らし content gate (v3 §10, PR22). */
   setScanOrigin: (scanId: string, origin: SourceOrigin) => void;
   addPracticeRecord: (plantId: string, category: string, note: string) => void;
   deletePracticeRecord: (id: string) => void;
@@ -184,7 +211,7 @@ export const useGameStore = create<GameState>()(
       _hasHydrated: false,
       setHasHydrated: (v: boolean) => set({ _hasHydrated: v }),
 
-      // ── Session start: call once on app mount ────────────────────────────
+      // ── Session start: idempotent and safe to call before any dated action ──
       startSession: () => {
         const { lastLoginDate, streak, todayDate, seasonalQuestMonth } = get();
         const today = todayStr();
@@ -225,40 +252,39 @@ export const useGameStore = create<GameState>()(
         // never create ghost discoveries or award XP even if a caller is buggy.
         if (!plant) return;
 
-        const { discoveredPlantIds, todayDate } = get();
+        // A long-running foreground session can cross midnight without an
+        // AppState event. Refresh date/month boundaries before dated mutations.
+        get().startSession();
+        const { discoveredPlantIds } = get();
         const isNew = !discoveredPlantIds.includes(plantId);
-        const rarity = plant.rarity;
-        const gainedXp = isNew ? (RARITY_XP[rarity] ?? 100) : XP_PER_RESCAN;
-        const isToday = todayDate === todayStr();
+        if (!isNew) return; // rescans earn XP only through recordObservation().
 
+        const rarity = plant.rarity;
         set((state) => ({
-          discoveredPlantIds: isNew
-            ? [...state.discoveredPlantIds, plantId]
-            : state.discoveredPlantIds,
-          xp: state.xp + gainedXp,
-          todayNewCount: isNew && isToday
-            ? state.todayNewCount + 1
-            : state.todayNewCount,
-          todayMaxRarity: isToday
-            ? Math.max(state.todayMaxRarity, rarity)
-            : state.todayMaxRarity,
-          todayDangers:
-            isToday && !state.todayDangers.includes(plant.danger)
-              ? [...state.todayDangers, plant.danger]
-              : state.todayDangers,
-          todayCategories:
-            isToday && !state.todayCategories.includes(plant.category)
-              ? [...state.todayCategories, plant.category]
-              : state.todayCategories,
+          discoveredPlantIds: [...state.discoveredPlantIds, plantId],
+          xp: state.xp + (RARITY_XP[rarity] ?? 100),
+          todayNewCount: state.todayNewCount + 1,
+          todayMaxRarity: Math.max(state.todayMaxRarity, rarity),
+          todayDangers: !state.todayDangers.includes(plant.danger)
+            ? [...state.todayDangers, plant.danger]
+            : state.todayDangers,
+          todayCategories: !state.todayCategories.includes(plant.category)
+            ? [...state.todayCategories, plant.category]
+            : state.todayCategories,
         }));
       },
 
       // ── Record a scan ────────────────────────────────────────────────────
       addScan: (plantId: string, imageUri?: string) => {
         if (!findKnownPlant(plantId)) return;
+        get().startSession();
 
-        const { todayDate, scanHistory } = get();
-        const dropped = scanHistory.length >= 100 ? scanHistory.slice(99) : [];
+        const snapshot = get();
+        if (imageUri && isPhotoReferenced(snapshot, imageUri)) return;
+
+        const dropped = snapshot.scanHistory.length >= 100
+          ? snapshot.scanHistory.slice(99)
+          : [];
         const record: ScanRecord = {
           id: generateId('scan'),
           plantId,
@@ -267,26 +293,26 @@ export const useGameStore = create<GameState>()(
         };
         set((state) => ({
           scanHistory: [record, ...state.scanHistory].slice(0, 100),
-          todayScanCount: todayDate === todayStr()
-            ? state.todayScanCount + 1
-            : state.todayScanCount,
+          todayScanCount: state.todayScanCount + 1,
         }));
-        cleanupDroppedPhotos(dropped);
+        cleanupDroppedPhotos(dropped, get());
       },
 
       // ── Atomic observation record (discovery + history + XP in one update) ─
       recordObservation: (plantId: string, imageUri?: string, traitChecks?: TraitCheck[]) => {
         const plant = findKnownPlant(plantId);
         if (!plant) return;
+        get().startSession();
 
         const snapshot = get();
-        // One persisted photo represents one observation. This also closes a
-        // real double-tap race: concurrent save taps share the same durable URI
-        // in observationPhotoStorage, so only the first may award XP.
-        if (imageUri && snapshot.scanHistory.some((r) => r.imageUri === imageUri)) return;
+        // One persisted photo represents one observation. Check both identified
+        // and unidentified records so the same file cannot gain two owners via
+        // separate save paths and later be deleted out from under one of them.
+        if (imageUri && isPhotoReferenced(snapshot, imageUri)) return;
 
-        const isToday = snapshot.todayDate === todayStr();
-        const dropped = snapshot.scanHistory.length >= 100 ? snapshot.scanHistory.slice(99) : [];
+        const dropped = snapshot.scanHistory.length >= 100
+          ? snapshot.scanHistory.slice(99)
+          : [];
         const rarity = plant.rarity;
         const record: ScanRecord = {
           id: generateId('scan'),
@@ -304,22 +330,18 @@ export const useGameStore = create<GameState>()(
               : state.discoveredPlantIds,
             xp: state.xp + gainedXp,
             scanHistory: [record, ...state.scanHistory].slice(0, 100),
-            todayScanCount: isToday ? state.todayScanCount + 1 : state.todayScanCount,
-            todayNewCount: isNew && isToday ? state.todayNewCount + 1 : state.todayNewCount,
-            todayMaxRarity: isToday
-              ? Math.max(state.todayMaxRarity, rarity)
-              : state.todayMaxRarity,
-            todayDangers:
-              isToday && !state.todayDangers.includes(plant.danger)
-                ? [...state.todayDangers, plant.danger]
-                : state.todayDangers,
-            todayCategories:
-              isToday && !state.todayCategories.includes(plant.category)
-                ? [...state.todayCategories, plant.category]
-                : state.todayCategories,
+            todayScanCount: state.todayScanCount + 1,
+            todayNewCount: isNew ? state.todayNewCount + 1 : state.todayNewCount,
+            todayMaxRarity: Math.max(state.todayMaxRarity, rarity),
+            todayDangers: !state.todayDangers.includes(plant.danger)
+              ? [...state.todayDangers, plant.danger]
+              : state.todayDangers,
+            todayCategories: !state.todayCategories.includes(plant.category)
+              ? [...state.todayCategories, plant.category]
+              : state.todayCategories,
           };
         });
-        cleanupDroppedPhotos(dropped);
+        cleanupDroppedPhotos(dropped, get());
       },
 
       setHasOnboarded: () => set({ hasOnboarded: true }),
@@ -341,7 +363,7 @@ export const useGameStore = create<GameState>()(
 
       recordUnidentifiedObservation: (imageUri?: string, note?: string) => {
         const snapshot = get();
-        if (imageUri && snapshot.unidentifiedObservations.some((o) => o.imageUri === imageUri)) return;
+        if (imageUri && isPhotoReferenced(snapshot, imageUri)) return;
 
         const dropped = snapshot.unidentifiedObservations.length >= 100
           ? snapshot.unidentifiedObservations.slice(99)
@@ -355,15 +377,19 @@ export const useGameStore = create<GameState>()(
         set((state) => ({
           unidentifiedObservations: [observation, ...state.unidentifiedObservations].slice(0, 100),
         }));
-        cleanupDroppedPhotos(dropped);
+        cleanupDroppedPhotos(dropped, get());
       },
 
       deleteUnidentifiedObservation: (id: string) => {
         const target = get().unidentifiedObservations.find((o) => o.id === id);
+        if (!target) return;
+
         set((state) => ({
           unidentifiedObservations: state.unidentifiedObservations.filter((o) => o.id !== id),
         }));
-        if (target?.imageUri) void deleteObservationPhoto(target.imageUri);
+        if (target.imageUri && !isPhotoReferenced(get(), target.imageUri)) {
+          void deleteObservationPhoto(target.imageUri);
+        }
       },
 
       setScanRevisit: (scanId: string, revisitAt: string | undefined) => {
@@ -405,7 +431,7 @@ export const useGameStore = create<GameState>()(
       resetAllData: () => {
         // Make the in-memory + persisted Zustand state disappear immediately;
         // durable photos are then cleaned in the background. The cleanup util
-        // is idempotent and swallows filesystem errors so reset cannot get stuck.
+        // invalidates pre-reset in-flight copies as well as deleting the folder.
         set({ ...INITIAL_USER_DATA });
         void clearObservationPhotos();
       },
@@ -432,30 +458,56 @@ export const useGameStore = create<GameState>()(
 
       // ── Claim a completed daily quest ─────────────────────────────────────
       claimChallenge: (challengeId: string) => {
-        const xpReward = DAILY_CHALLENGE_XP.get(challengeId);
-        // The reward amount is data-owned. Never trust an amount supplied by a
-        // caller; stale/buggy UI must not be able to mint arbitrary XP.
-        if (xpReward === undefined) return;
+        // Refresh the date first. This both prevents yesterday's counters/claims
+        // leaking past midnight and makes direct/store-level calls obey the same
+        // day boundary as the UI.
+        get().startSession();
+        const snapshot = get();
+        const challenge = getDailyChallenges(snapshot.todayDate).find(
+          (candidate) => candidate.id === challengeId
+        );
+
+        // A globally-valid challenge ID is not enough: it must actually be one
+        // of today's three quests and must be completed according to trusted
+        // store counters before XP can be awarded.
+        if (!challenge || getChallengePct(challenge, dailyChallengeSnapshot(snapshot)) < 1) return;
 
         set((state) => {
           if (state.claimedChallengeIds.includes(challengeId)) return state;
           return {
             claimedChallengeIds: [...state.claimedChallengeIds, challengeId],
-            xp: state.xp + xpReward,
+            xp: state.xp + challenge.xpReward,
           };
         });
       },
 
       // ── Claim a completed seasonal quest ──────────────────────────────────
       claimSeasonalChallenge: (challengeId: string) => {
-        const xpReward = SEASONAL_CHALLENGE_XP.get(challengeId);
-        if (xpReward === undefined) return;
+        get().startSession();
+        const snapshot = get();
+        const season = getCurrentSeason();
+        const challenge = SEASONAL_CHALLENGES[season].find(
+          (candidate) => candidate.id === challengeId
+        );
+        if (!challenge) return;
+
+        const seasonalPlantIds = new Set(
+          getSeasonalPlants(season, PLANTS).map((plant) => plant.id)
+        );
+        const seasonalDiscoveredCount = snapshot.discoveredPlantIds.filter((id) =>
+          seasonalPlantIds.has(id)
+        ).length;
+        const progress = getChallengePct(challenge, {
+          ...dailyChallengeSnapshot(snapshot),
+          seasonalDiscoveredCount,
+        });
+        if (progress < 1) return;
 
         set((state) => {
           if (state.claimedSeasonalQuestIds.includes(challengeId)) return state;
           return {
             claimedSeasonalQuestIds: [...state.claimedSeasonalQuestIds, challengeId],
-            xp: state.xp + xpReward,
+            xp: state.xp + challenge.xpReward,
           };
         });
       },
@@ -474,10 +526,12 @@ export const useGameStore = create<GameState>()(
       migrate: (persisted, _version) => persisted as GameState,
       // Do not persist the transient hydration flag.
       partialize: ({ _hasHydrated, setHasHydrated, ...rest }) => rest,
-      onRehydrateStorage: () => (state) => {
-        // Called once AsyncStorage has finished loading (even on first launch,
-        // where `state` is the default). Flip the flag so the UI can wait for it.
-        state?.setHasHydrated(true);
+      onRehydrateStorage: () => (_state, error) => {
+        // Even a corrupt/unreadable AsyncStorage payload must not trap the UI in
+        // an eternal hydration state. Zustand keeps the current default state on
+        // failure; mark hydration complete so the app can recover and remain usable.
+        if (error) console.warn('[store] Failed to rehydrate persisted state:', error);
+        useGameStore.setState({ _hasHydrated: true });
       },
     }
   )
