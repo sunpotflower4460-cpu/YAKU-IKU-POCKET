@@ -28,6 +28,7 @@ export function IconButton({
   const theme = useTheme();
   return (
     <Pressable
+      {...rest}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
       accessibilityState={{ ...accessibilityState, disabled: !!disabled }}
@@ -44,9 +45,14 @@ export function IconButton({
         },
         typeof style === 'function' ? style(state) : style,
       ]}
-      {...rest}
     >
-      <Ionicons name={icon} size={size} color={theme.colors.textPrimary} />
+      <Ionicons
+        name={icon}
+        size={size}
+        color={theme.colors.textPrimary}
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+      />
     </Pressable>
   );
 }
