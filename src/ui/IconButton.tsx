@@ -12,16 +12,26 @@ interface Props extends PressableProps {
 
 /**
  * Icon-only control. Always requires accessibilityLabel (icons alone don't
- * read to VoiceOver). Visual size can be smaller than the tap target — the
- * padding here keeps the hit area at 44x44pt regardless of icon size.
+ * read to VoiceOver). The control itself is a full 44x44pt tap target; callers
+ * may opt into extra hitSlop only when surrounding controls cannot overlap.
  */
-export function IconButton({ icon, accessibilityLabel, size = 20, variant = 'plain', style, ...rest }: Props) {
+export function IconButton({
+  icon,
+  accessibilityLabel,
+  size = 20,
+  variant = 'plain',
+  disabled,
+  accessibilityState,
+  style,
+  ...rest
+}: Props) {
   const theme = useTheme();
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
-      hitSlop={8}
+      accessibilityState={{ ...accessibilityState, disabled: !!disabled }}
+      disabled={disabled}
       style={(state) => [
         styles.base,
         {
@@ -30,6 +40,7 @@ export function IconButton({ icon, accessibilityLabel, size = 20, variant = 'pla
           borderRadius: theme.radius.pill,
           backgroundColor:
             variant === 'surface' ? (state.pressed ? theme.colors.surfaceTertiary : theme.colors.surfaceSecondary) : 'transparent',
+          opacity: disabled ? 0.5 : 1,
         },
         typeof style === 'function' ? style(state) : style,
       ]}
