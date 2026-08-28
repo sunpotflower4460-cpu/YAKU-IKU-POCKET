@@ -159,6 +159,31 @@ describe('persistObservationPhoto', () => {
     expect(mockDeleteAsync).toHaveBeenCalledWith(staleDest, { idempotent: true });
   });
 
+  it('waits for reset directory cleanup before saving a new-generation photo', async () => {
+    mockGetInfoAsync.mockResolvedValue({ exists: false });
+    mockMakeDirectoryAsync.mockResolvedValue(undefined);
+    mockCopyAsync.mockResolvedValue(undefined);
+
+    let resolveClear!: () => void;
+    mockDeleteAsync.mockImplementationOnce(
+      () => new Promise<void>((resolve) => { resolveClear = resolve; })
+    );
+
+    const clearing = clearObservationPhotos();
+    const newSave = persistObservationPhoto('file:///cache/after-reset.jpg');
+
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+    expect(mockCopyAsync).not.toHaveBeenCalled();
+    expect(mockGetInfoAsync).not.toHaveBeenCalled();
+
+    resolveClear();
+    await clearing;
+    const savedUri = await newSave;
+
+    expect(mockCopyAsync).toHaveBeenCalledTimes(1);
+    expect(savedUri).toMatch(/^file:\/\/\/mock-documents\/observations\//);
+  });
+
   it('uses a safe jpg suffix when a source URI has no usable extension', async () => {
     mockGetInfoAsync.mockResolvedValue({ exists: true });
     mockCopyAsync.mockResolvedValue(undefined);
