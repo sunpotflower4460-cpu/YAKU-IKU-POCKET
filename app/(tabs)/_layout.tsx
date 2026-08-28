@@ -41,6 +41,30 @@ export default function TabLayout() {
   }, [hasHydrated, startSession]);
 
   useEffect(() => {
+    if (!hasHydrated) return;
+
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const scheduleNextLocalDay = () => {
+      const now = new Date();
+      const nextDay = new Date(now);
+      // Run just after the next local midnight. This refreshes daily quests,
+      // counters and calendar data without remounting the tab navigator or
+      // discarding the user's current tab / in-progress screen state.
+      nextDay.setHours(24, 0, 1, 0);
+      const delay = Math.max(1000, nextDay.getTime() - now.getTime());
+      timer = setTimeout(() => {
+        startSession();
+        scheduleNextLocalDay();
+      }, delay);
+    };
+
+    scheduleNextLocalDay();
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [hasHydrated, startSession]);
+
+  useEffect(() => {
     if (prevLevelRef.current === null) {
       prevLevelRef.current = currentLevel;
       return;
