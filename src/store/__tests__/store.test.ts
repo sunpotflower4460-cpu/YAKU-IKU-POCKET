@@ -24,21 +24,33 @@ beforeEach(() => {
   });
 });
 
-describe('claimChallenge / claimSeasonalChallenge double-reward guard', () => {
-  it('does not award the same daily quest twice', () => {
+describe('claimChallenge / claimSeasonalChallenge reward integrity', () => {
+  it('uses the trusted daily reward and does not award the same quest twice', () => {
     const { claimChallenge } = useGameStore.getState();
-    claimChallenge('q1', 50);
-    claimChallenge('q1', 50); // duplicate
+    // q1 is defined as 30XP. A stale/buggy caller must not be able to override it.
+    claimChallenge('q1', 9999);
+    claimChallenge('q1', 9999); // duplicate
     const s = useGameStore.getState();
-    expect(s.xp).toBe(50);
+    expect(s.xp).toBe(30);
     expect(s.claimedChallengeIds.filter((id) => id === 'q1')).toHaveLength(1);
   });
 
-  it('does not award the same seasonal quest twice', () => {
+  it('uses the trusted seasonal reward and does not award the same quest twice', () => {
     const { claimSeasonalChallenge } = useGameStore.getState();
-    claimSeasonalChallenge('sc_spring_1', 60);
-    claimSeasonalChallenge('sc_spring_1', 60);
+    // sc_spring_1 is defined as 60XP.
+    claimSeasonalChallenge('sc_spring_1', 9999);
+    claimSeasonalChallenge('sc_spring_1', 9999);
     expect(useGameStore.getState().xp).toBe(60);
+  });
+
+  it('rejects unknown challenge ids instead of minting XP', () => {
+    const { claimChallenge, claimSeasonalChallenge } = useGameStore.getState();
+    claimChallenge('__missing_daily__', 9999);
+    claimSeasonalChallenge('__missing_seasonal__', 9999);
+    const s = useGameStore.getState();
+    expect(s.xp).toBe(0);
+    expect(s.claimedChallengeIds).toEqual([]);
+    expect(s.claimedSeasonalQuestIds).toEqual([]);
   });
 });
 
