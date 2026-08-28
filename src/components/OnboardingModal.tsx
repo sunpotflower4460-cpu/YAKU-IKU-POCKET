@@ -1,13 +1,13 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  Modal,
   Animated,
+  Modal,
   Pressable,
   ScrollView,
+  StyleSheet,
+  Text,
   useWindowDimensions,
+  View,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -23,7 +23,7 @@ interface Props {
 
 type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
 
-const SLIDES: {
+type Slide = {
   icon: IoniconName;
   subIcon?: IoniconName;
   title: string;
@@ -31,28 +31,30 @@ const SLIDES: {
   gradient?: [string, string, string];
   label: string;
   isSafety?: boolean;
-}[] = [
+};
+
+const SLIDES: Slide[] = [
   {
     icon: 'camera-outline',
     subIcon: 'leaf-outline',
     title: '野草・ハーブを観察',
-    body: `カメラで植物を撮影し、候補と見分けるポイントを確認。${TOTAL_PLANTS}種類の野草・ハーブとの出会いを記録できます。`,
-    gradient: ['#1B5E20', '#2E7D32', '#43A047'],
+    body: `植物を撮影して候補を確認し、特徴を見比べます。${TOTAL_PLANTS}種類の野草・ハーブとの出会いを、自分のフィールドノートに残せます。`,
+    gradient: ['#174F2A', '#286B38', '#41824B'],
     label: '観察',
   },
   {
-    icon: 'trophy-outline',
-    subIcon: 'star',
-    title: '学びを積み重ねる',
-    body: '新しい観察や学習でXPを獲得。クエストや記録を通して、少しずつ植物を見る目を育てていきます。',
-    gradient: ['#164E63', '#0E7490', '#0891B2'],
-    label: '成長',
+    icon: 'book-outline',
+    subIcon: 'compass-outline',
+    title: '観察を重ねて、見る目を育てる',
+    body: '見つけた植物、季節、メモ、見比べた特徴を少しずつ蓄積。XPやチャレンジは、学びを続けるための小さな目印です。',
+    gradient: ['#123F46', '#1F6265', '#3D7C70'],
+    label: '記録',
   },
   {
-    icon: 'warning-outline',
-    title: '必ず専門家に確認を',
-    body: 'このアプリの情報は教育・参考目的です。野草の採取・摂取は、アプリの判定だけで決めず、必ず専門家にご確認ください。',
-    label: '安全について',
+    icon: 'shield-checkmark-outline',
+    title: '安全情報を確認してください',
+    body: 'このアプリは植物を学び、観察を記録するための参考ツールです。野草の採取・摂取は、AIが示す候補だけで決めず、専門家に確認してください。',
+    label: '安全',
     isSafety: true,
   },
 ];
@@ -69,6 +71,9 @@ export function OnboardingModal({ visible, onComplete }: Props) {
   const cardWidth = Math.min(Math.max(width - 32, 280), 440);
   const cardMaxHeight = Math.max(height - 32, 420);
   const slideContentMaxHeight = Math.max(cardMaxHeight - 300, 210);
+  const safetyBg = theme.mode === 'dark' ? theme.colors.surfaceSecondary : '#FFF9EC';
+  const safetySurface = theme.mode === 'dark' ? theme.colors.surfaceTertiary : '#FFF1C9';
+  const safetyAccent = theme.colors.statusCaution;
 
   useEffect(() => {
     if (visible) {
@@ -98,8 +103,6 @@ export function OnboardingModal({ visible, onComplete }: Props) {
     }
   }, [visible, reduceMotion, translateAnim, scaleAnim, opacityAnim, theme.motion.stateChange]);
 
-  // Rotation, Stage Manager and split-screen can change the available width
-  // while the modal is open. Keep the current slide aligned after a resize.
   useEffect(() => {
     translateAnim.setValue(-slideIndex * cardWidth);
   }, [cardWidth, slideIndex, translateAnim]);
@@ -119,9 +122,7 @@ export function OnboardingModal({ visible, onComplete }: Props) {
   }
 
   function handleNext() {
-    if (slideIndex < SLIDES.length - 1) {
-      goToSlide(slideIndex + 1);
-    }
+    if (slideIndex < SLIDES.length - 1) goToSlide(slideIndex + 1);
   }
 
   function handleSkipToSafety() {
@@ -169,75 +170,95 @@ export function OnboardingModal({ visible, onComplete }: Props) {
                 },
               ]}
             >
-              {SLIDES.map((slide, i) => (
-                <View
-                  key={slide.label}
-                  style={[
-                    styles.slide,
-                    { width: cardWidth, backgroundColor: theme.colors.surfacePrimary },
-                    slide.isSafety && styles.slideSafety,
-                  ]}
-                  accessibilityElementsHidden={i !== slideIndex}
-                  importantForAccessibility={i === slideIndex ? 'yes' : 'no-hide-descendants'}
-                >
-                  {slide.isSafety ? (
-                    <View style={styles.safetyHeader}>
-                      <View style={styles.safetyIconCircle}>
-                        <Ionicons name={slide.icon} size={48} color="#B45309" />
-                      </View>
-                    </View>
-                  ) : (
-                    <LinearGradient colors={slide.gradient!} style={styles.slideHeader}>
-                      <View style={styles.emojiCircle}>
-                        <Ionicons name={slide.icon} size={48} color="#FFFFFF" />
-                        {slide.subIcon && (
-                          <View style={styles.subIconWrap}>
-                            <Ionicons name={slide.subIcon} size={20} color="#FFFFFF" />
-                          </View>
-                        )}
-                      </View>
-                    </LinearGradient>
-                  )}
-
-                  <ScrollView
-                    style={{ maxHeight: slideContentMaxHeight }}
-                    contentContainerStyle={styles.slideContent}
-                    showsVerticalScrollIndicator={false}
-                    bounces={false}
+              {SLIDES.map((slide, index) => {
+                const active = index === slideIndex;
+                return (
+                  <View
+                    key={slide.label}
+                    style={[
+                      styles.slide,
+                      {
+                        width: cardWidth,
+                        backgroundColor: slide.isSafety ? safetyBg : theme.colors.surfacePrimary,
+                      },
+                    ]}
+                    accessibilityElementsHidden={!active}
+                    importantForAccessibility={active ? 'yes' : 'no-hide-descendants'}
                   >
-                    <Text
-                      style={[
-                        styles.slideTitle,
-                        { color: theme.colors.textPrimary },
-                        slide.isSafety && styles.slideTitleSafety,
-                      ]}
-                      accessibilityRole="header"
-                    >
-                      {slide.title}
-                    </Text>
-                    <Text
-                      style={[
-                        styles.slideBody,
-                        { color: theme.colors.textSecondary },
-                        slide.isSafety && styles.slideBodySafety,
-                      ]}
-                    >
-                      {slide.body}
-                    </Text>
-
-                    {slide.isSafety && (
-                      <View style={styles.safetyBox}>
-                        <View style={styles.safetyBoxInner}>
-                          <Ionicons name="shield-checkmark-outline" size={16} color="#92400E" />
-                          <Text style={styles.safetyBoxText}>
-                            専門家への確認なしに野草を採取・摂取しないでください
-                          </Text>
+                    {slide.isSafety ? (
+                      <View
+                        style={[
+                          styles.safetyHeader,
+                          { backgroundColor: safetySurface, borderBottomColor: `${safetyAccent}66` },
+                        ]}
+                      >
+                        <View style={[styles.safetyIconCircle, { backgroundColor: `${safetyAccent}16` }]}>
+                          <Ionicons name={slide.icon} size={46} color={safetyAccent} />
                         </View>
                       </View>
+                    ) : (
+                      <LinearGradient colors={slide.gradient!} style={styles.slideHeader}>
+                        <View style={styles.illustrationCircle}>
+                          <Ionicons name={slide.icon} size={47} color="#FFFFFF" />
+                          {slide.subIcon && (
+                            <View style={styles.subIconWrap}>
+                              <Ionicons name={slide.subIcon} size={19} color="#FFFFFF" />
+                            </View>
+                          )}
+                        </View>
+                      </LinearGradient>
                     )}
-                  </ScrollView>
-                </View>
-              ))}
+
+                    <ScrollView
+                      style={{ maxHeight: slideContentMaxHeight }}
+                      contentContainerStyle={styles.slideContent}
+                      showsVerticalScrollIndicator={false}
+                      bounces={false}
+                    >
+                      <Text
+                        style={[
+                          styles.slideTitle,
+                          { color: slide.isSafety ? safetyAccent : theme.colors.textPrimary },
+                        ]}
+                        accessibilityRole="header"
+                      >
+                        {slide.title}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.slideBody,
+                          { color: theme.colors.textSecondary },
+                        ]}
+                      >
+                        {slide.body}
+                      </Text>
+
+                      {slide.isSafety && (
+                        <View
+                          style={[
+                            styles.safetyBox,
+                            { backgroundColor: safetySurface, borderColor: `${safetyAccent}55` },
+                          ]}
+                          accessible
+                          accessibilityRole="alert"
+                          accessibilityLabel="採取や摂取の前に、専門家へ確認してください。"
+                        >
+                          <View
+                            style={styles.safetyBoxInner}
+                            accessibilityElementsHidden
+                            importantForAccessibility="no-hide-descendants"
+                          >
+                            <Ionicons name="warning-outline" size={17} color={safetyAccent} />
+                            <Text style={[styles.safetyBoxText, { color: theme.colors.textPrimary }]}>
+                              採取・摂取の前に、専門家へ確認してください
+                            </Text>
+                          </View>
+                        </View>
+                      )}
+                    </ScrollView>
+                  </View>
+                );
+              })}
             </Animated.View>
           </View>
 
@@ -246,12 +267,12 @@ export function OnboardingModal({ visible, onComplete }: Props) {
             accessibilityElementsHidden
             importantForAccessibility="no-hide-descendants"
           >
-            {SLIDES.map((_, i) => (
+            {SLIDES.map((_, index) => (
               <View
-                key={i}
+                key={index}
                 style={[
                   styles.dot,
-                  i === slideIndex
+                  index === slideIndex
                     ? { ...styles.dotActive, backgroundColor: theme.colors.accentPrimary }
                     : { ...styles.dotInactive, backgroundColor: theme.colors.borderStrong },
                 ]}
@@ -259,22 +280,28 @@ export function OnboardingModal({ visible, onComplete }: Props) {
             ))}
           </View>
 
-          <View style={styles.actions}>
+          <View style={[styles.actions, { backgroundColor: theme.colors.surfacePrimary }]}>
             <Text
               style={[styles.progressLabel, { color: theme.colors.textTertiary }]}
               accessibilityLiveRegion="polite"
+              accessibilityRole="text"
             >
               {slideIndex + 1} / {SLIDES.length} ・ {SLIDES[slideIndex].label}
             </Text>
+
             {isLastSlide ? (
               <Pressable
-                style={({ pressed }) => [styles.btnPrimary, pressed && styles.buttonPressed]}
+                style={({ pressed }) => [
+                  styles.btnPrimary,
+                  { backgroundColor: theme.colors.accentPrimary },
+                  pressed && styles.buttonPressed,
+                ]}
                 onPress={handleComplete}
                 accessibilityRole="button"
-                accessibilityLabel="安全上の注意を理解してはじめる"
+                accessibilityLabel="安全ガイドを確認してはじめる"
               >
-                <Text style={styles.btnPrimaryText}>理解してはじめる</Text>
-                <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
+                <Text style={[styles.btnPrimaryText, { color: theme.colors.textOnAccent }]}>確認してはじめる</Text>
+                <Ionicons name="arrow-forward" size={18} color={theme.colors.textOnAccent} />
               </Pressable>
             ) : (
               <View style={styles.actionRow}>
@@ -286,9 +313,9 @@ export function OnboardingModal({ visible, onComplete }: Props) {
                   ]}
                   onPress={handleSkipToSafety}
                   accessibilityRole="button"
-                  accessibilityLabel="安全情報を見る"
+                  accessibilityLabel="安全ガイドを見る"
                 >
-                  <Text style={[styles.btnSkipText, { color: theme.colors.accentPrimary }]}>安全情報を見る</Text>
+                  <Text style={[styles.btnSkipText, { color: theme.colors.textSecondary }]}>安全ガイド</Text>
                 </Pressable>
                 <Pressable
                   style={({ pressed }) => [
@@ -328,28 +355,21 @@ const styles = StyleSheet.create({
     shadowRadius: 24,
     elevation: 16,
   },
-  slidesWrapper: {
-    overflow: 'hidden',
-  },
-  slidesTrack: {
-    flexDirection: 'row',
-  },
+  slidesWrapper: { overflow: 'hidden' },
+  slidesTrack: { flexDirection: 'row' },
   slide: {},
-  slideSafety: {
-    backgroundColor: '#FFFBF0',
-  },
   slideHeader: {
-    height: 164,
+    height: 160,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  emojiCircle: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    backgroundColor: 'rgba(255,255,255,0.16)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.28)',
+  illustrationCircle: {
+    width: 94,
+    height: 94,
+    borderRadius: 47,
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.30)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -366,24 +386,21 @@ const styles = StyleSheet.create({
   },
   safetyHeader: {
     height: 132,
-    backgroundColor: '#FFF3E0',
     justifyContent: 'center',
     alignItems: 'center',
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#F59E0B',
   },
   safetyIconCircle: {
     width: 84,
     height: 84,
     borderRadius: 42,
-    backgroundColor: '#FEF3C7',
     justifyContent: 'center',
     alignItems: 'center',
   },
   slideContent: {
     paddingHorizontal: 22,
     paddingTop: 22,
-    paddingBottom: 14,
+    paddingBottom: 15,
     alignItems: 'center',
   },
   slideTitle: {
@@ -391,26 +408,18 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     textAlign: 'center',
     marginBottom: 10,
-    lineHeight: 29,
-  },
-  slideTitleSafety: {
-    color: '#B45309',
+    lineHeight: 30,
   },
   slideBody: {
     fontSize: 16,
-    lineHeight: 24,
+    lineHeight: 25,
     textAlign: 'center',
-  },
-  slideBodySafety: {
-    color: '#92400E',
   },
   safetyBox: {
     marginTop: 16,
-    backgroundColor: '#FEF3C7',
     borderRadius: 14,
     padding: 14,
-    borderWidth: 1,
-    borderColor: '#FCD34D',
+    borderWidth: StyleSheet.hairlineWidth,
     width: '100%',
   },
   safetyBoxInner: {
@@ -420,9 +429,8 @@ const styles = StyleSheet.create({
   },
   safetyBoxText: {
     fontSize: 13,
-    color: '#92400E',
     fontWeight: '700',
-    lineHeight: 19,
+    lineHeight: 20,
     flex: 1,
   },
   dotsRow: {
@@ -433,16 +441,9 @@ const styles = StyleSheet.create({
     paddingBottom: 4,
     gap: 8,
   },
-  dot: {
-    height: 6,
-    borderRadius: 3,
-  },
-  dotActive: {
-    width: 24,
-  },
-  dotInactive: {
-    width: 6,
-  },
+  dot: { height: 6, borderRadius: 3 },
+  dotActive: { width: 24 },
+  dotInactive: { width: 6 },
   actions: {
     paddingHorizontal: 16,
     paddingBottom: 18,
@@ -451,6 +452,7 @@ const styles = StyleSheet.create({
   progressLabel: {
     textAlign: 'center',
     fontSize: 12,
+    lineHeight: 17,
     fontWeight: '600',
     marginBottom: 8,
   },
@@ -460,7 +462,7 @@ const styles = StyleSheet.create({
   },
   btnNext: {
     flex: 1,
-    minHeight: 52,
+    minHeight: 54,
     borderRadius: 16,
     paddingHorizontal: 18,
     flexDirection: 'row',
@@ -471,9 +473,10 @@ const styles = StyleSheet.create({
   btnNextText: {
     fontWeight: '800',
     fontSize: 16,
+    lineHeight: 22,
   },
   btnSkip: {
-    minHeight: 52,
+    minHeight: 54,
     paddingHorizontal: 16,
     borderRadius: 16,
     alignItems: 'center',
@@ -482,10 +485,10 @@ const styles = StyleSheet.create({
   btnSkipText: {
     fontWeight: '700',
     fontSize: 14,
+    lineHeight: 20,
   },
   btnPrimary: {
-    minHeight: 54,
-    backgroundColor: '#B45309',
+    minHeight: 56,
     borderRadius: 16,
     paddingHorizontal: 18,
     flexDirection: 'row',
@@ -494,9 +497,9 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   btnPrimaryText: {
-    color: '#FFFFFF',
     fontWeight: '800',
     fontSize: 16,
+    lineHeight: 22,
   },
   buttonPressed: {
     opacity: 0.82,
