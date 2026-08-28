@@ -28,19 +28,19 @@ export function RarityStars({ rarity, size = 'md' }: Props) {
       style={styles.container}
       accessible
       accessibilityRole="text"
-      accessibilityLabel={`レアリティ5段階中${safeRarity}`}
+      accessibilityLabel={`見つけやすさの目安、5段階中${safeRarity}`}
     >
       <View
         style={styles.stars}
         accessibilityElementsHidden
         importantForAccessibility="no-hide-descendants"
       >
-        {Array.from({ length: 5 }, (_, i) => (
+        {Array.from({ length: 5 }, (_, index) => (
           <Ionicons
-            key={i}
-            name={i < safeRarity ? 'star' : 'star-outline'}
+            key={index}
+            name={index < safeRarity ? 'star' : 'star-outline'}
             size={iconSize}
-            color={i < safeRarity ? color : theme.colors.textTertiary}
+            color={index < safeRarity ? color : theme.colors.textTertiary}
           />
         ))}
       </View>
@@ -49,9 +49,7 @@ export function RarityStars({ rarity, size = 'md' }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    alignSelf: 'flex-start',
-  },
+  container: { alignSelf: 'flex-start' },
   stars: {
     flexDirection: 'row',
     alignItems: 'center',
