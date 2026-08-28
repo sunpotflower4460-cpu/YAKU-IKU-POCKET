@@ -34,6 +34,10 @@ export function DangerBadge({ danger, size = 'md' }: Props) {
     : danger === 'YELLOW'
       ? theme.colors.statusCaution
       : theme.colors.statusObserved;
+  // Preserve the semantic status colour in the dot/border, but keep small
+  // label text comfortably above AA contrast in light mode rather than
+  // depending on a status colour that may sit close to the 4.5:1 threshold.
+  const labelColor = theme.mode === 'dark' ? statusColor : theme.colors.textPrimary;
 
   return (
     <View
@@ -66,7 +70,7 @@ export function DangerBadge({ danger, size = 'md' }: Props) {
         style={[
           styles.label,
           {
-            color: statusColor,
+            color: labelColor,
             fontSize: isSmall ? 11 : 13,
             lineHeight: isSmall ? 15 : 18,
           },
