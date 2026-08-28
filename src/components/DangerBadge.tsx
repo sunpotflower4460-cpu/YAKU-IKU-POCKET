@@ -82,6 +82,7 @@ export function DangerBadge({ danger, size = 'md' }: Props) {
 
 const styles = StyleSheet.create({
   badge: {
+    maxWidth: '100%',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
@@ -89,6 +90,6 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     alignSelf: 'flex-start',
   },
-  dot: {},
-  label: { fontWeight: '700' },
+  dot: { flexShrink: 0 },
+  label: { flexShrink: 1, fontWeight: '700' },
 });
