@@ -230,8 +230,8 @@ export default function PlantDetailScreen() {
   if (!plant) {
     return (
       <View style={[styles.notFound, { backgroundColor: theme.colors.canvas }]}>
-        <Ionicons name="leaf-outline" size={34} color={theme.colors.textTertiary} />
-        <Text style={[styles.notFoundText, { color: theme.colors.textSecondary }]}>植物が見つかりません</Text>
+        <Ionicons name="leaf-outline" size={34} color={theme.colors.textTertiary} accessibilityElementsHidden />
+        <Text style={[styles.notFoundText, { color: theme.colors.textSecondary }]} accessibilityRole="header">植物が見つかりません</Text>
       </View>
     );
   }
@@ -274,6 +274,7 @@ export default function PlantDetailScreen() {
           />
         )}
         <LinearGradient colors={gradientWithAlpha} style={styles.hero}>
+          {showHeroImage && <View style={styles.heroContrastScrim} pointerEvents="none" />}
           {plant.danger === 'RED' && (
             <View style={styles.alertBanner} accessibilityRole="alert">
               <Ionicons name="warning" size={18} color="#FFD3CF" />
@@ -309,7 +310,7 @@ export default function PlantDetailScreen() {
             </View>
             {showHeroImage && (
               <View style={styles.photoIndicator}>
-                <Ionicons name="camera-outline" size={14} color="rgba(255,255,255,0.9)" />
+                <Ionicons name="camera-outline" size={14} color="#F2F8F2" />
                 <Text style={styles.photoIndicatorText}>撮影した写真</Text>
               </View>
             )}
@@ -514,7 +515,7 @@ export default function PlantDetailScreen() {
                   accessibilityLabel={`参考資料を開く ${sourceHostLabel(url)}`}
                 >
                   <Ionicons name="open-outline" size={17} color={theme.colors.accentPrimary} />
-                  <Text style={[styles.sourceRefText, { color: theme.colors.textPrimary }]} numberOfLines={1}>
+                  <Text style={[styles.sourceRefText, { color: theme.colors.textPrimary }]} numberOfLines={2}>
                     {sourceHostLabel(url)}
                   </Text>
                   <Ionicons name="chevron-forward" size={15} color={theme.colors.textTertiary} />
@@ -826,9 +827,10 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   scrollContent: { paddingBottom: 28 },
   notFound: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 10, padding: 24 },
-  notFoundText: { fontSize: 16, lineHeight: 22, fontWeight: '700' },
+  notFoundText: { fontSize: 16, lineHeight: 22, fontWeight: '700', textAlign: 'center' },
   heroWrapper: { position: 'relative', overflow: 'hidden' },
-  hero: { paddingTop: 28, paddingBottom: 24, paddingHorizontal: 20, alignItems: 'center' },
+  hero: { position: 'relative', paddingTop: 28, paddingBottom: 24, paddingHorizontal: 20, alignItems: 'center' },
+  heroContrastScrim: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.18)' },
   alertBanner: { width: '100%', minHeight: 52, flexDirection: 'row', alignItems: 'flex-start', gap: 10, backgroundColor: 'rgba(0,0,0,0.34)', borderRadius: 14, paddingHorizontal: 14, paddingVertical: 12, marginBottom: 18 },
   alertBannerText: { flex: 1, color: '#FFF2F0', fontWeight: '800', fontSize: 13, lineHeight: 19 },
   warningBanner: { width: '100%', minHeight: 50, flexDirection: 'row', alignItems: 'flex-start', gap: 10, backgroundColor: 'rgba(0,0,0,0.28)', borderRadius: 14, paddingHorizontal: 14, paddingVertical: 12, marginBottom: 18 },
@@ -836,15 +838,15 @@ const styles = StyleSheet.create({
   emojiCircle: { width: 104, height: 104, borderRadius: 52, backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.26)', justifyContent: 'center', alignItems: 'center', marginBottom: 14 },
   emojiCircleDanger: { backgroundColor: 'rgba(255,120,110,0.12)' },
   emoji: { fontSize: 60 },
-  plantName: { fontSize: 29, lineHeight: 36, fontWeight: '900', color: '#FFFFFF', textAlign: 'center' },
-  plantNameEn: { fontSize: 15, lineHeight: 20, color: 'rgba(255,255,255,0.84)', marginTop: 4, fontWeight: '600' },
-  plantNameLatin: { fontSize: 13, lineHeight: 18, color: 'rgba(255,255,255,0.66)', fontStyle: 'italic', marginTop: 2, marginBottom: 13 },
+  plantName: { maxWidth: '100%', fontSize: 29, lineHeight: 36, fontWeight: '900', color: '#FFFFFF', textAlign: 'center' },
+  plantNameEn: { maxWidth: '100%', fontSize: 15, lineHeight: 20, color: '#EEF7EF', marginTop: 4, fontWeight: '600', textAlign: 'center' },
+  plantNameLatin: { maxWidth: '100%', fontSize: 13, lineHeight: 18, color: '#E4EFE5', fontStyle: 'italic', marginTop: 2, marginBottom: 13, textAlign: 'center' },
   badgeRow: { flexDirection: 'row', gap: 10, alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', justifyContent: 'center' },
   heroMetaRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8 },
   categoryChip: { minHeight: 30, justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.13)', borderRadius: 999, paddingHorizontal: 12, borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.20)' },
   categoryText: { color: '#FFFFFF', fontSize: 12, lineHeight: 17, fontWeight: '700' },
-  photoIndicator: { minHeight: 30, flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: 'rgba(0,0,0,0.24)', borderRadius: 999, paddingHorizontal: 11 },
-  photoIndicatorText: { color: 'rgba(255,255,255,0.9)', fontSize: 12, lineHeight: 17, fontWeight: '600' },
+  photoIndicator: { minHeight: 30, flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: 'rgba(0,0,0,0.32)', borderRadius: 999, paddingHorizontal: 11 },
+  photoIndicatorText: { color: '#F2F8F2', fontSize: 12, lineHeight: 17, fontWeight: '600' },
   favoriteBtn: { minHeight: 46, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, marginTop: 16, backgroundColor: 'rgba(255,255,255,0.13)', borderRadius: 999, paddingHorizontal: 18, borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.25)' },
   favoriteBtnText: { fontSize: 14, lineHeight: 19, fontWeight: '700', color: '#FFFFFF' },
   heroPressed: { opacity: 0.78 },
@@ -861,7 +863,7 @@ const styles = StyleSheet.create({
   infoRow: { minHeight: 40, flexDirection: 'row', alignItems: 'flex-start', gap: 8, paddingVertical: 8 },
   infoIcon: { width: 22, marginTop: 1 },
   infoLabel: { width: 68, fontSize: 13, lineHeight: 19, fontWeight: '700' },
-  infoValue: { flex: 1, fontSize: 14, lineHeight: 21, fontWeight: '500' },
+  infoValue: { flex: 1, minWidth: 0, fontSize: 14, lineHeight: 21, fontWeight: '500' },
   quickCautionRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginTop: 8, padding: 12, borderRadius: 12, borderLeftWidth: 3 },
   quickCautionText: { flex: 1, fontSize: 13, lineHeight: 20, fontWeight: '600' },
   rarityDetail: { flexDirection: 'row', alignItems: 'center', gap: 12, flexWrap: 'wrap' },
@@ -871,7 +873,7 @@ const styles = StyleSheet.create({
   warningNoteText: { fontSize: 14, lineHeight: 22, fontWeight: '600' },
   tierHeaderRow: { minHeight: 56, flexDirection: 'row', alignItems: 'center', gap: 11, margin: -6, padding: 6, borderRadius: 12 },
   tierIcon: { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  tierTitleBlock: { flex: 1 },
+  tierTitleBlock: { flex: 1, minWidth: 0 },
   tierSubtitle: { fontSize: 12, lineHeight: 17, marginTop: 1 },
   tierBody: { marginTop: 12, paddingTop: 14, borderTopWidth: StyleSheet.hairlineWidth },
   tierSubLabel: { fontSize: 13, lineHeight: 19, fontWeight: '800', marginTop: 14, marginBottom: 8 },
@@ -885,49 +887,49 @@ const styles = StyleSheet.create({
   compareCtaText: { fontWeight: '800', fontSize: 14, lineHeight: 20 },
   effectTags: { gap: 8 },
   effectTag: { minHeight: 44, borderRadius: 12, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, borderWidth: StyleSheet.hairlineWidth },
-  effectText: { flex: 1, fontSize: 13, lineHeight: 19, fontWeight: '700' },
+  effectText: { flex: 1, minWidth: 0, fontSize: 13, lineHeight: 19, fontWeight: '700' },
   effectsCaveat: { marginTop: 10, fontSize: 12, lineHeight: 18 },
   sourceRefList: { marginTop: 8, gap: 6 },
-  sourceRefRow: { minHeight: 46, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 10, borderRadius: 12, borderWidth: StyleSheet.hairlineWidth },
-  sourceRefText: { flex: 1, fontSize: 13, lineHeight: 19, fontWeight: '600' },
+  sourceRefRow: { minHeight: 46, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12, borderWidth: StyleSheet.hairlineWidth },
+  sourceRefText: { flex: 1, minWidth: 0, fontSize: 13, lineHeight: 19, fontWeight: '600' },
   emptyCallout: { minHeight: 58, flexDirection: 'row', alignItems: 'flex-start', gap: 9, borderRadius: 12, padding: 12 },
   originRow: { marginBottom: 14 },
   originBtn: { minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderRadius: 12, paddingHorizontal: 13, marginBottom: 8, borderWidth: StyleSheet.hairlineWidth },
-  originBtnText: { flex: 1, fontSize: 14, lineHeight: 20, fontWeight: '700' },
-  gateRow: { minHeight: 36, flexDirection: 'row', alignItems: 'center', gap: 6 },
-  gateText: { fontSize: 12, lineHeight: 17, fontWeight: '600' },
+  originBtnText: { flex: 1, minWidth: 0, fontSize: 14, lineHeight: 20, fontWeight: '700' },
+  gateRow: { minHeight: 36, flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
+  gateText: { fontSize: 12, lineHeight: 17, fontWeight: '600', flexShrink: 1 },
   useCard: { borderRadius: 12, padding: 13, marginBottom: 8, borderWidth: StyleSheet.hairlineWidth },
   useCardLocked: { opacity: 0.72 },
   useCardHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 5 },
-  useCardTitle: { flex: 1, fontSize: 14, lineHeight: 20, fontWeight: '800' },
+  useCardTitle: { flex: 1, minWidth: 0, fontSize: 14, lineHeight: 20, fontWeight: '800' },
   useCardSummary: { fontSize: 13, lineHeight: 20 },
   useWarningRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, marginTop: 7 },
-  useCardWarning: { flex: 1, fontSize: 12, lineHeight: 18 },
+  useCardWarning: { flex: 1, minWidth: 0, fontSize: 12, lineHeight: 18 },
   practiceList: { borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden' },
   practiceRow: { minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: 8, paddingLeft: 12, borderBottomWidth: StyleSheet.hairlineWidth },
-  practiceNote: { flex: 1, fontSize: 13, lineHeight: 20, paddingVertical: 9 },
+  practiceNote: { flex: 1, minWidth: 0, fontSize: 13, lineHeight: 20, paddingVertical: 9 },
   iconAction: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   practiceAddRow: { flexDirection: 'row', gap: 8, marginTop: 10, alignItems: 'center' },
-  practiceInput: { flex: 1, minHeight: 46, borderWidth: StyleSheet.hairlineWidth, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, lineHeight: 20 },
+  practiceInput: { flex: 1, minWidth: 0, minHeight: 46, borderWidth: StyleSheet.hairlineWidth, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, lineHeight: 20 },
   practiceAddBtn: { width: 46, height: 46, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   noteSection: { borderRadius: 18, padding: 16, marginBottom: 12, borderWidth: StyleSheet.hairlineWidth, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 2 },
-  noteTitleRow: { minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
-  noteTitleLabel: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  noteSectionTitle: { fontSize: 16, lineHeight: 22, fontWeight: '800' },
-  noteDeleteBtn: { minWidth: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8 },
+  noteTitleRow: { minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, gap: 8, flexWrap: 'wrap' },
+  noteTitleLabel: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1, minWidth: 140 },
+  noteSectionTitle: { fontSize: 16, lineHeight: 22, fontWeight: '800', flexShrink: 1 },
+  noteDeleteBtn: { minWidth: 44, minHeight: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8 },
   noteDeleteText: { fontSize: 13, lineHeight: 19, fontWeight: '700' },
   noteInput: { borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 13, paddingVertical: 12, fontSize: 14, lineHeight: 22, color: '#000', minHeight: 112 },
-  noteFooterRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 9 },
+  noteFooterRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 9, gap: 8, flexWrap: 'wrap' },
   noteCharCount: { fontSize: 12, lineHeight: 17, fontWeight: '600' },
   noteSaveBtn: { minHeight: 44, minWidth: 92, borderRadius: 12, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 5 },
   noteSaveBtnText: { fontSize: 13, lineHeight: 19, fontWeight: '800' },
   relatedSection: { borderRadius: 18, padding: 16, marginBottom: 12, borderWidth: StyleSheet.hairlineWidth, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 2 },
   relatedList: { paddingRight: 6 },
-  relatedCard: { width: 96, minHeight: 112, borderRadius: 14, padding: 10, marginRight: 10, alignItems: 'center', justifyContent: 'center', borderWidth: StyleSheet.hairlineWidth, borderTopWidth: 3 },
+  relatedCard: { width: 112, minHeight: 120, borderRadius: 14, padding: 10, marginRight: 10, alignItems: 'center', justifyContent: 'center', borderWidth: StyleSheet.hairlineWidth, borderTopWidth: 3 },
   relatedEmoji: { fontSize: 29, marginBottom: 6 },
   relatedName: { fontSize: 12, lineHeight: 17, fontWeight: '700', textAlign: 'center' },
   relatedDangerDot: { width: 8, height: 8, borderRadius: 4, marginTop: 7 },
-  scanCta: { minHeight: 56, borderRadius: 16, paddingHorizontal: 18, marginTop: 2, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 9 },
-  scanCtaText: { fontSize: 16, lineHeight: 22, fontWeight: '800' },
+  scanCta: { minHeight: 56, borderRadius: 16, paddingHorizontal: 18, paddingVertical: 8, marginTop: 2, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 9 },
+  scanCtaText: { fontSize: 16, lineHeight: 22, fontWeight: '800', textAlign: 'center' },
   pressed: { opacity: 0.72 },
 });
