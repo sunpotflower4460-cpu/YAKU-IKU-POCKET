@@ -8,6 +8,8 @@ import {
   Pressable,
   TextInput,
   Modal,
+  ScrollView,
+  useWindowDimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from '../../src/utils/haptics';
@@ -43,8 +45,14 @@ export default function ZukanScreen() {
   const router = useRouter();
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  const { width, fontScale } = useWindowDimensions();
   const { filterEffect: initialFilterEffect } = useLocalSearchParams<{ filterEffect?: string }>();
   const { discoveredPlantIds, scanHistory, favoritePlantIds, toggleFavorite, plantNotes } = useGameStore();
+
+  // Keep cards comfortably readable across compact phones, Dynamic Type,
+  // split-screen and tablets instead of forcing a dense three-column grid.
+  const gridColumns = fontScale >= 1.3 ? 2 : width >= 900 ? 4 : width >= 540 ? 3 : 2;
+  const gridItemWidth = Math.max(0, (width - 24) / gridColumns);
 
   // plantId → 最新スキャンの imageUri マップ（scanHistory は新しい順）
   const imageUriMap = useMemo(() => {
@@ -96,6 +104,7 @@ export default function ZukanScreen() {
     filterRarity !== 'all',
     filterEffect !== null,
   ].filter(Boolean).length;
+  const hasActiveDiscoveryQuery = search.trim().length > 0 || activeFilterCount > 0;
 
   function resetFilters() {
     setFilterDiscovered('all');
@@ -108,6 +117,11 @@ export default function ZukanScreen() {
     setFilterRarity('all');
     setFilterEffect(null);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  }
+
+  function resetSearchAndFilters() {
+    setSearch('');
+    resetFilters();
   }
 
   function commitSearch(q: string) {
@@ -222,7 +236,7 @@ export default function ZukanScreen() {
                 style={styles.rarityItem}
                 accessible
                 accessibilityRole="text"
-                accessibilityLabel={`レアリティ${rarity}、${total}種類中${found}種類発見`}
+                accessibilityLabel={`珍しさ5段階中${rarity}、${total}種類中${found}種類を発見`}
               >
                 <View style={styles.rarityStarsRow} accessibilityElementsHidden>
                   {Array.from({ length: rarity }, (_, i) => (
@@ -285,7 +299,7 @@ export default function ZukanScreen() {
         )}
       </View>
 
-      {/* Statistics Dashboard */}
+      {/* Observation statistics */}
       <View
         style={[
           styles.statsContainer,
@@ -299,11 +313,11 @@ export default function ZukanScreen() {
             setStatsOpen(v => !v);
           }}
           accessibilityRole="button"
-          accessibilityLabel="コレクション統計"
+          accessibilityLabel="観察の内訳"
           accessibilityState={{ expanded: statsOpen }}
         >
           <Ionicons name="stats-chart-outline" size={17} color={theme.colors.accentPrimary} />
-          <Text style={[styles.statsToggleText, { color: theme.colors.textPrimary }]}>コレクション統計</Text>
+          <Text style={[styles.statsToggleText, { color: theme.colors.textPrimary }]}>観察の内訳</Text>
           <Ionicons name={statsOpen ? 'chevron-up' : 'chevron-down'} size={16} color={theme.colors.textTertiary} />
         </Pressable>
         {statsOpen && (
@@ -316,7 +330,7 @@ export default function ZukanScreen() {
             {([1,2,3,4,5] as const).map(r => {
               const total = PLANTS.filter(p => p.rarity === r).length;
               const found = PLANTS.filter(p => p.rarity === r && discoveredPlantIds.includes(p.id)).length;
-              return <StatMini key={r} label={`★${r}`} value={`${found}/${total}`} color={rarityColors[r-1]} />;
+              return <StatMini key={r} label={`珍しさ ${r}`} value={`${found}/${total}`} color={rarityColors[r-1]} />;
             })}
           </View>
         )}
@@ -440,16 +454,16 @@ export default function ZukanScreen() {
 
             <FilterRow label="並び順">
               <FilterChip label="デフォルト" active={sortRarity === 'none'} onPress={() => setSortRarity('none')} activeColor={theme.colors.accentPrimary} />
-              <FilterChip label="★ 多い順" active={sortRarity === 'desc'} onPress={() => setSortRarity('desc')} activeColor={theme.colors.rarityLegendary} />
-              <FilterChip label="★ 少ない順" active={sortRarity === 'asc'} onPress={() => setSortRarity('asc')} activeColor={theme.colors.rarityCommon} />
+              <FilterChip label="珍しい順" active={sortRarity === 'desc'} onPress={() => setSortRarity('desc')} activeColor={theme.colors.rarityLegendary} />
+              <FilterChip label="見つけやすい順" active={sortRarity === 'asc'} onPress={() => setSortRarity('asc')} activeColor={theme.colors.rarityCommon} />
             </FilterRow>
 
-            <FilterRow label="レア度">
+            <FilterRow label="珍しさ">
               {([
                 ['all', 'すべて'],
-                ['3up', '★3以上'],
-                ['4up', '★4以上'],
-                ['5only', '★5のみ'],
+                ['3up', 'やや珍しい以上'],
+                ['4up', '珍しい以上'],
+                ['5only', 'とても珍しい'],
               ] as [FilterRarity, string][]).map(([val, label]) => (
                 <FilterChip key={val} label={label} active={filterRarity === val} onPress={() => setFilterRarity(val)} activeColor={theme.colors.rarityLegendary} />
               ))}
@@ -460,7 +474,12 @@ export default function ZukanScreen() {
 
       {/* Count + view mode */}
       <View style={styles.countRow}>
-        <Text style={[styles.countText, { color: theme.colors.textTertiary }]}>{filtered.length}種類を表示</Text>
+        <Text
+          style={[styles.countText, { color: theme.colors.textTertiary }]}
+          accessibilityLiveRegion="polite"
+        >
+          {filtered.length}種類を表示
+        </Text>
         <View
           style={[
             styles.viewModeRow,
@@ -478,7 +497,7 @@ export default function ZukanScreen() {
       {filterEffect && (
         <View style={styles.activeEffectRow}>
           <Ionicons name="medical-outline" size={15} color={theme.colors.accentPrimary} />
-          <Text style={[styles.activeEffectLabel, { color: theme.colors.textSecondary }]}>効果:</Text>
+          <Text style={[styles.activeEffectLabel, { color: theme.colors.textSecondary }]}>用途:</Text>
           <View
             style={[
               styles.activeEffectChip,
@@ -493,7 +512,7 @@ export default function ZukanScreen() {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               }}
               accessibilityRole="button"
-              accessibilityLabel="効果フィルターを解除"
+              accessibilityLabel="用途フィルターを解除"
             >
               <Ionicons name="close" size={16} color={theme.colors.textSecondary} />
             </Pressable>
@@ -509,54 +528,66 @@ export default function ZukanScreen() {
         onRequestClose={() => setHintPlant(null)}
       >
         <View style={[styles.hintOverlay, { backgroundColor: theme.colors.overlay }]}>
-          <Pressable style={StyleSheet.absoluteFill} onPress={() => setHintPlant(null)} accessibilityElementsHidden />
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setHintPlant(null)} accessible={false} />
           <View
             style={[
               styles.hintCard,
-              { backgroundColor: theme.colors.surfacePrimary, shadowColor: theme.colors.shadow },
+              {
+                backgroundColor: theme.colors.surfacePrimary,
+                shadowColor: theme.colors.shadow,
+                paddingBottom: Math.max(insets.bottom + 20, 32),
+              },
             ]}
             accessibilityViewIsModal
+            onAccessibilityEscape={() => setHintPlant(null)}
           >
             {hintPlant && (
               <>
                 <View style={styles.hintHandle} accessibilityElementsHidden />
-                <View style={styles.hintTitleRow}>
-                  <Ionicons name="search-outline" size={18} color={theme.colors.textSecondary} />
-                  <Text style={[styles.hintTitle, { color: theme.colors.textPrimary }]} accessibilityRole="header">
-                    ミステリー植物のヒント
-                  </Text>
-                </View>
-
-                <View
-                  style={[
-                    styles.hintMystery,
-                    { backgroundColor: theme.colors.surfaceSecondary, borderColor: theme.colors.borderStrong },
-                  ]}
-                  accessibilityElementsHidden
+                <ScrollView
+                  style={styles.hintScroll}
+                  contentContainerStyle={styles.hintScrollContent}
+                  showsVerticalScrollIndicator={false}
+                  bounces={false}
                 >
-                  <Text style={[styles.hintQuestion, { color: theme.colors.textTertiary }]}>？</Text>
-                </View>
-
-                <View style={[styles.hintRows, { backgroundColor: theme.colors.surfaceSecondary }]}>
-                  {getPlantDefinitionById(hintPlant.id)?.taxonomy.family && (
-                    <HintRow icon="git-branch-outline" label="科" value={getPlantDefinitionById(hintPlant.id)!.taxonomy.family!} />
-                  )}
-                  <HintRow icon="calendar-outline" label="旬の時期" value={hintPlant.season} />
-                  <HintRow icon="folder-outline" label="カテゴリ" value={hintPlant.category === '野草' ? '野草' : 'スパイス・ハーブ'} />
-                  <HintRow icon="warning-outline" label="危険度" value={DANGER_LABEL[hintPlant.danger]} />
-                  <View style={[styles.hintRowItem, { borderBottomColor: theme.colors.borderSubtle }]}>
-                    <View style={styles.hintLabelRow}>
-                      <Ionicons name="star-outline" size={14} color={theme.colors.textTertiary} />
-                      <Text style={[styles.hintLabel, { color: theme.colors.textSecondary }]}>レアリティ</Text>
-                    </View>
-                    <RarityStars rarity={hintPlant.rarity} size="sm" />
+                  <View style={styles.hintTitleRow}>
+                    <Ionicons name="search-outline" size={18} color={theme.colors.textSecondary} />
+                    <Text style={[styles.hintTitle, { color: theme.colors.textPrimary }]} accessibilityRole="header">
+                      未発見の植物のヒント
+                    </Text>
                   </View>
-                </View>
 
-                <View style={styles.hintFooterRow}>
-                  <Ionicons name="camera-outline" size={16} color={theme.colors.accentPrimary} />
-                  <Text style={[styles.hintFooter, { color: theme.colors.textSecondary }]}>観察して正体を確かめよう</Text>
-                </View>
+                  <View
+                    style={[
+                      styles.hintMystery,
+                      { backgroundColor: theme.colors.surfaceSecondary, borderColor: theme.colors.borderStrong },
+                    ]}
+                    accessibilityElementsHidden
+                  >
+                    <Text style={[styles.hintQuestion, { color: theme.colors.textTertiary }]}>？</Text>
+                  </View>
+
+                  <View style={[styles.hintRows, { backgroundColor: theme.colors.surfaceSecondary }]}>
+                    {getPlantDefinitionById(hintPlant.id)?.taxonomy.family && (
+                      <HintRow icon="git-branch-outline" label="科" value={getPlantDefinitionById(hintPlant.id)!.taxonomy.family!} />
+                    )}
+                    <HintRow icon="calendar-outline" label="旬の時期" value={hintPlant.season} />
+                    <HintRow icon="folder-outline" label="カテゴリ" value={hintPlant.category === '野草' ? '野草' : 'スパイス・ハーブ'} />
+                    <HintRow icon="warning-outline" label="危険度" value={DANGER_LABEL[hintPlant.danger]} />
+                    <View style={[styles.hintRowItem, { borderBottomColor: theme.colors.borderSubtle }]}>
+                      <View style={styles.hintLabelRow}>
+                        <Ionicons name="star-outline" size={14} color={theme.colors.textTertiary} />
+                        <Text style={[styles.hintLabel, { color: theme.colors.textSecondary }]}>珍しさ</Text>
+                      </View>
+                      <RarityStars rarity={hintPlant.rarity} size="sm" />
+                    </View>
+                  </View>
+
+                  <View style={styles.hintFooterRow}>
+                    <Ionicons name="camera-outline" size={16} color={theme.colors.accentPrimary} />
+                    <Text style={[styles.hintFooter, { color: theme.colors.textSecondary }]}>観察して正体を確かめよう</Text>
+                  </View>
+                </ScrollView>
 
                 <Pressable
                   style={({ pressed }) => [
@@ -597,16 +628,17 @@ export default function ZukanScreen() {
               onPress={() => handlePlantPress(item)}
             />
           )}
-          ListEmptyComponent={<EmptyState />}
+          ListEmptyComponent={<EmptyState canReset={hasActiveDiscoveryQuery} onReset={resetSearchAndFilters} />}
           ListFooterComponent={<View style={styles.footerPad}><DisclaimerBanner compact /></View>}
         />
       ) : (
         <FlatList
           data={filtered}
           keyExtractor={(item) => item.id}
-          numColumns={viewMode === 'list' ? 1 : 3}
-          key={viewMode}
+          numColumns={viewMode === 'list' ? 1 : gridColumns}
+          key={`${viewMode}-${gridColumns}`}
           contentContainerStyle={styles.grid}
+          columnWrapperStyle={viewMode === 'grid' ? styles.gridRow : undefined}
           keyboardShouldPersistTaps="handled"
           removeClippedSubviews={true}
           maxToRenderPerBatch={15}
@@ -620,19 +652,21 @@ export default function ZukanScreen() {
                 onPress={() => handlePlantPress(item)}
               />
             ) : (
-              <PlantCard
-                plant={item}
-                discovered={discoveredPlantIds.includes(item.id)}
-                imageUri={imageUriMap[item.id]}
-                isFavorite={favoritePlantIds.includes(item.id)}
-                hasNote={!!plantNotes[item.id]}
-                familyHint={getPlantDefinitionById(item.id)?.taxonomy.family}
-                onPress={() => handlePlantPress(item)}
-                onFavorite={() => toggleFavorite(item.id)}
-              />
+              <View style={{ width: gridItemWidth }}>
+                <PlantCard
+                  plant={item}
+                  discovered={discoveredPlantIds.includes(item.id)}
+                  imageUri={imageUriMap[item.id]}
+                  isFavorite={favoritePlantIds.includes(item.id)}
+                  hasNote={!!plantNotes[item.id]}
+                  familyHint={getPlantDefinitionById(item.id)?.taxonomy.family}
+                  onPress={() => handlePlantPress(item)}
+                  onFavorite={() => toggleFavorite(item.id)}
+                />
+              </View>
             )
           }
-          ListEmptyComponent={<EmptyState />}
+          ListEmptyComponent={<EmptyState canReset={hasActiveDiscoveryQuery} onReset={resetSearchAndFilters} />}
           ListFooterComponent={<View style={styles.footerPad}><DisclaimerBanner compact /></View>}
         />
       )}
@@ -640,7 +674,7 @@ export default function ZukanScreen() {
   );
 }
 
-function EmptyState() {
+function EmptyState({ canReset, onReset }: { canReset: boolean; onReset: () => void }) {
   const theme = useTheme();
   return (
     <View style={styles.emptyContainer}>
@@ -649,6 +683,21 @@ function EmptyState() {
       </View>
       <Text style={[styles.emptyTitle, { color: theme.colors.textPrimary }]}>条件に一致する植物がありません</Text>
       <Text style={[styles.emptyText, { color: theme.colors.textTertiary }]}>検索語やフィルターを少し広げてみてください。</Text>
+      {canReset && (
+        <Pressable
+          style={({ pressed }) => [
+            styles.emptyResetBtn,
+            { backgroundColor: theme.colors.surfaceSecondary, borderColor: theme.colors.borderSubtle },
+            pressed && styles.rowPressed,
+          ]}
+          onPress={onReset}
+          accessibilityRole="button"
+          accessibilityLabel="検索とフィルターをすべて解除"
+        >
+          <Ionicons name="refresh-outline" size={17} color={theme.colors.accentPrimary} />
+          <Text style={[styles.emptyResetText, { color: theme.colors.accentPrimary }]}>条件をすべて解除</Text>
+        </Pressable>
+      )}
     </View>
   );
 }
@@ -751,12 +800,12 @@ function StatMini({ label, value, color }: { label: string; value: string; color
 function HintRow({ icon, label, value }: { icon: React.ComponentProps<typeof Ionicons>['name']; label: string; value: string }) {
   const theme = useTheme();
   return (
-    <View style={[styles.hintRowItem, { borderBottomColor: theme.colors.borderSubtle }]}>
-      <View style={styles.hintLabelRow}>
+    <View style={[styles.hintRowItem, { borderBottomColor: theme.colors.borderSubtle }]} accessible accessibilityRole="text" accessibilityLabel={`${label} ${value}`}>
+      <View style={styles.hintLabelRow} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
         <Ionicons name={icon} size={14} color={theme.colors.textTertiary} />
         <Text style={[styles.hintLabel, { color: theme.colors.textSecondary }]}>{label}</Text>
       </View>
-      <Text style={[styles.hintValue, { color: theme.colors.textPrimary }]}>{value}</Text>
+      <Text style={[styles.hintValue, { color: theme.colors.textPrimary }]} accessibilityElementsHidden importantForAccessibility="no">{value}</Text>
     </View>
   );
 }
@@ -837,17 +886,17 @@ const styles = StyleSheet.create({
   searchClearBtn: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
   headerPressed: { backgroundColor: 'rgba(255,255,255,0.12)' },
   recentSearchRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginTop: 8 },
-  recentSearchChip: { minHeight: 36, backgroundColor: 'rgba(255,255,255,0.10)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.18)', borderRadius: 999, paddingHorizontal: 10, justifyContent: 'center', maxWidth: 132 },
-  recentSearchChipText: { fontSize: 12, lineHeight: 16, color: '#FFFFFF', fontWeight: '600' },
+  recentSearchChip: { minHeight: 44, backgroundColor: 'rgba(255,255,255,0.10)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.18)', borderRadius: 999, paddingHorizontal: 11, justifyContent: 'center', maxWidth: 150 },
+  recentSearchChipText: { fontSize: 12, lineHeight: 17, color: '#FFFFFF', fontWeight: '600' },
 
   statsContainer: { paddingHorizontal: 16, paddingBottom: 8, borderBottomWidth: StyleSheet.hairlineWidth },
   statsToggleRow: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 7 },
   statsToggleText: { flex: 1, fontSize: 13, lineHeight: 18, fontWeight: '700' },
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 7, paddingBottom: 6 },
-  statMiniCard: { minWidth: 60, borderRadius: 13, borderWidth: StyleSheet.hairlineWidth, paddingVertical: 8, paddingHorizontal: 9, alignItems: 'center' },
+  statMiniCard: { minWidth: 68, minHeight: 58, borderRadius: 13, borderWidth: StyleSheet.hairlineWidth, paddingVertical: 8, paddingHorizontal: 9, alignItems: 'center', justifyContent: 'center' },
   statMiniDot: { width: 7, height: 7, borderRadius: 4, marginBottom: 3 },
   statMiniValue: { fontSize: 15, lineHeight: 19, fontWeight: '900' },
-  statMiniLabel: { fontSize: 11, lineHeight: 14, fontWeight: '600', marginTop: 2 },
+  statMiniLabel: { fontSize: 11, lineHeight: 14, fontWeight: '600', marginTop: 2, textAlign: 'center' },
 
   filtersContainer: { paddingHorizontal: 16, paddingBottom: 8, borderBottomWidth: StyleSheet.hairlineWidth },
   filterToggleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
@@ -855,59 +904,64 @@ const styles = StyleSheet.create({
   filterToggleText: { flex: 1, fontSize: 13, lineHeight: 18, fontWeight: '700' },
   filterBadge: { borderRadius: 999, minWidth: 20, height: 20, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 5 },
   filterBadgeText: { fontSize: 10, fontWeight: '900' },
-  filterResetBtn: { minHeight: 40, borderRadius: 13, paddingHorizontal: 12, justifyContent: 'center', borderWidth: StyleSheet.hairlineWidth },
-  filterResetText: { fontSize: 12, lineHeight: 16, fontWeight: '700' },
+  filterResetBtn: { minHeight: 44, borderRadius: 13, paddingHorizontal: 12, justifyContent: 'center', borderWidth: StyleSheet.hairlineWidth },
+  filterResetText: { fontSize: 12, lineHeight: 17, fontWeight: '700' },
   filterPanel: { paddingTop: 4, paddingBottom: 6, gap: 9 },
   filterRow: { gap: 5 },
-  filterLabel: { fontSize: 11, lineHeight: 15, fontWeight: '700' },
+  filterLabel: { fontSize: 12, lineHeight: 17, fontWeight: '700' },
   filterChips: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
-  chip: { minHeight: 40, paddingHorizontal: 12, borderRadius: 999, borderWidth: StyleSheet.hairlineWidth, justifyContent: 'center' },
-  chipText: { fontSize: 12, lineHeight: 16, fontWeight: '700' },
+  chip: { minHeight: 44, paddingHorizontal: 12, borderRadius: 999, borderWidth: StyleSheet.hairlineWidth, justifyContent: 'center' },
+  chipText: { fontSize: 12, lineHeight: 17, fontWeight: '700' },
 
-  countRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 9, paddingBottom: 5 },
-  countText: { fontSize: 12, lineHeight: 17 },
+  countRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 9, paddingBottom: 5, gap: 8 },
+  countText: { fontSize: 12, lineHeight: 17, flexShrink: 1 },
   viewModeRow: { flexDirection: 'row', gap: 2, borderRadius: 14, padding: 2, borderWidth: StyleSheet.hairlineWidth },
-  viewModeBtn: { width: 44, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
+  viewModeBtn: { width: 44, height: 44, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
 
-  listRow: { minHeight: 64, flexDirection: 'row', alignItems: 'center', gap: 9, borderRadius: 14, paddingHorizontal: 10, paddingVertical: 8, marginHorizontal: 4, marginBottom: 8, borderWidth: StyleSheet.hairlineWidth },
-  listEmojiWrap: { width: 42, height: 42, borderRadius: 21, justifyContent: 'center', alignItems: 'center' },
-  listEmoji: { fontSize: 21 },
-  listInfo: { flex: 1 },
-  listName: { fontSize: 14, lineHeight: 19, fontWeight: '700' },
-  listSub: { fontSize: 11, lineHeight: 15, marginTop: 1 },
-  familySectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 8, paddingVertical: 8, marginTop: 5 },
-  familySectionTitle: { fontSize: 13, lineHeight: 18, fontWeight: '800' },
-  familySectionCount: { fontSize: 11, lineHeight: 15, fontWeight: '600' },
+  listRow: { minHeight: 68, flexDirection: 'row', alignItems: 'center', gap: 9, borderRadius: 14, paddingHorizontal: 10, paddingVertical: 8, marginHorizontal: 4, marginBottom: 8, borderWidth: StyleSheet.hairlineWidth },
+  listEmojiWrap: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
+  listEmoji: { fontSize: 22 },
+  listInfo: { flex: 1, minWidth: 0 },
+  listName: { fontSize: 14, lineHeight: 20, fontWeight: '700' },
+  listSub: { fontSize: 12, lineHeight: 17, marginTop: 1 },
+  familySectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 8, paddingVertical: 10, marginTop: 5 },
+  familySectionTitle: { fontSize: 14, lineHeight: 20, fontWeight: '800' },
+  familySectionCount: { fontSize: 12, lineHeight: 17, fontWeight: '600' },
 
-  activeEffectRow: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingBottom: 6 },
+  activeEffectRow: { minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingBottom: 6 },
   activeEffectLabel: { fontSize: 12, lineHeight: 17, fontWeight: '700' },
-  activeEffectChip: { minHeight: 40, flexDirection: 'row', alignItems: 'center', borderRadius: 999, paddingLeft: 11, borderWidth: StyleSheet.hairlineWidth },
-  activeEffectText: { fontSize: 12, lineHeight: 16, fontWeight: '700' },
-  activeEffectClose: { width: 38, height: 38, borderRadius: 19, justifyContent: 'center', alignItems: 'center' },
+  activeEffectChip: { minHeight: 44, flexDirection: 'row', alignItems: 'center', borderRadius: 999, paddingLeft: 11, borderWidth: StyleSheet.hairlineWidth },
+  activeEffectText: { fontSize: 12, lineHeight: 17, fontWeight: '700' },
+  activeEffectClose: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
 
   grid: { paddingHorizontal: 12, paddingBottom: 16 },
+  gridRow: { alignItems: 'stretch' },
   emptyContainer: { paddingHorizontal: 32, paddingVertical: 52, alignItems: 'center' },
   emptyIconWrap: { width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
-  emptyTitle: { fontSize: 15, lineHeight: 20, fontWeight: '800', textAlign: 'center' },
-  emptyText: { fontSize: 13, lineHeight: 19, textAlign: 'center', marginTop: 5 },
+  emptyTitle: { fontSize: 15, lineHeight: 21, fontWeight: '800', textAlign: 'center' },
+  emptyText: { fontSize: 13, lineHeight: 20, textAlign: 'center', marginTop: 5, maxWidth: 320 },
+  emptyResetBtn: { minHeight: 48, marginTop: 16, paddingHorizontal: 16, borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7 },
+  emptyResetText: { fontSize: 13, lineHeight: 18, fontWeight: '800' },
   footerPad: { paddingTop: 16 },
 
   hintOverlay: { flex: 1, justifyContent: 'flex-end' },
-  hintCard: { borderTopLeftRadius: 30, borderTopRightRadius: 30, paddingHorizontal: 20, paddingTop: 10, paddingBottom: 32, shadowOffset: { width: 0, height: -6 }, shadowOpacity: 0.18, shadowRadius: 18, elevation: 18 },
-  hintHandle: { width: 36, height: 4, borderRadius: 2, backgroundColor: 'rgba(128,128,128,0.45)', alignSelf: 'center', marginBottom: 14 },
+  hintCard: { maxHeight: '90%', borderTopLeftRadius: 30, borderTopRightRadius: 30, paddingHorizontal: 20, paddingTop: 10, shadowOffset: { width: 0, height: -6 }, shadowOpacity: 0.18, shadowRadius: 18, elevation: 18 },
+  hintHandle: { width: 36, height: 4, borderRadius: 2, backgroundColor: 'rgba(128,128,128,0.45)', alignSelf: 'center', marginBottom: 10 },
+  hintScroll: { flexShrink: 1 },
+  hintScrollContent: { paddingTop: 4, paddingBottom: 4 },
   hintTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 17 },
-  hintTitle: { fontSize: 18, lineHeight: 24, fontWeight: '900', textAlign: 'center' },
+  hintTitle: { fontSize: 18, lineHeight: 25, fontWeight: '900', textAlign: 'center' },
   hintMystery: { width: 76, height: 76, borderRadius: 38, alignSelf: 'center', justifyContent: 'center', alignItems: 'center', marginBottom: 18, borderWidth: 2 },
   hintQuestion: { fontSize: 34, fontWeight: '900' },
   hintRows: { borderRadius: 16, paddingVertical: 4, marginBottom: 16, overflow: 'hidden' },
-  hintRowItem: { minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingVertical: 9, borderBottomWidth: StyleSheet.hairlineWidth },
+  hintRowItem: { minHeight: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth },
   hintLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  hintLabel: { fontSize: 13, lineHeight: 18, fontWeight: '600' },
-  hintValue: { fontSize: 13, lineHeight: 18, fontWeight: '700', textAlign: 'right', flex: 1, marginLeft: 12 },
+  hintLabel: { fontSize: 13, lineHeight: 19, fontWeight: '600' },
+  hintValue: { fontSize: 13, lineHeight: 19, fontWeight: '700', textAlign: 'right', flex: 1, marginLeft: 12 },
   hintFooterRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, marginBottom: 15 },
-  hintFooter: { fontSize: 13, lineHeight: 18, fontWeight: '700' },
-  hintCloseBtn: { minHeight: 52, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
-  hintCloseBtnText: { fontSize: 16, lineHeight: 20, fontWeight: '800' },
+  hintFooter: { fontSize: 13, lineHeight: 19, fontWeight: '700', flexShrink: 1, textAlign: 'center' },
+  hintCloseBtn: { minHeight: 52, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginTop: 8 },
+  hintCloseBtnText: { fontSize: 16, lineHeight: 21, fontWeight: '800' },
 
   rowPressed: { opacity: 0.68 },
   cardPressed: { opacity: 0.78, transform: [{ scale: 0.995 }] },
