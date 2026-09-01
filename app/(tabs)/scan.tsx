@@ -28,6 +28,8 @@ import { TraitCheck } from '../../src/types/traitCheck';
 import { SUBJECT_CATEGORY_LABEL } from '../../src/types/subject';
 import { isDemoMode } from '../../src/utils/appMode';
 import { useReduceMotion } from '../../src/utils/reduceMotion';
+import { ResponsiveFrame } from '../../src/ui/ResponsiveFrame';
+import { FOCUSED_MAX_WIDTH } from '../../src/theme/layout';
 import { persistObservationPhoto } from '../../src/utils/observationPhotoStorage';
 import { useTheme } from '../../src/theme/ThemeProvider';
 import {
@@ -417,6 +419,18 @@ export default function ScanScreen() {
         showsVerticalScrollIndicator={false}
         bounces={false}
       >
+        <ResponsiveFrame
+          maxWidth={FOCUSED_MAX_WIDTH}
+          style={[
+            styles.permissionCard,
+            {
+              backgroundColor: theme.colors.surfacePrimary,
+              borderColor: theme.colors.borderSubtle,
+              shadowColor: theme.colors.shadow,
+            },
+          ]}
+        >
+        <Text style={[styles.permissionEyebrow, { color: theme.colors.accentPrimary }]}>観察をはじめる</Text>
         <View
           style={[
             styles.permissionIconWrap,
@@ -449,9 +463,30 @@ export default function ScanScreen() {
             {mustUseSettings ? '設定を開く' : 'カメラを許可する'}
           </Text>
         </Pressable>
-        <View style={styles.permissionSafetyWrap}>
-          <DisclaimerBanner compact />
+        <View
+          style={[styles.permissionSteps, compactControls && styles.permissionStepsStacked]}
+          accessible
+          accessibilityRole="text"
+          accessibilityLabel="許可後の流れ。植物全体を撮る。葉や花を追加する。候補を見比べる。"
+        >
+          {[
+            ['1', '植物全体', '姿や大きさ'],
+            ['2', '葉や花', '特徴を追加'],
+            ['3', '候補を比較', '違いを確認'],
+          ].map(([step, title, detail]) => (
+            <View key={step} style={[styles.permissionStep, { backgroundColor: theme.colors.surfaceSecondary }]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+              <View style={[styles.permissionStepNumber, { backgroundColor: theme.colors.accentPrimary }]}>
+                <Text style={[styles.permissionStepNumberText, { color: theme.colors.textOnAccent }]}>{step}</Text>
+              </View>
+              <Text style={[styles.permissionStepTitle, { color: theme.colors.textPrimary }]}>{title}</Text>
+              <Text style={[styles.permissionStepDetail, { color: theme.colors.textTertiary }]}>{detail}</Text>
+            </View>
+          ))}
         </View>
+        </ResponsiveFrame>
+        <ResponsiveFrame maxWidth={FOCUSED_MAX_WIDTH} style={styles.permissionSafetyWrap}>
+          <DisclaimerBanner compact />
+        </ResponsiveFrame>
       </ScrollView>
     );
   }
@@ -775,7 +810,27 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 28,
+    paddingHorizontal: 20,
+    gap: 12,
+  },
+  permissionCard: {
+    alignItems: 'center',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 28,
+    paddingHorizontal: 20,
+    paddingTop: 28,
+    paddingBottom: 22,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.08,
+    shadowRadius: 24,
+    elevation: 3,
+  },
+  permissionEyebrow: {
+    fontSize: 11,
+    lineHeight: 16,
+    fontWeight: '800',
+    letterSpacing: 1.2,
+    marginBottom: 14,
   },
   permissionIconWrap: {
     width: 72,
@@ -787,8 +842,8 @@ const styles = StyleSheet.create({
     marginBottom: 18,
   },
   permissionTitle: {
-    fontSize: 22,
-    lineHeight: 29,
+    fontSize: 20,
+    lineHeight: 27,
     fontWeight: '800',
     textAlign: 'center',
     marginBottom: 10,
@@ -815,6 +870,35 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     textAlign: 'center',
   },
+  permissionSteps: {
+    width: '100%',
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 2,
+  },
+  permissionStepsStacked: {
+    flexDirection: 'column',
+  },
+  permissionStep: {
+    flex: 1,
+    minHeight: 92,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 16,
+    paddingHorizontal: 8,
+    paddingVertical: 10,
+  },
+  permissionStepNumber: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
+  },
+  permissionStepNumberText: { fontSize: 11, lineHeight: 15, fontWeight: '800' },
+  permissionStepTitle: { fontSize: 12, lineHeight: 17, fontWeight: '800', textAlign: 'center' },
+  permissionStepDetail: { fontSize: 10, lineHeight: 14, fontWeight: '600', textAlign: 'center', marginTop: 1 },
   permissionSafetyWrap: {
     width: '100%',
     maxWidth: 480,

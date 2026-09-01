@@ -1,6 +1,6 @@
 import { Tabs } from 'expo-router';
 import { useState, useEffect, useRef } from 'react';
-import { View, AppState, StyleSheet, useWindowDimensions } from 'react-native';
+import { View, AppState, Platform, StyleSheet, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from '../../src/utils/haptics';
@@ -8,6 +8,7 @@ import { useGameStore, XP_PER_LEVEL } from '../../src/store/useGameStore';
 import { LevelUpModal } from '../../src/components/LevelUpModal';
 import { getPlayerTitle } from '../../src/utils/playerTitle';
 import { useTheme } from '../../src/theme/ThemeProvider';
+import { CONTENT_MAX_WIDTH } from '../../src/theme/layout';
 
 export default function TabLayout() {
   const theme = useTheme();
@@ -98,7 +99,10 @@ export default function TabLayout() {
             paddingBottom: tabBottomInset,
             paddingTop: theme.space[2],
           },
-          tabBarItemStyle: { minHeight: theme.minTapTarget },
+          tabBarItemStyle: {
+            minHeight: theme.minTapTarget,
+            maxWidth: Platform.OS === 'web' ? CONTENT_MAX_WIDTH / 4 : undefined,
+          },
           tabBarLabelStyle: {
             fontSize: theme.type.caption1,
             fontWeight: theme.weight.secondary,

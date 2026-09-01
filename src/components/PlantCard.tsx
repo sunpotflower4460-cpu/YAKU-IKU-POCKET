@@ -60,23 +60,22 @@ export function PlantCard({
   const isSuperRare = plant.rarity === 4;
   const elevatedRareCard = discovered && (isLegendary || isSuperRare);
   const showPhoto = discovered && !!imageUri && !imgError;
+  const familyLabel = familyHint?.split(' (')[0] ?? '観察ヒント';
 
   function handlePressIn() {
     if (reduceMotion) return;
-    Animated.spring(scaleAnim, {
+    Animated.timing(scaleAnim, {
       toValue: 0.98,
-      tension: 320,
-      friction: 22,
+      duration: 90,
       useNativeDriver: true,
     }).start();
   }
 
   function handlePressOut() {
     if (reduceMotion) return;
-    Animated.spring(scaleAnim, {
+    Animated.timing(scaleAnim, {
       toValue: 1,
-      tension: 260,
-      friction: 20,
+      duration: 140,
       useNativeDriver: true,
     }).start();
   }
@@ -161,7 +160,7 @@ export function PlantCard({
           accessibilityElementsHidden
           importantForAccessibility="no-hide-descendants"
         >
-          {discovered ? plant.name : '？？？'}
+          {discovered ? plant.name : '未発見'}
         </Text>
 
         <RarityStars rarity={plant.rarity} size="sm" accessible={false} />
@@ -179,11 +178,12 @@ export function PlantCard({
             accessibilityElementsHidden
             importantForAccessibility="no-hide-descendants"
           >
+            <Ionicons name="git-branch-outline" size={13} color={theme.colors.accentSecondary} />
             <Text
               style={[styles.hintChipText, { color: theme.colors.accentSecondary }]}
-              numberOfLines={largeText ? 2 : 1}
+              numberOfLines={2}
             >
-              {familyHint ?? 'ヒント'}
+              {familyLabel}
             </Text>
           </View>
         )}
@@ -316,14 +316,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   hintChip: {
+    width: '100%',
     maxWidth: '100%',
-    borderRadius: 8,
-    paddingHorizontal: 7,
-    paddingVertical: 3,
+    minHeight: 30,
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
     borderWidth: StyleSheet.hairlineWidth,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
   },
   hintChipText: {
+    flexShrink: 1,
     fontSize: 11,
+    lineHeight: 15,
     fontWeight: '700',
     textAlign: 'center',
   },
