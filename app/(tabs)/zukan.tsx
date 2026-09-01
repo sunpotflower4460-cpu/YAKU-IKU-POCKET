@@ -31,6 +31,7 @@ import { DangerLevel, Plant, PlantCategory } from '../../src/types';
 import { getCurrentSeason, SEASON_CONFIG, isPlantInSeason } from '../../src/utils/season';
 import { normalizeForSearch } from '../../src/utils/kana';
 import { useReduceMotion } from '../../src/utils/reduceMotion';
+import { CONTENT_MAX_WIDTH } from '../../src/theme/layout';
 
 type FilterDiscovered = 'all' | 'discovered' | 'undiscovered' | 'favorites' | 'noted';
 type FilterDanger = 'all' | DangerLevel;
@@ -68,17 +69,18 @@ export default function ZukanScreen() {
   const { filterEffect: initialFilterEffect } = useLocalSearchParams<{ filterEffect?: string }>();
   const { discoveredPlantIds, scanHistory, favoritePlantIds, toggleFavorite, plantNotes } = useGameStore();
 
+  const workspaceWidth = Math.min(width, CONTENT_MAX_WIDTH);
   const gridColumns =
-    fontScale >= 1.6 || (width < 360 && fontScale >= 1.3)
+    fontScale >= 1.6 || (workspaceWidth < 360 && fontScale >= 1.3)
       ? 1
       : fontScale >= 1.3
         ? 2
-        : width >= 900
+        : workspaceWidth >= 900
           ? 4
-          : width >= 540
+          : workspaceWidth >= 540
             ? 3
             : 2;
-  const gridItemWidth = Math.max(0, (width - 24) / gridColumns);
+  const gridItemWidth = Math.max(0, (workspaceWidth - 24) / gridColumns);
 
   const imageUriMap = useMemo(() => {
     const map: Record<string, string> = {};
@@ -450,6 +452,7 @@ export default function ZukanScreen() {
 
       {viewMode === 'family' ? (
         <SectionList
+          style={styles.listFrame}
           sections={familySections}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.grid}
@@ -461,6 +464,7 @@ export default function ZukanScreen() {
         />
       ) : (
         <FlatList
+          style={styles.listFrame}
           data={filtered}
           keyExtractor={(item) => item.id}
           numColumns={viewMode === 'list' ? 1 : gridColumns}
@@ -471,7 +475,7 @@ export default function ZukanScreen() {
           removeClippedSubviews
           maxToRenderPerBatch={15}
           windowSize={10}
-          renderItem={({ item }) => viewMode === 'list' ? <PlantListRow plant={item} discovered={discoveredPlantIds.includes(item.id)} isFavorite={favoritePlantIds.includes(item.id)} onPress={() => handlePlantPress(item)} /> : <View style={{ width: gridItemWidth }}><PlantCard plant={item} discovered={discoveredPlantIds.includes(item.id)} imageUri={imageUriMap[item.id]} isFavorite={favoritePlantIds.includes(item.id)} hasNote={!!plantNotes[item.id]} familyHint={getPlantDefinitionById(item.id)?.taxonomy.family} onPress={() => handlePlantPress(item)} onFavorite={() => toggleFavorite(item.id)} /></View>}
+          renderItem={({ item }) => viewMode === 'list' ? <PlantListRow plant={item} discovered={discoveredPlantIds.includes(item.id)} isFavorite={favoritePlantIds.includes(item.id)} onPress={() => handlePlantPress(item)} /> : <View style={[styles.gridItem, { width: gridItemWidth }]}><PlantCard plant={item} discovered={discoveredPlantIds.includes(item.id)} imageUri={imageUriMap[item.id]} isFavorite={favoritePlantIds.includes(item.id)} hasNote={!!plantNotes[item.id]} familyHint={getPlantDefinitionById(item.id)?.taxonomy.family} onPress={() => handlePlantPress(item)} onFavorite={() => toggleFavorite(item.id)} /></View>}
           ListEmptyComponent={<EmptyState canReset={hasActiveDiscoveryQuery} onReset={resetSearchAndFilters} />}
           ListFooterComponent={<View style={styles.footerPad}><DisclaimerBanner compact /></View>}
         />
@@ -548,7 +552,16 @@ function FilterChip({ label, active, onPress, activeColor }: { label: string; ac
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { backgroundColor: '#174F2A', paddingBottom: 16, paddingHorizontal: 16 },
+  header: {
+    width: '100%',
+    maxWidth: CONTENT_MAX_WIDTH,
+    alignSelf: 'center',
+    backgroundColor: '#174F2A',
+    paddingBottom: 18,
+    paddingHorizontal: 16,
+    borderBottomLeftRadius: 26,
+    borderBottomRightRadius: 26,
+  },
   headerTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   headerTitle: { fontSize: 22, lineHeight: 29, fontWeight: '900', color: '#FFFFFF' },
   headerSub: { fontSize: 13, lineHeight: 18, color: '#D9E9DA', marginTop: 2, marginBottom: 12 },
@@ -565,7 +578,7 @@ const styles = StyleSheet.create({
   recentSearchRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginTop: 8 },
   recentSearchChip: { minHeight: 44, backgroundColor: 'rgba(255,255,255,0.10)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.22)', borderRadius: 999, paddingHorizontal: 11, paddingVertical: 6, justifyContent: 'center', maxWidth: 220 },
   recentSearchChipText: { fontSize: 12, lineHeight: 17, color: '#FFFFFF', fontWeight: '600' },
-  statsContainer: { paddingHorizontal: 16, paddingBottom: 8, borderBottomWidth: StyleSheet.hairlineWidth },
+  statsContainer: { width: '100%', maxWidth: CONTENT_MAX_WIDTH, alignSelf: 'center', paddingHorizontal: 16, paddingTop: 4, paddingBottom: 8, borderBottomWidth: StyleSheet.hairlineWidth },
   statsToggleRow: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 7 },
   statsToggleText: { flex: 1, fontSize: 13, lineHeight: 18, fontWeight: '700' },
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 7, paddingBottom: 6 },
@@ -573,7 +586,7 @@ const styles = StyleSheet.create({
   statMiniDot: { width: 7, height: 7, borderRadius: 4, marginBottom: 3 },
   statMiniValue: { fontSize: 15, lineHeight: 19, fontWeight: '900' },
   statMiniLabel: { fontSize: 11, lineHeight: 14, fontWeight: '600', marginTop: 2, textAlign: 'center' },
-  filtersContainer: { paddingHorizontal: 16, paddingBottom: 8, borderBottomWidth: StyleSheet.hairlineWidth },
+  filtersContainer: { width: '100%', maxWidth: CONTENT_MAX_WIDTH, alignSelf: 'center', paddingHorizontal: 16, paddingBottom: 8, borderBottomWidth: StyleSheet.hairlineWidth },
   filterToggleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
   filterToggleBtn: { flex: 1, minWidth: 190, minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 7 },
   filterToggleText: { flex: 1, fontSize: 13, lineHeight: 18, fontWeight: '700' },
@@ -587,7 +600,7 @@ const styles = StyleSheet.create({
   filterChips: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
   chip: { minHeight: 44, paddingHorizontal: 12, paddingVertical: 5, borderRadius: 999, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5 },
   chipText: { fontSize: 12, lineHeight: 17, fontWeight: '700' },
-  countRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 9, paddingBottom: 5, gap: 8, flexWrap: 'wrap' },
+  countRow: { width: '100%', maxWidth: CONTENT_MAX_WIDTH, alignSelf: 'center', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 10, paddingBottom: 7, gap: 8, flexWrap: 'wrap' },
   countText: { fontSize: 12, lineHeight: 17, flexShrink: 1 },
   viewModeRow: { flexDirection: 'row', gap: 2, borderRadius: 14, padding: 2, borderWidth: StyleSheet.hairlineWidth, maxWidth: '100%', flexShrink: 1 },
   viewModeBtn: { minWidth: 72, minHeight: 44, borderRadius: 12, justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 5, paddingHorizontal: 10, paddingVertical: 6 },
@@ -601,13 +614,15 @@ const styles = StyleSheet.create({
   familySectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 8, paddingVertical: 10, marginTop: 5, gap: 8, flexWrap: 'wrap' },
   familySectionTitle: { fontSize: 14, lineHeight: 20, fontWeight: '800', flexShrink: 1 },
   familySectionCount: { fontSize: 12, lineHeight: 17, fontWeight: '600' },
-  activeEffectRow: { minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingBottom: 6, flexWrap: 'wrap' },
+  activeEffectRow: { width: '100%', maxWidth: CONTENT_MAX_WIDTH, alignSelf: 'center', minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingBottom: 6, flexWrap: 'wrap' },
   activeEffectLabel: { fontSize: 12, lineHeight: 17, fontWeight: '700' },
   activeEffectChip: { minHeight: 44, maxWidth: '100%', flexDirection: 'row', alignItems: 'center', borderRadius: 999, paddingLeft: 11, borderWidth: StyleSheet.hairlineWidth },
   activeEffectText: { fontSize: 12, lineHeight: 17, fontWeight: '700', flexShrink: 1 },
   activeEffectClose: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
+  listFrame: { width: '100%', maxWidth: CONTENT_MAX_WIDTH, alignSelf: 'center' },
   grid: { paddingHorizontal: 12, paddingBottom: 16 },
   gridRow: { alignItems: 'stretch' },
+  gridItem: { maxWidth: '100%' },
   emptyContainer: { paddingHorizontal: 32, paddingVertical: 52, alignItems: 'center' },
   emptyIconWrap: { width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
   emptyTitle: { fontSize: 15, lineHeight: 21, fontWeight: '800', textAlign: 'center' },
