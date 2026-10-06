@@ -83,7 +83,23 @@ describe('Global Plant Brain living lifecycle (G0)', () => {
         ...base,
         status: 'superseded',
       }),
-    ).toContain('superseded_assertion_link_required');
+    ).toContain('superseded_by_assertion_link_required');
+  });
+
+  it('allows a replacement assertion to point back to the assertion it supersedes', () => {
+    const replacement: KnowledgeAssertion = {
+      id: makeCanonicalId('assertion', 'assertion-2'),
+      subjectType: 'taxon',
+      subjectId: makeCanonicalId('taxon', '000001'),
+      predicate: 'accepted_name',
+      object: 'Updated plant',
+      sourceRefIds: [sourceId],
+      assertedAt: '2026-10-07T00:00:00.000Z',
+      status: 'active',
+      supersedesAssertionId: assertionId,
+    };
+
+    expect(validateKnowledgeAssertion(replacement)).toEqual([]);
   });
 
   it('finds downstream claims affected by a source/assertion change', () => {
