@@ -10,3 +10,4 @@ export * from './rights';
 export * from './sourceRef';
 export * from './provenance';
 export * from './knowledgeClaim';
+export * from './sourceRegistry';
