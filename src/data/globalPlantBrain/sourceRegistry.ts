@@ -60,11 +60,14 @@ const SOURCE_SEEDS: Array<
   },
   {
     localId: 'kew-powo-wcvp',
-    name: 'Kew Plants of the World Online / WCVP',
+    name: 'Kew Names and Taxonomic Backbone / WCVP via POWO',
     purpose: ['taxonomy', 'nomenclature', 'distribution'],
     accessMethod: 'database',
     homepageUrl: 'https://powo.science.kew.org/',
-    status: 'needs_review',
+    updateCadence: 'continuously refreshed portal; record access date/source label',
+    status: 'approved_core',
+    notes:
+      'Approval is scoped to Kew Names and Taxonomic Backbone / WCVP names, taxonomy and backbone distribution data shown as CC BY 3.0. POWO images and third-party content retain their own rights and are excluded.',
   },
   {
     localId: 'ipni',
@@ -244,6 +247,22 @@ const REVIEWED_RIGHTS: Partial<Record<string, Omit<RightsPolicy, 'id'>>> = {
     checkedAt: REVIEWED_AT,
     notes:
       'Only the WFO Taxonomic Backbone static download is covered. Other WFO content requires its own record/content-level rights decision.',
+  },
+  'kew-powo-wcvp': {
+    licenseType: 'CC BY 3.0 (Kew Names and Taxonomic Backbone / WCVP scope only)',
+    commercialUse: 'allowed',
+    localStorage: 'allowed',
+    redistribution: 'allowed',
+    derivativeDatabase: 'allowed',
+    attributionRequired: true,
+    shareAlike: false,
+    aiRag: 'conditional',
+    aiEmbedding: 'conditional',
+    aiTraining: 'conditional',
+    aiEvaluation: 'conditional',
+    checkedAt: REVIEWED_AT,
+    notes:
+      'Scoped only to the Kew Names and Taxonomic Backbone / WCVP components identified by POWO as CC BY 3.0. Images, specimens and third-party data require separate record-level rights decisions.',
   },
 };
 

@@ -20,6 +20,8 @@ export type TaxonRank =
 export type TaxonResolutionStatus =
   | 'local_seed'
   | 'externally_resolved'
+  | 'externally_reconciled'
+  | 'conflicted'
   | 'unresolved';
 
 export interface TaxonExternalIds {
@@ -31,6 +33,37 @@ export interface TaxonExternalIds {
   plantnet?: string;
   inaturalist?: string;
   ylist?: string;
+}
+
+export type TaxonAuthorityProvider =
+  | 'catalogue_of_life'
+  | 'world_flora_online'
+  | 'wcvp'
+  | 'ipni';
+
+export type TaxonAuthorityRelation =
+  | 'same_accepted_usage'
+  | 'synonym_of'
+  | 'alternative_taxonomy'
+  | 'conflict';
+
+export interface TaxonAuthorityReference {
+  provider: TaxonAuthorityProvider;
+  queriedScientificName: string;
+
+  matchedUsageId?: string;
+  matchedScientificName?: string;
+  matchedStatus?: string;
+
+  acceptedUsageId?: string;
+  acceptedScientificName?: string;
+  acceptedRank?: TaxonRank;
+
+  relation: TaxonAuthorityRelation;
+  sourceUrl?: string;
+  sourceRelease?: string;
+  checkedAt: string;
+  notes?: string;
 }
 
 export interface TaxonResolutionEvidence {
@@ -58,4 +91,12 @@ export interface TaxonConceptSeed {
   resolutionStatus: TaxonResolutionStatus;
   externalIds: TaxonExternalIds;
   resolutionEvidence?: TaxonResolutionEvidence;
+
+  /**
+   * Catalog name is preserved in scientificName. These fields represent the
+   * current reconciled preferred view when multiple authorities agree.
+   */
+  preferredScientificName?: string;
+  preferredRank?: TaxonRank;
+  authorityReferences?: TaxonAuthorityReference[];
 }
