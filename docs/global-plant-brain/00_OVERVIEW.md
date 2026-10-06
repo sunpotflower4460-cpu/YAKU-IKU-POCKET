@@ -100,6 +100,8 @@ Product PlaneはKnowledge Planeから必要部分だけmaterializeする。現�
 - `03_MEDICINAL_EVIDENCE_AND_SAFETY.md`
 - `04_SOURCES_RIGHTS_AND_LIVING_GRAPH.md`
 - `05_IMPLEMENTATION_PLAN.md`
+- `06_SOURCE_CATALOG.md`
+- `07_GOVERNANCE_REVIEW_AND_ACCEPTANCE.md`
 
 ## 6. Definition of Done
 
