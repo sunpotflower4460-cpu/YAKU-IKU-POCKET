@@ -23,19 +23,41 @@ describe('Global Plant Brain source registry (G0)', () => {
     }
   });
 
-  it('does not mark any seed source approved before explicit production rights review', () => {
-    for (const source of SOURCE_REGISTRY) {
-      expect(source.status).not.toBe('approved_core');
-      expect(source.status).not.toBe('approved_federation');
-      expect(source.status).not.toBe('conditional_license');
-    }
+  it('only approves taxonomy sources whose specific reusable dataset rights were reviewed', () => {
+    const approved = SOURCE_REGISTRY.filter(
+      (source) => source.status === 'approved_core',
+    ).map((source) => source.id);
+
+    expect(approved).toEqual(
+      expect.arrayContaining([
+        expect.stringMatching(/:catalogue-of-life$/),
+        expect.stringMatching(/:world-flora-online$/),
+      ]),
+    );
+    expect(approved).toHaveLength(2);
   });
 
-  it('fails closed for commercial, RAG and training use until rights are explicitly resolved', () => {
-    for (const source of SOURCE_REGISTRY) {
+  it('allows reviewed core storage while keeping unresolved AI-use rights fail-closed', () => {
+    const col = SOURCE_REGISTRY.find((source) =>
+      source.id.endsWith(':catalogue-of-life'),
+    )!;
+    const wfo = SOURCE_REGISTRY.find((source) =>
+      source.id.endsWith(':world-flora-online'),
+    )!;
+
+    expect(evaluateSourceUse(col.id, 'local_storage')).toBe('allow');
+    expect(evaluateSourceUse(col.id, 'commercial_use')).toBe('allow');
+    expect(evaluateSourceUse(col.id, 'ai_training')).toBe('review');
+
+    expect(evaluateSourceUse(wfo.id, 'local_storage')).toBe('allow');
+    expect(evaluateSourceUse(wfo.id, 'ai_training')).toBe('allow');
+  });
+
+  it('keeps all unreviewed sources fail-closed for commercial use', () => {
+    for (const source of SOURCE_REGISTRY.filter(
+      (entry) => entry.status !== 'approved_core',
+    )) {
       expect(evaluateSourceUse(source.id, 'commercial_use')).not.toBe('allow');
-      expect(evaluateSourceUse(source.id, 'ai_rag')).not.toBe('allow');
-      expect(evaluateSourceUse(source.id, 'ai_training')).not.toBe('allow');
     }
   });
 
