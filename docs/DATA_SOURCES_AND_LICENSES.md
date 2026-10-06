@@ -1,3 +1,5 @@
+> **Global Plant Brain note (2026-10-06):** 世界規模のSource Registry、L0〜L3 storage policy、record-level rights、RAG/embedding/trainingの分離、Living Evidence Graphは [global-plant-brain/04_SOURCES_RIGHTS_AND_LIVING_GRAPH.md](./global-plant-brain/04_SOURCES_RIGHTS_AND_LIVING_GRAPH.md) を中長期正本とします。本書の既存Source調査記録は履歴として保持します。
+
 # データソースとライセンス（DATA_SOURCES_AND_LICENSES）
 
 > 統合仕様書 §18 準拠。**実データ連携は PR14**。本書は候補と方針のアウトライン。
