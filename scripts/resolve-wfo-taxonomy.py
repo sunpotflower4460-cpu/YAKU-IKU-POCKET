@@ -151,11 +151,22 @@ def main() -> None:
                 accepted_ids.add(accepted_id)
                 relevant_wfo_ids.add(accepted_id)
         elif len(exact_rank) > 1:
-            selected[query["yakuTaxonConceptId"]] = None
-            decisions[query["yakuTaxonConceptId"]] = "ambiguous_exact_rank"
-            relevant_wfo_ids.update(
-                row["taxonID"] for row in exact_rank if row.get("taxonID")
-            )
+            accepted_candidates = [
+                row for row in exact_rank
+                if norm(row.get("taxonomicStatus")) == "accepted"
+            ]
+            if len(accepted_candidates) == 1:
+                row = accepted_candidates[0]
+                selected[query["yakuTaxonConceptId"]] = row
+                decisions[query["yakuTaxonConceptId"]] = "unique_accepted_exact_rank"
+                relevant_wfo_ids.add(row["taxonID"])
+                accepted_ids.add(row["taxonID"])
+            else:
+                selected[query["yakuTaxonConceptId"]] = None
+                decisions[query["yakuTaxonConceptId"]] = "ambiguous_exact_rank"
+                relevant_wfo_ids.update(
+                    row["taxonID"] for row in exact_rank if row.get("taxonID")
+                )
         elif candidates:
             selected[query["yakuTaxonConceptId"]] = None
             decisions[query["yakuTaxonConceptId"]] = "rank_mismatch"
@@ -201,8 +212,10 @@ def main() -> None:
             "decision": decision,
             "matched": None,
             "accepted": None,
-            "matchedIpniLsids": [],
-            "acceptedIpniLsids": [],
+            "matchedDirectIpniLsid": None,
+            "matchedMappedIpniLsids": [],
+            "acceptedDirectIpniLsid": None,
+            "acceptedMappedIpniLsids": [],
             "autoLinkableAcceptedConcept": False,
         }
 
@@ -213,9 +226,8 @@ def main() -> None:
 
             direct_ipni = row.get("scientificNameID")
             mapped_ipni = ipni_by_wfo.get(matched_wfo or "", [])
-            result["matchedIpniLsids"] = sorted(
-                set(([direct_ipni] if direct_ipni else []) + mapped_ipni)
-            )
+            result["matchedDirectIpniLsid"] = direct_ipni or None
+            result["matchedMappedIpniLsids"] = sorted(set(mapped_ipni))
 
             status = norm(row.get("taxonomicStatus"))
             accepted_id = row.get("acceptedNameUsageID") or (
@@ -226,12 +238,8 @@ def main() -> None:
                 result["accepted"] = slim(accepted)
                 accepted_direct_ipni = accepted.get("scientificNameID")
                 accepted_mapped = ipni_by_wfo.get(accepted_id or "", [])
-                result["acceptedIpniLsids"] = sorted(
-                    set(
-                        ([accepted_direct_ipni] if accepted_direct_ipni else [])
-                        + accepted_mapped
-                    )
-                )
+                result["acceptedDirectIpniLsid"] = accepted_direct_ipni or None
+                result["acceptedMappedIpniLsids"] = sorted(set(accepted_mapped))
 
             if status == "accepted":
                 counts["exact_accepted"] += 1
