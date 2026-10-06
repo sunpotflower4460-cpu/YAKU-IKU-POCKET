@@ -32,9 +32,10 @@ describe('Global Plant Brain source registry (G0)', () => {
       expect.arrayContaining([
         expect.stringMatching(/:catalogue-of-life$/),
         expect.stringMatching(/:world-flora-online$/),
+        expect.stringMatching(/:kew-powo-wcvp$/),
       ]),
     );
-    expect(approved).toHaveLength(2);
+    expect(approved).toHaveLength(3);
   });
 
   it('allows reviewed core storage while keeping unresolved AI-use rights fail-closed', () => {
@@ -44,6 +45,9 @@ describe('Global Plant Brain source registry (G0)', () => {
     const wfo = SOURCE_REGISTRY.find((source) =>
       source.id.endsWith(':world-flora-online'),
     )!;
+    const kew = SOURCE_REGISTRY.find((source) =>
+      source.id.endsWith(':kew-powo-wcvp'),
+    )!;
 
     expect(evaluateSourceUse(col.id, 'local_storage')).toBe('allow');
     expect(evaluateSourceUse(col.id, 'commercial_use')).toBe('allow');
@@ -51,6 +55,10 @@ describe('Global Plant Brain source registry (G0)', () => {
 
     expect(evaluateSourceUse(wfo.id, 'local_storage')).toBe('allow');
     expect(evaluateSourceUse(wfo.id, 'ai_training')).toBe('allow');
+
+    expect(evaluateSourceUse(kew.id, 'local_storage')).toBe('allow');
+    expect(evaluateSourceUse(kew.id, 'commercial_use')).toBe('allow');
+    expect(evaluateSourceUse(kew.id, 'ai_training')).toBe('review');
   });
 
   it('keeps all unreviewed sources fail-closed for commercial use', () => {
