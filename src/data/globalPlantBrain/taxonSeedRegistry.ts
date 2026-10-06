@@ -13,6 +13,10 @@ import {
   COL_RESOLUTION_SOURCE,
 } from './colResolutionSnapshot';
 import {
+  CONFLICTED_TAXON_BY_ID,
+  RECONCILED_TAXON_BY_ID,
+} from './taxonomyCrossSourceReview';
+import {
   makeCanonicalId,
   TaxonConceptSeed,
   TaxonRank,
@@ -65,6 +69,9 @@ function buildTaxonSeeds(): TaxonConceptSeed[] {
 
     const id = makeCanonicalId('taxon', representativeId);
     const colId = COL_AUTO_RESOLVED_IDS[id];
+    const reconciled = RECONCILED_TAXON_BY_ID.get(id);
+    const conflicted = CONFLICTED_TAXON_BY_ID.get(id);
+    const acceptedColId = reconciled?.acceptedColId ?? colId;
 
     return {
       id,
@@ -72,18 +79,28 @@ function buildTaxonSeeds(): TaxonConceptSeed[] {
       scientificName: representative.nameLatin,
       representativePlantId: representativeId,
       productPlantIds: plants.map((plant) => plant.id),
-      resolutionStatus: colId ? 'externally_resolved' : 'local_seed',
-      externalIds: colId ? { col: colId } : {},
-      resolutionEvidence: colId
+      resolutionStatus: conflicted
+        ? 'conflicted'
+        : reconciled
+          ? 'externally_reconciled'
+          : acceptedColId
+            ? 'externally_resolved'
+            : 'local_seed',
+      externalIds: acceptedColId ? { col: acceptedColId } : {},
+      resolutionEvidence: acceptedColId
         ? {
             provider: 'catalogue_of_life',
-            providerRecordId: colId,
+            providerRecordId: acceptedColId,
             sourceRelease: COL_RESOLUTION_SOURCE.releaseLabel,
             sourceDatasetKey: COL_RESOLUTION_SOURCE.datasetKey,
             sourceDoi: COL_RESOLUTION_SOURCE.doi,
             resolvedAt: COL_RESOLUTION_SOURCE.generatedAt,
           }
         : undefined,
+      preferredScientificName: reconciled?.preferredScientificName,
+      preferredRank: reconciled?.preferredRank,
+      authorityReferences:
+        reconciled?.references ?? conflicted?.references ?? undefined,
     };
   });
 }
