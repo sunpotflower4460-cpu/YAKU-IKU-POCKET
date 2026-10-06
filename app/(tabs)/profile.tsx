@@ -35,6 +35,8 @@ import { getCurrentSeason, SEASON_CONFIG, seasonForDate } from '../../src/utils/
 import { todayLocalStr, localDayFromISO } from '../../src/utils/date';
 import { normalizeForSearch } from '../../src/utils/kana';
 import { useReduceMotion } from '../../src/utils/reduceMotion';
+import { ResponsiveFrame } from '../../src/ui/ResponsiveFrame';
+import { READING_MAX_WIDTH } from '../../src/theme/layout';
 import { PRIVACY_POLICY_URL, TERMS_URL, SUPPORT_EMAIL, APP_VERSION } from '../../src/constants/app';
 import { ScanRecord } from '../../src/types';
 
@@ -166,6 +168,7 @@ export default function ProfileScreen() {
   const [shareCardVisible, setShareCardVisible] = useState(false);
   const [sourcesVisible, setSourcesVisible] = useState(false);
   const [historySearch, setHistorySearch] = useState('');
+  const [showAllAchievements, setShowAllAchievements] = useState(false);
   const editNamePreviousWebFocusRef = useRef<WebFocusable | null>(null);
   const sourcesPreviousWebFocusRef = useRef<WebFocusable | null>(null);
   const sourcesTitleRef = useRef<React.ElementRef<typeof Text>>(null);
@@ -189,6 +192,12 @@ export default function ProfileScreen() {
     [discoveredPlantIds, plantNotes, scanHistory, viewedSafetyCardPlantIds, hasComparedCandidates]
   );
   const unlockedAchievements = ACHIEVEMENTS.filter((achievement) => achievement.check(achievementCtx)).map((achievement) => ({ icon: achievement.icon, label: achievement.label }));
+  const achievementsToShow = useMemo(() => {
+    if (showAllAchievements) return ACHIEVEMENTS;
+    const achieved = ACHIEVEMENTS.filter((achievement) => achievement.check(achievementCtx)).slice(-2);
+    const next = ACHIEVEMENTS.filter((achievement) => !achievement.check(achievementCtx)).slice(0, Math.max(0, 4 - achieved.length));
+    return [...achieved, ...next];
+  }, [achievementCtx, showAllAchievements]);
   const greenCount = PLANTS.filter((p) => p.danger === 'GREEN' && discoveredPlantIds.includes(p.id)).length;
   const yellowCount = PLANTS.filter((p) => p.danger === 'YELLOW' && discoveredPlantIds.includes(p.id)).length;
   const redCount = PLANTS.filter((p) => p.danger === 'RED' && discoveredPlantIds.includes(p.id)).length;
@@ -429,6 +438,7 @@ export default function ProfileScreen() {
         </View>
       </LinearGradient>
 
+      <ResponsiveFrame maxWidth={READING_MAX_WIDTH}>
       <Section title="観察の記録" icon="stats-chart-outline">
         <View style={styles.statsGrid}>
           <StatBox label="記録した種類" value={`${discoveredCount}`} unit={`/ ${PLANTS.length}`} color={theme.colors.accentPrimary} compact={compactLayout} singleColumn={singleColumnStats} />
@@ -494,7 +504,7 @@ export default function ProfileScreen() {
 
       <Section title="観察の足あと" icon="ribbon-outline">
         <View style={styles.achievementsGrid}>
-          {ACHIEVEMENTS.map((achievement) => {
+          {achievementsToShow.map((achievement) => {
             const unlocked = achievement.check(achievementCtx);
             return (
               <View
@@ -530,6 +540,22 @@ export default function ProfileScreen() {
             );
           })}
         </View>
+        <Pressable
+          style={({ pressed }) => [
+            styles.achievementsToggle,
+            { backgroundColor: theme.colors.surfaceSecondary, borderColor: theme.colors.borderSubtle },
+            pressed && styles.rowPressed,
+          ]}
+          onPress={() => setShowAllAchievements((value) => !value)}
+          accessibilityRole="button"
+          accessibilityState={{ expanded: showAllAchievements }}
+          accessibilityLabel={showAllAchievements ? '実績を折りたたむ' : `すべての実績を見る。全${ACHIEVEMENTS.length}件`}
+        >
+          <Text style={[styles.achievementsToggleText, { color: theme.colors.accentPrimary }]}>
+            {showAllAchievements ? '折りたたむ' : `すべて見る（${ACHIEVEMENTS.length}）`}
+          </Text>
+          <Ionicons name={showAllAchievements ? 'chevron-up' : 'chevron-down'} size={16} color={theme.colors.accentPrimary} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" />
+        </Pressable>
       </Section>
 
       {scanHistory.length > 0 && (
@@ -626,6 +652,17 @@ export default function ProfileScreen() {
             <Text style={[styles.emptyHistoryText, { color: theme.colors.textTertiary }]}>
               {trimmedSearch ? '一致する観察記録が見つかりませんでした' : 'まだ観察履歴がありません'}
             </Text>
+            {!trimmedSearch && (
+              <Pressable
+                style={({ pressed }) => [styles.emptyHistoryBtn, { backgroundColor: theme.colors.accentPrimary }, pressed && styles.buttonPressed]}
+                onPress={() => router.push('/(tabs)/scan')}
+                accessibilityRole="button"
+                accessibilityLabel="最初の観察を始める"
+              >
+                <Ionicons name="camera-outline" size={17} color={theme.colors.textOnAccent} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" />
+                <Text style={[styles.emptyHistoryBtnText, { color: theme.colors.textOnAccent }]}>最初の観察を始める</Text>
+              </Pressable>
+            )}
           </View>
         ) : (
           <View style={[styles.historyList, { backgroundColor: theme.colors.surfacePrimary, borderColor: theme.colors.borderSubtle }]}>
@@ -710,6 +747,7 @@ export default function ProfileScreen() {
           <Text style={[styles.versionText, { color: theme.colors.textTertiary }]}>バージョン {APP_VERSION}</Text>
         </View>
       </Section>
+      </ResponsiveFrame>
 
       <ShareCard
         visible={shareCardVisible}
@@ -993,7 +1031,7 @@ function StatBox({
 const styles = StyleSheet.create({
   container: { flex: 1 },
   scrollContent: { paddingBottom: 32 },
-  hero: { paddingBottom: 24, paddingHorizontal: 20 },
+  hero: { width: '100%', maxWidth: READING_MAX_WIDTH, alignSelf: 'center', paddingBottom: 24, paddingHorizontal: 20 },
   heroEyebrow: { fontSize: 10, lineHeight: 13, fontWeight: '800', letterSpacing: 1.7, color: '#E7F3E8', marginBottom: 10 },
   identityRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   avatar: { width: 64, height: 64, borderRadius: 32, backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.25)', justifyContent: 'center', alignItems: 'center' },
@@ -1029,7 +1067,7 @@ const styles = StyleSheet.create({
   statValue: { fontSize: 22, lineHeight: 27, fontWeight: '900' },
   statUnit: { fontSize: 11, lineHeight: 14, fontWeight: '600' },
   statLabel: { fontSize: 11, lineHeight: 15, marginTop: 3, textAlign: 'center', fontWeight: '600' },
-  calendarCard: { borderRadius: 17, borderWidth: StyleSheet.hairlineWidth, padding: 14, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 5, elevation: 2 },
+  calendarCard: { width: '100%', maxWidth: 720, alignSelf: 'center', borderRadius: 17, borderWidth: StyleSheet.hairlineWidth, padding: 14, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 5, elevation: 2 },
   calendarMonth: { fontSize: 14, lineHeight: 19, fontWeight: '800', textAlign: 'center', marginBottom: 10 },
   calendarDowRow: { flexDirection: 'row', marginBottom: 4 },
   calendarDow: { flex: 1, textAlign: 'center', fontSize: 11, lineHeight: 14, fontWeight: '700' },
@@ -1047,6 +1085,8 @@ const styles = StyleSheet.create({
   achTextWrap: { flex: 1, minWidth: 0 },
   achLabel: { fontSize: 12, lineHeight: 16, fontWeight: '800' },
   achDesc: { fontSize: 11, lineHeight: 16, marginTop: 2 },
+  achievementsToggle: { minHeight: 48, marginTop: 10, borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
+  achievementsToggleText: { fontSize: 13, lineHeight: 18, fontWeight: '800', textAlign: 'center' },
   seasonBreakdownRow: { flexDirection: 'row', gap: 8 },
   seasonBreakdownRowCompact: { flexWrap: 'wrap' },
   seasonBreakdownCell: { flex: 1, borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, paddingVertical: 11, alignItems: 'center' },
@@ -1072,6 +1112,8 @@ const styles = StyleSheet.create({
   iconButtonCompact: { width: 44, height: 44 },
   emptyHistory: { minHeight: 112, borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, padding: 20, alignItems: 'center', justifyContent: 'center', gap: 9 },
   emptyHistoryText: { fontSize: 13, lineHeight: 19, textAlign: 'center' },
+  emptyHistoryBtn: { minHeight: 48, marginTop: 4, borderRadius: 14, paddingHorizontal: 16, paddingVertical: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7 },
+  emptyHistoryBtnText: { fontSize: 13, lineHeight: 18, fontWeight: '800', textAlign: 'center' },
   settingsCard: { borderRadius: 17, borderWidth: StyleSheet.hairlineWidth, padding: 13, marginBottom: 10 },
   settingsGroupLabel: { fontSize: 14, lineHeight: 19, fontWeight: '800', marginBottom: 10 },
   settingsMiniStatus: { fontSize: 11, lineHeight: 15, fontWeight: '700' },

@@ -34,6 +34,7 @@ import {
 } from '../../src/utils/useGate';
 import { SourceOrigin, USE_GATE_LABEL, UseGate } from '../../src/types/plantUse';
 import { useTheme } from '../../src/theme/ThemeProvider';
+import { READING_MAX_WIDTH } from '../../src/theme/layout';
 
 const ORIGIN_LABEL: Record<SourceOrigin, string> = {
   wild_observed: '野生で観察した',
@@ -831,12 +832,12 @@ const styles = StyleSheet.create({
   scrollContent: { paddingBottom: 28 },
   notFound: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 10, padding: 24 },
   notFoundText: { fontSize: 16, lineHeight: 22, fontWeight: '700', textAlign: 'center' },
-  heroWrapper: { position: 'relative', overflow: 'hidden' },
+  heroWrapper: { width: '100%', maxWidth: READING_MAX_WIDTH, alignSelf: 'center', position: 'relative', overflow: 'hidden', borderBottomLeftRadius: 28, borderBottomRightRadius: 28 },
   hero: { position: 'relative', paddingTop: 28, paddingBottom: 24, paddingHorizontal: 20, alignItems: 'center' },
   heroContrastScrim: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.18)' },
-  alertBanner: { width: '100%', minHeight: 52, flexDirection: 'row', alignItems: 'flex-start', gap: 10, backgroundColor: 'rgba(0,0,0,0.34)', borderRadius: 14, paddingHorizontal: 14, paddingVertical: 12, marginBottom: 18 },
+  alertBanner: { width: '100%', maxWidth: 720, minHeight: 52, flexDirection: 'row', alignItems: 'flex-start', gap: 10, backgroundColor: 'rgba(0,0,0,0.40)', borderRadius: 14, paddingHorizontal: 14, paddingVertical: 12, marginBottom: 18 },
   alertBannerText: { flex: 1, color: '#FFF2F0', fontWeight: '800', fontSize: 13, lineHeight: 19 },
-  warningBanner: { width: '100%', minHeight: 50, flexDirection: 'row', alignItems: 'flex-start', gap: 10, backgroundColor: 'rgba(0,0,0,0.28)', borderRadius: 14, paddingHorizontal: 14, paddingVertical: 12, marginBottom: 18 },
+  warningBanner: { width: '100%', maxWidth: 720, minHeight: 50, flexDirection: 'row', alignItems: 'flex-start', gap: 10, backgroundColor: 'rgba(0,0,0,0.34)', borderRadius: 14, paddingHorizontal: 14, paddingVertical: 12, marginBottom: 18 },
   warningBannerText: { flex: 1, color: '#FFF3C9', fontWeight: '700', fontSize: 13, lineHeight: 19 },
   emojiCircle: { width: 104, height: 104, borderRadius: 52, backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.26)', justifyContent: 'center', alignItems: 'center', marginBottom: 14 },
   emojiCircleDanger: { backgroundColor: 'rgba(255,120,110,0.12)' },
@@ -853,11 +854,11 @@ const styles = StyleSheet.create({
   favoriteBtn: { minHeight: 46, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, marginTop: 16, backgroundColor: 'rgba(255,255,255,0.13)', borderRadius: 999, paddingHorizontal: 18, borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.25)' },
   favoriteBtnText: { fontSize: 14, lineHeight: 19, fontWeight: '700', color: '#FFFFFF' },
   heroPressed: { opacity: 0.78 },
-  discoveryBar: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth },
+  discoveryBar: { width: '100%', maxWidth: READING_MAX_WIDTH, alignSelf: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth },
   discoveryChip: { minHeight: 36, flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 999, paddingHorizontal: 11 },
   discoveryActionChip: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 999, paddingHorizontal: 12, borderWidth: StyleSheet.hairlineWidth },
   discoveryChipText: { fontSize: 12, lineHeight: 17, fontWeight: '700' },
-  body: { padding: 16, gap: 0 },
+  body: { width: '100%', maxWidth: READING_MAX_WIDTH, alignSelf: 'center', padding: 16, gap: 0 },
   section: { borderRadius: 18, padding: 16, marginBottom: 12, borderWidth: StyleSheet.hairlineWidth, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 2 },
   sectionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
   sectionTitle: { fontSize: 16, lineHeight: 22, fontWeight: '800' },

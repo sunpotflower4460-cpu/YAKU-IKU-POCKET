@@ -2,6 +2,30 @@ import { type PropsWithChildren } from 'react';
 import { ScrollViewStyleReset } from 'expo-router/html';
 
 const webAccessibilityStyles = `
+  html, body, #root {
+    min-height: 100%;
+    background: #EEF4EF;
+  }
+
+  body {
+    margin: 0;
+    color-scheme: light dark;
+  }
+
+  ::selection {
+    background: rgba(23, 79, 42, 0.22);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    html, body, #root {
+      background: #0E1510;
+    }
+
+    ::selection {
+      background: rgba(117, 225, 128, 0.24);
+    }
+  }
+
   /*
    * React Native Web controls remain keyboard-operable, but their browser
    * focus treatment can vary by element/browser. Give keyboard users one

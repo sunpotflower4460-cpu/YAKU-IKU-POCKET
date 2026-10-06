@@ -21,6 +21,8 @@ import { RarityStars } from '../../src/components/RarityStars';
 import { DANGER_LABEL } from '../../src/components/DangerBadge';
 import { useTheme } from '../../src/theme/ThemeProvider';
 import { useReduceMotion } from '../../src/utils/reduceMotion';
+import { ResponsiveFrame } from '../../src/ui/ResponsiveFrame';
+import { CONTENT_MAX_WIDTH } from '../../src/theme/layout';
 import { getCurrentSeason, SEASON_CONFIG, getSeasonalPlants } from '../../src/utils/season';
 import { todayLocalStr, localDayFromISO } from '../../src/utils/date';
 import { getTodayLearnCard } from '../../src/utils/learnCard';
@@ -85,10 +87,11 @@ export default function HomeScreen() {
 
   // Seasonal spotlight plants
   const seasonalPlants = useMemo(() => getSeasonalPlants(season, PLANTS), [season]);
+  const spotlightLimit = width >= 768 && fontScale < 1.3 ? 6 : 4;
   const spotlightPlants = useMemo(() => [
     ...seasonalPlants.filter((p) => !discoveredPlantIds.includes(p.id)),
     ...seasonalPlants.filter((p) => discoveredPlantIds.includes(p.id)),
-  ].slice(0, 8), [seasonalPlants, discoveredPlantIds]);
+  ].slice(0, spotlightLimit), [seasonalPlants, discoveredPlantIds, spotlightLimit]);
 
   // Seasonal quests progress
   const seasonalChallenges = SEASONAL_CHALLENGES[season];
@@ -220,6 +223,7 @@ export default function HomeScreen() {
           </View>
         </LinearGradient>
 
+        <ResponsiveFrame>
         {pendingMilestone && (
           <LinearGradient
             colors={['#8A430B', '#A95108', '#B05A08']}
@@ -308,8 +312,19 @@ export default function HomeScreen() {
               <View style={styles.sectionHeadingGrow}>
                 <SectionTitle icon={seasonCfg.icon as React.ComponentProps<typeof Ionicons>['name']} title="今の季節の注目植物" iconColor={seasonAccent} />
               </View>
-              <View style={[styles.sectionBadge, { backgroundColor: `${seasonAccent}18` }]}>
-                <Text style={[styles.sectionBadgeText, { color: seasonAccent }]}>{seasonalDiscoveredCount}/{seasonalPlants.length}</Text>
+              <View style={styles.sectionActions}>
+                <View style={[styles.sectionBadge, { backgroundColor: `${seasonAccent}18` }]}>
+                  <Text style={[styles.sectionBadgeText, { color: seasonAccent }]}>{seasonalDiscoveredCount}/{seasonalPlants.length}</Text>
+                </View>
+                <Pressable
+                  style={({ pressed }) => [styles.sectionLink, pressed && styles.linkPressed]}
+                  onPress={() => router.push('/(tabs)/zukan')}
+                  accessibilityRole="button"
+                  accessibilityLabel="季節の植物をすべて探す"
+                >
+                  <Text style={[styles.sectionLinkText, { color: theme.colors.accentPrimary }]}>すべて探す</Text>
+                  <Ionicons name="chevron-forward" size={14} color={theme.colors.accentPrimary} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" />
+                </Pressable>
               </View>
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalList}>
@@ -537,6 +552,7 @@ export default function HomeScreen() {
         </View>
 
         <DisclaimerBanner />
+        </ResponsiveFrame>
       </ScrollView>
 
       <OnboardingModal visible={hasHydrated && !hasOnboarded} onComplete={setHasOnboarded} />
@@ -744,7 +760,13 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   scrollContent: { paddingBottom: 28 },
 
-  hero: { paddingBottom: 22, paddingHorizontal: 20 },
+  hero: {
+    width: '100%',
+    maxWidth: CONTENT_MAX_WIDTH,
+    alignSelf: 'center',
+    paddingBottom: 22,
+    paddingHorizontal: 20,
+  },
   heroTopRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 },
   heroIdentity: { flex: 1, minWidth: 0 },
   appEyebrow: { fontSize: 10, lineHeight: 13, fontWeight: '800', color: '#E5F1E6', letterSpacing: 1.8, marginBottom: 2 },
@@ -815,7 +837,10 @@ const styles = StyleSheet.create({
   sectionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 11 },
   sectionTitle: { flexShrink: 1, fontSize: 16, lineHeight: 21, fontWeight: '800' },
   horizontalList: { paddingRight: 16 },
+  sectionActions: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
   sectionBadge: { borderRadius: 999, paddingHorizontal: 9, paddingVertical: 5, alignSelf: 'flex-start' },
+  sectionLink: { minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 2, borderRadius: 12, paddingHorizontal: 8 },
+  sectionLinkText: { fontSize: 12, lineHeight: 17, fontWeight: '800' },
   sectionBadgeText: { fontSize: 11, lineHeight: 14, fontWeight: '800' },
 
   recentCard: {
@@ -929,4 +954,5 @@ const styles = StyleSheet.create({
 
   cardPressed: { opacity: 0.78, transform: [{ scale: 0.99 }] },
   buttonPressed: { opacity: 0.82, transform: [{ scale: 0.99 }] },
+  linkPressed: { opacity: 0.58 },
 });
