@@ -29,7 +29,7 @@ export interface TaxonExternalIds {
   col?: string;
   wfo?: string;
   wcvp?: string;
-  ipni?: string;
+  /** @deprecated IPNI identifies a nomenclatural name record. Use PlantNameRecord.externalIds.ipniLsid. */\n  ipni?: string;
   gbif?: string;
   plantnet?: string;
   inaturalist?: string;
