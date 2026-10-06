@@ -14,6 +14,7 @@ export type TaxonRank =
   | 'form'
   | 'genus'
   | 'family'
+  | 'section'
   | 'hybrid'
   | 'unresolved';
 
@@ -91,6 +92,7 @@ export interface TaxonConceptSeed {
   resolutionStatus: TaxonResolutionStatus;
   externalIds: TaxonExternalIds;
   resolutionEvidence?: TaxonResolutionEvidence;
+  supportingResolutionEvidence?: TaxonResolutionEvidence[];
 
   /**
    * Catalog name is preserved in scientificName. These fields represent the

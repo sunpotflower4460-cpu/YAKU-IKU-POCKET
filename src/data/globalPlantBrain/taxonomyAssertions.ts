@@ -56,7 +56,9 @@ function buildResolutionAssertion(taxon: TaxonConceptSeed): KnowledgeAssertion {
   const sourceRefIds =
     taxon.authorityReferences?.length
       ? authoritySourceIds(taxon.authorityReferences)
-      : [COL_SOURCE_ID];
+      : taxon.externalIds.wfo
+        ? [COL_SOURCE_ID, WFO_SOURCE_ID]
+        : [COL_SOURCE_ID];
 
   let object: JsonValue;
 
@@ -82,6 +84,7 @@ function buildResolutionAssertion(taxon: TaxonConceptSeed): KnowledgeAssertion {
       preferredScientificName: taxon.preferredScientificName ?? null,
       preferredRank: taxon.preferredRank ?? null,
       colAcceptedUsageId: taxon.externalIds.col ?? null,
+      wfoAcceptedUsageId: taxon.externalIds.wfo ?? null,
     };
   }
 
@@ -126,6 +129,7 @@ function buildSynonymRelationAssertion(
       toScientificName: taxon.preferredScientificName,
       toRank: taxon.preferredRank,
       acceptedColUsageId: taxon.externalIds.col ?? null,
+      acceptedWfoUsageId: taxon.externalIds.wfo ?? null,
     },
     sourceRefIds: authoritySourceIds(taxon.authorityReferences),
     sourceVersion: 'cross-source review 2026-10-06',
@@ -188,13 +192,14 @@ export const CURRENT_CATALOG_TAXONOMY_SNAPSHOT: KnowledgeSnapshot = {
   taxonomyVersions: {
     catalogueOfLife: '2026-09-25 XR / ChecklistBank 316441',
     kewNamesTaxonomicBackbone: '2026',
-    worldFloraOnline: '2026',
+    worldFloraOnline: '2026-06 / DOI 10.5281/zenodo.20782718',
   },
   sourceVersions: {
     catalogueOfLife: 'DOI 10.48580/dgz9s',
     currentCatalogCrossSourceReview: '2026-10-06',
+    worldFloraOnline: 'DOI 10.5281/zenodo.20782718',
   },
-  policyVersion: 'gpb-g1-taxonomy-resolution-v1',
+  policyVersion: 'gpb-g1-taxonomy-resolution-v2',
   notes:
-    '149 canonical taxa: 140 exact external resolutions, 8 reconciled synonym concepts, 1 explicit authority conflict.',
+    '149 canonical taxa: 137 exact external resolutions, 7 reconciled synonym concepts, 5 explicit material authority conflicts; 144 taxa have safe WFO accepted-concept links.',
 };
