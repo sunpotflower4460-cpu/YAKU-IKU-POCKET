@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "generatedFrom": "src/data/plants.ts",
   "generatedAt": "2026-10-06",
   "taxonCount": 149,
@@ -10,7 +10,8 @@
       "productPlantIds": [
         "p001"
       ],
-      "scientificName": "Taraxacum officinale"
+      "scientificName": "Taraxacum officinale",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:p002",
@@ -18,7 +19,8 @@
       "productPlantIds": [
         "p002"
       ],
-      "scientificName": "Artemisia princeps"
+      "scientificName": "Artemisia princeps",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:p003",
@@ -26,7 +28,8 @@
       "productPlantIds": [
         "p003"
       ],
-      "scientificName": "Houttuynia cordata"
+      "scientificName": "Houttuynia cordata",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:p004",
@@ -34,7 +37,8 @@
       "productPlantIds": [
         "p004"
       ],
-      "scientificName": "Plantago asiatica"
+      "scientificName": "Plantago asiatica",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:p005",
@@ -43,7 +47,8 @@
         "p005",
         "p009"
       ],
-      "scientificName": "Equisetum arvense"
+      "scientificName": "Equisetum arvense",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:p006",
@@ -51,7 +56,8 @@
       "productPlantIds": [
         "p006"
       ],
-      "scientificName": "Pueraria lobata"
+      "scientificName": "Pueraria lobata",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:p007",
@@ -59,7 +65,8 @@
       "productPlantIds": [
         "p007"
       ],
-      "scientificName": "Allium macrostemon"
+      "scientificName": "Allium macrostemon",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:p008",
@@ -67,7 +74,8 @@
       "productPlantIds": [
         "p008"
       ],
-      "scientificName": "Oenanthe javanica"
+      "scientificName": "Oenanthe javanica",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:p010",
@@ -75,7 +83,8 @@
       "productPlantIds": [
         "p010"
       ],
-      "scientificName": "Aralia cordata"
+      "scientificName": "Aralia cordata",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:p011",
@@ -83,7 +92,8 @@
       "productPlantIds": [
         "p011"
       ],
-      "scientificName": "Petasites japonicus"
+      "scientificName": "Petasites japonicus",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:p012",
@@ -91,7 +101,8 @@
       "productPlantIds": [
         "p012"
       ],
-      "scientificName": "Pteridium aquilinum"
+      "scientificName": "Pteridium aquilinum",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:p013",
@@ -99,7 +110,8 @@
       "productPlantIds": [
         "p013"
       ],
-      "scientificName": "Osmunda japonica"
+      "scientificName": "Osmunda japonica",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:p014",
@@ -107,7 +119,8 @@
       "productPlantIds": [
         "p014"
       ],
-      "scientificName": "Erythronium japonicum"
+      "scientificName": "Erythronium japonicum",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:p015",
@@ -115,7 +128,8 @@
       "productPlantIds": [
         "p015"
       ],
-      "scientificName": "Cryptotaenia japonica"
+      "scientificName": "Cryptotaenia japonica",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:p016",
@@ -123,7 +137,8 @@
       "productPlantIds": [
         "p016"
       ],
-      "scientificName": "Capsella bursa-pastoris"
+      "scientificName": "Capsella bursa-pastoris",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:p017",
@@ -131,7 +146,8 @@
       "productPlantIds": [
         "p017"
       ],
-      "scientificName": "Stellaria media"
+      "scientificName": "Stellaria media",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:p018",
@@ -139,7 +155,8 @@
       "productPlantIds": [
         "p018"
       ],
-      "scientificName": "Perilla frutescens"
+      "scientificName": "Perilla frutescens",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:p019",
@@ -147,7 +164,8 @@
       "productPlantIds": [
         "p019"
       ],
-      "scientificName": "Reynoutria japonica"
+      "scientificName": "Reynoutria japonica",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:p020",
@@ -155,7 +173,8 @@
       "productPlantIds": [
         "p020"
       ],
-      "scientificName": "Adenophora triphylla"
+      "scientificName": "Adenophora triphylla",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:p021",
@@ -163,7 +182,8 @@
       "productPlantIds": [
         "p021"
       ],
-      "scientificName": "Platycodon grandiflorus"
+      "scientificName": "Platycodon grandiflorus",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:p022",
@@ -171,7 +191,8 @@
       "productPlantIds": [
         "p022"
       ],
-      "scientificName": "Sambucus racemosa"
+      "scientificName": "Sambucus racemosa",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:p023",
@@ -179,7 +200,8 @@
       "productPlantIds": [
         "p023"
       ],
-      "scientificName": "Lamium amplexicaule"
+      "scientificName": "Lamium amplexicaule",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:p024",
@@ -187,7 +209,8 @@
       "productPlantIds": [
         "p024"
       ],
-      "scientificName": "Aconitum japonicum"
+      "scientificName": "Aconitum japonicum",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:p025",
@@ -195,7 +218,8 @@
       "productPlantIds": [
         "p025"
       ],
-      "scientificName": "Convallaria majalis"
+      "scientificName": "Convallaria majalis",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:p026",
@@ -203,7 +227,8 @@
       "productPlantIds": [
         "p026"
       ],
-      "scientificName": "Portulaca oleracea"
+      "scientificName": "Portulaca oleracea",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:p027",
@@ -211,7 +236,8 @@
       "productPlantIds": [
         "p027"
       ],
-      "scientificName": "Aster yomena"
+      "scientificName": "Aster yomena",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:p028",
@@ -219,7 +245,8 @@
       "productPlantIds": [
         "p028"
       ],
-      "scientificName": "Rumex japonicus"
+      "scientificName": "Rumex japonicus",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:p029",
@@ -227,7 +254,8 @@
       "productPlantIds": [
         "p029"
       ],
-      "scientificName": "Vicia sativa"
+      "scientificName": "Vicia sativa",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:p030",
@@ -235,7 +263,8 @@
       "productPlantIds": [
         "p030"
       ],
-      "scientificName": "Cirsium japonicum"
+      "scientificName": "Cirsium japonicum",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:p031",
@@ -243,7 +272,8 @@
       "productPlantIds": [
         "p031"
       ],
-      "scientificName": "Geranium thunbergii"
+      "scientificName": "Geranium thunbergii",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:p032",
@@ -251,7 +281,8 @@
       "productPlantIds": [
         "p032"
       ],
-      "scientificName": "Swertia japonica"
+      "scientificName": "Swertia japonica",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:p033",
@@ -259,7 +290,8 @@
       "productPlantIds": [
         "p033"
       ],
-      "scientificName": "Rumex acetosa"
+      "scientificName": "Rumex acetosa",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:p034",
@@ -267,7 +299,8 @@
       "productPlantIds": [
         "p034"
       ],
-      "scientificName": "Hemerocallis fulva"
+      "scientificName": "Hemerocallis fulva",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:p035",
@@ -275,7 +308,8 @@
       "productPlantIds": [
         "p035"
       ],
-      "scientificName": "Erigeron philadelphicus"
+      "scientificName": "Erigeron philadelphicus",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:p036",
@@ -283,7 +317,8 @@
       "productPlantIds": [
         "p036"
       ],
-      "scientificName": "Scopolia japonica"
+      "scientificName": "Scopolia japonica",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:p037",
@@ -291,7 +326,8 @@
       "productPlantIds": [
         "p037"
       ],
-      "scientificName": "Cicuta virosa"
+      "scientificName": "Cicuta virosa",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:p038",
@@ -299,7 +335,8 @@
       "productPlantIds": [
         "p038"
       ],
-      "scientificName": "Narcissus tazetta"
+      "scientificName": "Narcissus tazetta",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:p039",
@@ -307,7 +344,8 @@
       "productPlantIds": [
         "p039"
       ],
-      "scientificName": "Colchicum autumnale"
+      "scientificName": "Colchicum autumnale",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:p040",
@@ -315,7 +353,8 @@
       "productPlantIds": [
         "p040"
       ],
-      "scientificName": "Allium victorialis"
+      "scientificName": "Allium victorialis",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:p041",
@@ -323,7 +362,8 @@
       "productPlantIds": [
         "p041"
       ],
-      "scientificName": "Hosta sieboldiana"
+      "scientificName": "Hosta sieboldiana",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:p042",
@@ -331,7 +371,8 @@
       "productPlantIds": [
         "p042"
       ],
-      "scientificName": "Veratrum album subsp. oxysepalum"
+      "scientificName": "Veratrum album subsp. oxysepalum",
+      "expectedRank": "subspecies"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:p043",
@@ -339,7 +380,8 @@
       "productPlantIds": [
         "p043"
       ],
-      "scientificName": "Datura metel"
+      "scientificName": "Datura metel",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:p044",
@@ -347,7 +389,8 @@
       "productPlantIds": [
         "p044"
       ],
-      "scientificName": "Aralia elata"
+      "scientificName": "Aralia elata",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:p045",
@@ -355,7 +398,8 @@
       "productPlantIds": [
         "p045"
       ],
-      "scientificName": "Matteuccia struthiopteris"
+      "scientificName": "Matteuccia struthiopteris",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:p046",
@@ -363,7 +407,8 @@
       "productPlantIds": [
         "p046"
       ],
-      "scientificName": "Elatostema umbellatum var. majus"
+      "scientificName": "Elatostema umbellatum var. majus",
+      "expectedRank": "variety"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:p047",
@@ -371,7 +416,8 @@
       "productPlantIds": [
         "p047"
       ],
-      "scientificName": "Glechoma hederacea var. grandis"
+      "scientificName": "Glechoma hederacea var. grandis",
+      "expectedRank": "variety"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:p048",
@@ -379,7 +425,8 @@
       "productPlantIds": [
         "p048"
       ],
-      "scientificName": "Corydalis incisa"
+      "scientificName": "Corydalis incisa",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:p049",
@@ -387,7 +434,8 @@
       "productPlantIds": [
         "p049"
       ],
-      "scientificName": "Ranunculus silerifolius"
+      "scientificName": "Ranunculus silerifolius",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:p050",
@@ -395,7 +443,8 @@
       "productPlantIds": [
         "p050"
       ],
-      "scientificName": "Phytolacca americana"
+      "scientificName": "Phytolacca americana",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:p051",
@@ -403,7 +452,8 @@
       "productPlantIds": [
         "p051"
       ],
-      "scientificName": "Arisaema serratum"
+      "scientificName": "Arisaema serratum",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:p052",
@@ -411,7 +461,8 @@
       "productPlantIds": [
         "p052"
       ],
-      "scientificName": "Akebia quinata"
+      "scientificName": "Akebia quinata",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:p053",
@@ -419,7 +470,8 @@
       "productPlantIds": [
         "p053"
       ],
-      "scientificName": "Commelina communis"
+      "scientificName": "Commelina communis",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:p054",
@@ -427,7 +479,8 @@
       "productPlantIds": [
         "p054"
       ],
-      "scientificName": "Pinellia ternata"
+      "scientificName": "Pinellia ternata",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:p055",
@@ -435,7 +488,8 @@
       "productPlantIds": [
         "p055"
       ],
-      "scientificName": "Viola mandshurica"
+      "scientificName": "Viola mandshurica",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:p056",
@@ -443,7 +497,8 @@
       "productPlantIds": [
         "p056"
       ],
-      "scientificName": "Hemerocallis fulva var. angustifolia"
+      "scientificName": "Hemerocallis fulva var. angustifolia",
+      "expectedRank": "variety"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:p057",
@@ -451,7 +506,8 @@
       "productPlantIds": [
         "p057"
       ],
-      "scientificName": "Lamium purpureum"
+      "scientificName": "Lamium purpureum",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:p058",
@@ -459,7 +515,8 @@
       "productPlantIds": [
         "p058"
       ],
-      "scientificName": "Sonchus oleraceus"
+      "scientificName": "Sonchus oleraceus",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:p059",
@@ -467,7 +524,8 @@
       "productPlantIds": [
         "p059"
       ],
-      "scientificName": "Cyperus rotundus"
+      "scientificName": "Cyperus rotundus",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:p060",
@@ -475,7 +533,8 @@
       "productPlantIds": [
         "p060"
       ],
-      "scientificName": "Calystegia japonica"
+      "scientificName": "Calystegia japonica",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:p061",
@@ -483,7 +542,8 @@
       "productPlantIds": [
         "p061"
       ],
-      "scientificName": "Ajuga decumbens"
+      "scientificName": "Ajuga decumbens",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:p062",
@@ -491,7 +551,8 @@
       "productPlantIds": [
         "p062"
       ],
-      "scientificName": "Imperata cylindrica"
+      "scientificName": "Imperata cylindrica",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:p063",
@@ -499,7 +560,8 @@
       "productPlantIds": [
         "p063"
       ],
-      "scientificName": "Clerodendrum trichotomum"
+      "scientificName": "Clerodendrum trichotomum",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:p064",
@@ -507,7 +569,8 @@
       "productPlantIds": [
         "p064"
       ],
-      "scientificName": "Astragalus sinicus"
+      "scientificName": "Astragalus sinicus",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:p065",
@@ -515,7 +578,8 @@
       "productPlantIds": [
         "p065"
       ],
-      "scientificName": "Conium maculatum"
+      "scientificName": "Conium maculatum",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:p066",
@@ -523,7 +587,8 @@
       "productPlantIds": [
         "p066"
       ],
-      "scientificName": "Macleaya cordata"
+      "scientificName": "Macleaya cordata",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:p067",
@@ -531,7 +596,8 @@
       "productPlantIds": [
         "p067"
       ],
-      "scientificName": "Saururus chinensis"
+      "scientificName": "Saururus chinensis",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:p068",
@@ -539,7 +605,8 @@
       "productPlantIds": [
         "p068"
       ],
-      "scientificName": "Lapsana apogonoides"
+      "scientificName": "Lapsana apogonoides",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:p069",
@@ -547,7 +614,8 @@
       "productPlantIds": [
         "p069"
       ],
-      "scientificName": "Youngia japonica"
+      "scientificName": "Youngia japonica",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:p070",
@@ -555,7 +623,8 @@
       "productPlantIds": [
         "p070"
       ],
-      "scientificName": "Oenothera stricta"
+      "scientificName": "Oenothera stricta",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:p071",
@@ -563,7 +632,8 @@
       "productPlantIds": [
         "p071"
       ],
-      "scientificName": "Coriaria japonica"
+      "scientificName": "Coriaria japonica",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:p072",
@@ -571,7 +641,8 @@
       "productPlantIds": [
         "p072"
       ],
-      "scientificName": "Nerium oleander"
+      "scientificName": "Nerium oleander",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:p073",
@@ -579,7 +650,8 @@
       "productPlantIds": [
         "p073"
       ],
-      "scientificName": "Toxicodendron trichocarpum"
+      "scientificName": "Toxicodendron trichocarpum",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:p074",
@@ -587,7 +659,8 @@
       "productPlantIds": [
         "p074"
       ],
-      "scientificName": "Wisteria floribunda"
+      "scientificName": "Wisteria floribunda",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:p075",
@@ -595,7 +668,8 @@
       "productPlantIds": [
         "p075"
       ],
-      "scientificName": "Lespedeza bicolor"
+      "scientificName": "Lespedeza bicolor",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:p076",
@@ -603,7 +677,8 @@
       "productPlantIds": [
         "p076"
       ],
-      "scientificName": "Miscanthus sinensis"
+      "scientificName": "Miscanthus sinensis",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:p077",
@@ -611,7 +686,8 @@
       "productPlantIds": [
         "p077"
       ],
-      "scientificName": "Dianthus superbus var. longicalycinus"
+      "scientificName": "Dianthus superbus var. longicalycinus",
+      "expectedRank": "variety"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:p078",
@@ -619,7 +695,8 @@
       "productPlantIds": [
         "p078"
       ],
-      "scientificName": "Patrinia scabiosifolia"
+      "scientificName": "Patrinia scabiosifolia",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:p079",
@@ -627,7 +704,8 @@
       "productPlantIds": [
         "p079"
       ],
-      "scientificName": "Eupatorium japonicum"
+      "scientificName": "Eupatorium japonicum",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:h001",
@@ -635,7 +713,8 @@
       "productPlantIds": [
         "h001"
       ],
-      "scientificName": "Lavandula angustifolia"
+      "scientificName": "Lavandula angustifolia",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:h002",
@@ -643,7 +722,8 @@
       "productPlantIds": [
         "h002"
       ],
-      "scientificName": "Salvia rosmarinus"
+      "scientificName": "Salvia rosmarinus",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:h003",
@@ -651,7 +731,8 @@
       "productPlantIds": [
         "h003"
       ],
-      "scientificName": "Thymus vulgaris"
+      "scientificName": "Thymus vulgaris",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:h004",
@@ -659,7 +740,8 @@
       "productPlantIds": [
         "h004"
       ],
-      "scientificName": "Ocimum basilicum"
+      "scientificName": "Ocimum basilicum",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:h005",
@@ -667,7 +749,8 @@
       "productPlantIds": [
         "h005"
       ],
-      "scientificName": "Mentha × piperita"
+      "scientificName": "Mentha × piperita",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:h006",
@@ -675,7 +758,8 @@
       "productPlantIds": [
         "h006"
       ],
-      "scientificName": "Matricaria chamomilla"
+      "scientificName": "Matricaria chamomilla",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:h007",
@@ -683,7 +767,8 @@
       "productPlantIds": [
         "h007"
       ],
-      "scientificName": "Salvia officinalis"
+      "scientificName": "Salvia officinalis",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:h008",
@@ -691,7 +776,8 @@
       "productPlantIds": [
         "h008"
       ],
-      "scientificName": "Origanum vulgare"
+      "scientificName": "Origanum vulgare",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:h009",
@@ -699,7 +785,8 @@
       "productPlantIds": [
         "h009"
       ],
-      "scientificName": "Foeniculum vulgare"
+      "scientificName": "Foeniculum vulgare",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:h010",
@@ -707,7 +794,8 @@
       "productPlantIds": [
         "h010"
       ],
-      "scientificName": "Anethum graveolens"
+      "scientificName": "Anethum graveolens",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:h011",
@@ -715,7 +803,8 @@
       "productPlantIds": [
         "h011"
       ],
-      "scientificName": "Coriandrum sativum"
+      "scientificName": "Coriandrum sativum",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:h012",
@@ -723,7 +812,8 @@
       "productPlantIds": [
         "h012"
       ],
-      "scientificName": "Curcuma longa"
+      "scientificName": "Curcuma longa",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:h013",
@@ -731,7 +821,8 @@
       "productPlantIds": [
         "h013"
       ],
-      "scientificName": "Cinnamomum verum"
+      "scientificName": "Cinnamomum verum",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:h014",
@@ -739,7 +830,8 @@
       "productPlantIds": [
         "h014"
       ],
-      "scientificName": "Elettaria cardamomum"
+      "scientificName": "Elettaria cardamomum",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:h015",
@@ -747,7 +839,8 @@
       "productPlantIds": [
         "h015"
       ],
-      "scientificName": "Syzygium aromaticum"
+      "scientificName": "Syzygium aromaticum",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:h016",
@@ -755,7 +848,8 @@
       "productPlantIds": [
         "h016"
       ],
-      "scientificName": "Illicium verum"
+      "scientificName": "Illicium verum",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:h017",
@@ -763,7 +857,8 @@
       "productPlantIds": [
         "h017"
       ],
-      "scientificName": "Crocus sativus"
+      "scientificName": "Crocus sativus",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:h018",
@@ -771,7 +866,8 @@
       "productPlantIds": [
         "h018"
       ],
-      "scientificName": "Vanilla planifolia"
+      "scientificName": "Vanilla planifolia",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:h019",
@@ -779,7 +875,8 @@
       "productPlantIds": [
         "h019"
       ],
-      "scientificName": "Cymbopogon citratus"
+      "scientificName": "Cymbopogon citratus",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:h020",
@@ -787,7 +884,8 @@
       "productPlantIds": [
         "h020"
       ],
-      "scientificName": "Petroselinum crispum"
+      "scientificName": "Petroselinum crispum",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:h021",
@@ -795,7 +893,8 @@
       "productPlantIds": [
         "h021"
       ],
-      "scientificName": "Anthriscus cerefolium"
+      "scientificName": "Anthriscus cerefolium",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:h022",
@@ -803,7 +902,8 @@
       "productPlantIds": [
         "h022"
       ],
-      "scientificName": "Artemisia dracunculus"
+      "scientificName": "Artemisia dracunculus",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:h023",
@@ -811,7 +911,8 @@
       "productPlantIds": [
         "h023"
       ],
-      "scientificName": "Aspalathus linearis"
+      "scientificName": "Aspalathus linearis",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:h024",
@@ -819,7 +920,8 @@
       "productPlantIds": [
         "h024"
       ],
-      "scientificName": "Echinacea purpurea"
+      "scientificName": "Echinacea purpurea",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:h025",
@@ -827,7 +929,8 @@
       "productPlantIds": [
         "h025"
       ],
-      "scientificName": "Sambucus nigra"
+      "scientificName": "Sambucus nigra",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:h026",
@@ -835,7 +938,8 @@
       "productPlantIds": [
         "h026"
       ],
-      "scientificName": "Zingiber officinale"
+      "scientificName": "Zingiber officinale",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:h027",
@@ -843,7 +947,8 @@
       "productPlantIds": [
         "h027"
       ],
-      "scientificName": "Allium sativum"
+      "scientificName": "Allium sativum",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:h028",
@@ -851,7 +956,8 @@
       "productPlantIds": [
         "h028"
       ],
-      "scientificName": "Origanum majorana"
+      "scientificName": "Origanum majorana",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:h029",
@@ -859,7 +965,8 @@
       "productPlantIds": [
         "h029"
       ],
-      "scientificName": "Allium schoenoprasum"
+      "scientificName": "Allium schoenoprasum",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:h030",
@@ -867,7 +974,8 @@
       "productPlantIds": [
         "h030"
       ],
-      "scientificName": "Pimpinella anisum"
+      "scientificName": "Pimpinella anisum",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:h031",
@@ -875,7 +983,8 @@
       "productPlantIds": [
         "h031"
       ],
-      "scientificName": "Carum carvi"
+      "scientificName": "Carum carvi",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:h032",
@@ -883,7 +992,8 @@
       "productPlantIds": [
         "h032"
       ],
-      "scientificName": "Cuminum cyminum"
+      "scientificName": "Cuminum cyminum",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:h033",
@@ -891,7 +1001,8 @@
       "productPlantIds": [
         "h033"
       ],
-      "scientificName": "Melissa officinalis"
+      "scientificName": "Melissa officinalis",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:h034",
@@ -899,7 +1010,8 @@
       "productPlantIds": [
         "h034"
       ],
-      "scientificName": "Myristica fragrans"
+      "scientificName": "Myristica fragrans",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:h035",
@@ -907,7 +1019,8 @@
       "productPlantIds": [
         "h035"
       ],
-      "scientificName": "Capsicum annuum"
+      "scientificName": "Capsicum annuum",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:h036",
@@ -915,7 +1028,8 @@
       "productPlantIds": [
         "h036"
       ],
-      "scientificName": "Brassica juncea"
+      "scientificName": "Brassica juncea",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:h037",
@@ -923,7 +1037,8 @@
       "productPlantIds": [
         "h037"
       ],
-      "scientificName": "Zingiber mioga"
+      "scientificName": "Zingiber mioga",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:h038",
@@ -931,7 +1046,8 @@
       "productPlantIds": [
         "h038"
       ],
-      "scientificName": "Eutrema japonicum"
+      "scientificName": "Eutrema japonicum",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:h039",
@@ -939,7 +1055,8 @@
       "productPlantIds": [
         "h039"
       ],
-      "scientificName": "Angelica keiskei"
+      "scientificName": "Angelica keiskei",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:h040",
@@ -947,7 +1064,8 @@
       "productPlantIds": [
         "h040"
       ],
-      "scientificName": "Arctium lappa"
+      "scientificName": "Arctium lappa",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:h041",
@@ -955,7 +1073,8 @@
       "productPlantIds": [
         "h041"
       ],
-      "scientificName": "Corchorus olitorius"
+      "scientificName": "Corchorus olitorius",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:h042",
@@ -963,7 +1082,8 @@
       "productPlantIds": [
         "h042"
       ],
-      "scientificName": "Morus alba"
+      "scientificName": "Morus alba",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:h043",
@@ -971,7 +1091,8 @@
       "productPlantIds": [
         "h043"
       ],
-      "scientificName": "Citrus junos"
+      "scientificName": "Citrus junos",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:h044",
@@ -979,7 +1100,8 @@
       "productPlantIds": [
         "h044"
       ],
-      "scientificName": "Zanthoxylum piperitum"
+      "scientificName": "Zanthoxylum piperitum",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:h045",
@@ -987,7 +1109,8 @@
       "productPlantIds": [
         "h045"
       ],
-      "scientificName": "Urtica dioica"
+      "scientificName": "Urtica dioica",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:h046",
@@ -995,7 +1118,8 @@
       "productPlantIds": [
         "h046"
       ],
-      "scientificName": "Borago officinalis"
+      "scientificName": "Borago officinalis",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:h047",
@@ -1003,7 +1127,8 @@
       "productPlantIds": [
         "h047"
       ],
-      "scientificName": "Hyssopus officinalis"
+      "scientificName": "Hyssopus officinalis",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:h048",
@@ -1011,7 +1136,8 @@
       "productPlantIds": [
         "h048"
       ],
-      "scientificName": "Trigonella foenum-graecum"
+      "scientificName": "Trigonella foenum-graecum",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:h049",
@@ -1019,7 +1145,8 @@
       "productPlantIds": [
         "h049"
       ],
-      "scientificName": "Piper nigrum"
+      "scientificName": "Piper nigrum",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:h050",
@@ -1027,7 +1154,8 @@
       "productPlantIds": [
         "h050"
       ],
-      "scientificName": "Pimenta dioica"
+      "scientificName": "Pimenta dioica",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:h051",
@@ -1035,7 +1163,8 @@
       "productPlantIds": [
         "h051"
       ],
-      "scientificName": "Stevia rebaudiana"
+      "scientificName": "Stevia rebaudiana",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:h052",
@@ -1043,7 +1172,8 @@
       "productPlantIds": [
         "h052"
       ],
-      "scientificName": "Calendula officinalis"
+      "scientificName": "Calendula officinalis",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:h053",
@@ -1051,7 +1181,8 @@
       "productPlantIds": [
         "h053"
       ],
-      "scientificName": "Aloysia citrodora"
+      "scientificName": "Aloysia citrodora",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:h054",
@@ -1059,7 +1190,8 @@
       "productPlantIds": [
         "h054"
       ],
-      "scientificName": "Cichorium intybus"
+      "scientificName": "Cichorium intybus",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:h055",
@@ -1067,7 +1199,8 @@
       "productPlantIds": [
         "h055"
       ],
-      "scientificName": "Juniperus communis"
+      "scientificName": "Juniperus communis",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:h056",
@@ -1075,7 +1208,8 @@
       "productPlantIds": [
         "h056"
       ],
-      "scientificName": "Sesamum indicum"
+      "scientificName": "Sesamum indicum",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:h057",
@@ -1083,7 +1217,8 @@
       "productPlantIds": [
         "h057"
       ],
-      "scientificName": "Backhousia citriodora"
+      "scientificName": "Backhousia citriodora",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:h058",
@@ -1091,7 +1226,8 @@
       "productPlantIds": [
         "h058"
       ],
-      "scientificName": "Alpinia zerumbet"
+      "scientificName": "Alpinia zerumbet",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:h059",
@@ -1099,7 +1235,8 @@
       "productPlantIds": [
         "h059"
       ],
-      "scientificName": "Ilex paraguariensis"
+      "scientificName": "Ilex paraguariensis",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:h060",
@@ -1107,7 +1244,8 @@
       "productPlantIds": [
         "h060"
       ],
-      "scientificName": "Passiflora incarnata"
+      "scientificName": "Passiflora incarnata",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:h061",
@@ -1115,7 +1253,8 @@
       "productPlantIds": [
         "h061"
       ],
-      "scientificName": "Helichrysum italicum"
+      "scientificName": "Helichrysum italicum",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:h062",
@@ -1123,7 +1262,8 @@
       "productPlantIds": [
         "h062"
       ],
-      "scientificName": "Galium odoratum"
+      "scientificName": "Galium odoratum",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:h063",
@@ -1131,7 +1271,8 @@
       "productPlantIds": [
         "h063"
       ],
-      "scientificName": "Nasturtium officinale"
+      "scientificName": "Nasturtium officinale",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:h064",
@@ -1139,7 +1280,8 @@
       "productPlantIds": [
         "h064"
       ],
-      "scientificName": "Apium graveolens"
+      "scientificName": "Apium graveolens",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:h065",
@@ -1147,7 +1289,8 @@
       "productPlantIds": [
         "h065"
       ],
-      "scientificName": "Armoracia rusticana"
+      "scientificName": "Armoracia rusticana",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:h066",
@@ -1155,7 +1298,8 @@
       "productPlantIds": [
         "h066"
       ],
-      "scientificName": "Persicaria hydropiper"
+      "scientificName": "Persicaria hydropiper",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:h067",
@@ -1163,7 +1307,8 @@
       "productPlantIds": [
         "h067"
       ],
-      "scientificName": "Actinidia polygama"
+      "scientificName": "Actinidia polygama",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:h068",
@@ -1171,7 +1316,8 @@
       "productPlantIds": [
         "h068"
       ],
-      "scientificName": "Senna alexandrina"
+      "scientificName": "Senna alexandrina",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:h069",
@@ -1179,7 +1325,8 @@
       "productPlantIds": [
         "h069"
       ],
-      "scientificName": "Clitoria ternatea"
+      "scientificName": "Clitoria ternatea",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:h070",
@@ -1187,7 +1334,8 @@
       "productPlantIds": [
         "h070"
       ],
-      "scientificName": "Hibiscus sabdariffa"
+      "scientificName": "Hibiscus sabdariffa",
+      "expectedRank": "species"
     },
     {
       "yakuTaxonConceptId": "yaku:taxon:h071",
@@ -1195,7 +1343,8 @@
       "productPlantIds": [
         "h071"
       ],
-      "scientificName": "Lonicera japonica"
+      "scientificName": "Lonicera japonica",
+      "expectedRank": "species"
     }
   ]
 }
