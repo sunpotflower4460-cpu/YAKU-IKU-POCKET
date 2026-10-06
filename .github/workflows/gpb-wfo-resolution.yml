@@ -1,0 +1,66 @@
+name: GPB WFO Backbone Resolution
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/workflows/gpb-wfo-resolution.yml"
+      - "scripts/resolve-wfo-taxonomy.py"
+      - "scripts/data/current-catalog-taxa.json"
+
+permissions:
+  contents: read
+
+jobs:
+  resolve-wfo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Restore pinned WFO 2026-06 downloads
+        uses: actions/cache@v4
+        with:
+          path: |
+            .cache/wfo/backbone.zip
+            .cache/wfo/ipni_to_wfo.csv.gz
+          key: wfo-2026-06-0e4486945cd9-faa5aae66e51
+
+      - name: Download pinned WFO 2026-06 backbone
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .cache/wfo
+
+          if [ ! -f .cache/wfo/backbone.zip ]; then
+            curl --fail --location --retry 5 --retry-delay 2 \
+              "https://zenodo.org/records/20782718/files/_DwC_backbone_R.zip?download=1" \
+              -o .cache/wfo/backbone.zip
+          fi
+
+          if [ ! -f .cache/wfo/ipni_to_wfo.csv.gz ]; then
+            curl --fail --location --retry 5 --retry-delay 2 \
+              "https://zenodo.org/records/20782718/files/ipni_to_wfo.csv.gz?download=1" \
+              -o .cache/wfo/ipni_to_wfo.csv.gz
+          fi
+
+          echo "0e4486945cd9f7af548ca87eb9a870ed  .cache/wfo/backbone.zip" | md5sum -c -
+          echo "faa5aae66e51dce6b9890a4f78817bb6  .cache/wfo/ipni_to_wfo.csv.gz" | md5sum -c -
+
+          rm -rf .cache/wfo/backbone
+          unzip -q .cache/wfo/backbone.zip -d .cache/wfo/backbone
+
+      - name: Resolve current YAKU taxa
+        run: python3 scripts/resolve-wfo-taxonomy.py
+
+      - name: Upload WFO resolution artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: gpb-wfo-taxonomy-resolution
+          path: artifacts/taxonomy-resolution/
+          if-no-files-found: error
+          retention-days: 14
