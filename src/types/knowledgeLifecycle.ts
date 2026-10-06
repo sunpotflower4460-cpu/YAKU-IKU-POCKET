@@ -36,7 +36,10 @@ export interface KnowledgeAssertion {
   validUntil?: string;
 
   status: AssertionStatus;
+  /** Present on a newer assertion that replaces an older assertion. */
   supersedesAssertionId?: YakuAssertionId;
+  /** Present on an older assertion once a replacement is known. */
+  supersededByAssertionId?: YakuAssertionId;
 }
 
 export type KnowledgeStage =
@@ -152,9 +155,9 @@ export function validateKnowledgeAssertion(
 
   if (
     assertion.status === 'superseded' &&
-    !assertion.supersedesAssertionId
+    !assertion.supersededByAssertionId
   ) {
-    issues.push('superseded_assertion_link_required');
+    issues.push('superseded_by_assertion_link_required');
   }
 
   return issues;
