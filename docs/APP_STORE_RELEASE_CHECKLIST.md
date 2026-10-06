@@ -1,41 +1,215 @@
-# App Store 提出チェックリスト（APP_STORE_RELEASE_CHECKLIST）
+# App Store 提出チェックリスト
 
-> 統合仕様書 §17 準拠。✅=完了 / ⬜=未 / 🔒=開発者本人のみ対応可。
+> Release source of truth: [APP_STORE_RELEASE_FINALIZATION.md](./APP_STORE_RELEASE_FINALIZATION.md)  
+> このチェックリストは提出直前の実行確認用。設計判断・優先順位・完了条件は上記Finalization Designを優先する。  
+> ✅=完了 / ⬜=未 / 🔒=開発者アカウント・公開URL・実機等が必要
 
-## 安全性（§20 Safety）
-- [x] 本番でランダム植物が返らない
-- [x] 判定不能を正常結果として扱える（`IdentificationState`）
-- [x] UIに「食用可 / 食用可能」0件（CIで検査）
-- [x] 薬効の医学的断定を撤去（伝統的用途表現）
-- [x] 危険候補（類似種）に警告（`SafetyBanner`）
-- [x] デモ結果でXP・履歴・図鑑が増えない
-- [ ] 🔒 APIキーが配布物にない（実AI導入=PR14でバックエンド化）
+## R0 — Release baseline
 
-## 提出ブロッカー（🔒 本人対応）
-- [ ] 本番アイコン / スプラッシュ（現状プレースホルダー）
-- [ ] Privacy Policy 実URL / Terms 実URL（`src/constants/app.ts` は example.com）
-- [ ] Support URL / Support email 導線
-- [ ] App Privacy 回答（画像・位置・診断データの扱い、実AI時は第三者送信を明記）
-- [ ] 年齢レーティング質問票（毒/死・健康表現を反映）
-- [ ] EAS projectId / Apple ID / Team ID / App ID（`eas.json` 仮値）
-- [ ] TestFlight 実機テスト（SE相当/標準/Pro Max、ダーク、VoiceOver実機確認、文字最大、オフライン、API障害、空データ、100件履歴）
-- [x] 端末内データ削除機能（§17）→ PR13で実装（設定 > すべてのデータを削除）
-- [ ] Reviewer Notes（デモ/実AIモードの説明）
+- [ ] PR #42（Living Field Guide UI/UX刷新）をレビューしてmainへマージ
+- [ ] マージ後mainでCI成功
+- [ ] リリース期間中はmainをPR＋CI経由に限定
+- [ ] Release Candidateまでは無関係な機能追加を止める
 
-## エンジニアリング（§20 Engineering）
-- [x] typecheck pass
-- [x] unit test pass（jest, 107件）
-- [x] lint（PR15で eslint-config-expo 導入、CIに追加。0 errors）
-- [ ] expo-doctor / web export / preview build / secret scan（web exportはCIに導入済み。expo-doctor/preview build/secret scanは残り）
+## R1 — Safety / Plant content
 
-## アクセシビリティ（§20 A11y, PR15＋PR25で対応したコード範囲）
-- [x] アイコンのみのボタンにaccessibilityLabel付与（フラッシュ/カメラ切替/検索クリア/お気に入り等の監査・修正。PR25でv3追加分の再訪チップ/実践記録追加・削除/未同定観察削除/部位タグ・写真削除/入手経路選択/関連植物カードにも拡張）
-- [x] Reduce Motion対応（`useReduceMotion`フック新設。スキャン中の演出・レア発見時のシマー/スパークル・Skeletonの点滅ループを、OS設定がオンの間は無効化。PR25でv3追加分の新規ループアニメーションにも同じフックが適用済みであることを確認）
-- [x] 色だけに依存しない情報伝達（カレンダーの観察数セルにaccessibilityLabelで件数を明示。危険度バッジは既存から色+テキストラベル。PR25で植物詳細の「関連植物」カードの危険度ドット色のみの表現にも日本語ラベルを追加）
-- [x] Dynamic Type: `DynamicText`（PR7）で`allowFontScaling`を明示的に有効化
-- [x] 入れ子Pressableの解消（PR25でFieldbook v2の再訪予定リストの行内Pressable入れ子を解消し、フォーカス順序を正常化）
-- [ ] 🔒 VoiceOver実機での通し確認、Dynamic Type最大時のレイアウト崩れ目視確認（TestFlightでの実機テストに委譲）
+### 既存の安全基盤
+- [x] 本番AI失敗時にランダム植物を返さない
+- [x] `unidentified` / `out_of_scope` / `error` を正式状態として扱う
+- [x] デモ結果でXP・履歴・図鑑を更新しない
+- [x] 危険類似種を `SafetyBanner` で表示する基盤がある
+- [x] RED 14種に明示的なsourceRefsがある
+- [x] UI禁止語（食用可 / 食用可能 / 食用植物 / 安全な収穫 / AI認識精度）をCIで監視
 
-## App Store 説明（§17 禁止/推奨）
-- 禁止: 「正確に植物を判定」「食べられる野草が分かる」「薬効が分かる」「安全性を保証」「専門家の代わり」「医療用途」
-- 推奨: 「植物観察を補助」「候補を比較して学べる」「自分のフィールドノート」「採取・摂取判断には使用しない」
+### 公開前に残る安全監査
+- [ ] 150種すべてのmedical / health efficacy copyを再監査
+- [ ] 「咳止め / 貧血改善 / 睡眠改善 / 記憶力向上 / 利尿作用 / 抗炎症」等を、必要に応じて伝統利用・文化記録表現へ変更
+- [ ] アシタバ ↔ チョウセンアサガオを公的根拠付きで確認/追加
+- [ ] ゴマ ↔ チョウセンアサガオを公的根拠付きで確認/追加
+- [ ] ギョウジャニンニク ↔ イヌサフランを確認/追加
+- [ ] オオバギボウシ / ギボウシ類 ↔ イヌサフランを確認/追加
+- [ ] セリ ↔ タガラシ、ノビル ↔ ヒガンバナを確認/追加
+- [ ] ゲンノショウコ ↔ トリカブトを確認
+- [ ] ヨモギ ↔ トリカブトの現在の根拠を再確認
+- [ ] RED / safety-critical YELLOWの警告強度を出典本文と照合
+- [ ] medical/safety-copy回帰監査をCIへ追加
+- [ ] 旧監査文書の「医学的断定は解消済み」等を最終実装と一致させる
+
+## R2 — Identification state integrity
+
+- [ ] `IdentificationState` をScan/Observationへ永続化
+- [ ] AI候補のみ = `candidates`
+- [ ] ユーザー選択 = `user_selected`
+- [ ] `expert_verified` を実際の専門家イベントなしに生成しない
+- [ ] `useGate` が推定状態ではなく保存済み状態を参照
+- [ ] 低信頼/未解決候補の保守的Gateを追加
+- [ ] persist migration / malformed state / duplicate save回帰テストを維持
+
+## R3 — Expo / native toolchain
+
+- [ ] Expo 52 → 53
+- [ ] 53 → 54
+- [ ] SDK54でNew Architectureを明示検証
+- [ ] `observationPhotoStorage.ts` のFileSystem互換性を修正（必要なら `expo-file-system/legacy`）
+- [ ] 54 → 55
+- [ ] 55 → 56
+- [ ] 56 → 57
+- [ ] SDK57対応React Native / Router / native modulesへ統一
+- [ ] Reanimated直接依存の必要性を再確認し、必要なら対応版へ移行
+- [ ] `userInterfaceStyle: automatic` に必要なsystem UI設定を検証
+- [ ] 各段階で typecheck
+- [ ] 各段階で lint
+- [ ] 各段階で Jest
+- [ ] 各段階で web export
+- [ ] 各段階で `expo-doctor`
+- [ ] 最終SDKでcamera / filesystem / router / AsyncStorage / themeをnative smoke test
+- [ ] `npm audit --omit=dev --audit-level=high` を再評価
+- [ ] 許容状態確定後、production dependency auditをblockingへ戻す
+
+## R4 — Production AI / Security
+
+- [ ] Claude呼び出しを自前Backend/Edge Proxyへ移行
+- [ ] Anthropic API keyをサーバーSecretのみで保持
+- [ ] `EXPO_PUBLIC_CLAUDE_API_KEY` を配布クライアントから削除
+- [ ] クライアントから `api.anthropic.com` への秘密鍵付き直呼びを削除
+- [ ] 画像最大5枚をサーバーでも強制
+- [ ] MIME / 容量 / request sizeを検証
+- [ ] 画像をdecode→resize→re-encodeしメタデータを落とす
+- [ ] rate limit
+- [ ] timeout
+- [ ] daily/provider cost ceiling
+- [ ] AIレスポンスをサーバーでもschema validation
+- [ ] 写真/base64/raw prompt/raw responseを永続ログへ残さない
+- [ ] 429 / 5xx / timeout / malformed responseでもランダム結果を返さない
+- [ ] secret scan（gitleaks/TruffleHog等）を実行
+
+## R4 — Privacy / Consent
+
+- [ ] AI ON初回に明示的な同意画面
+- [ ] 送信先としてAnthropic / Claudeを明示
+- [ ] 送信する情報 = 植物写真、と明示
+- [ ] v1で送信しない情報（位置・名前・メモ・履歴等）を実装と一致させる
+- [ ] 同意OFFで以後の外部送信を停止
+- [ ] 既送信データは第三者保持ポリシーに従うことをPrivacy Policyへ記載
+- [ ] Anthropicの実契約/設定の保持期間・学習利用条件を提出直前に再確認
+- [x] 端末内「すべてのデータを削除」
+- [x] 観察データのユーザー主導エクスポート
+- [ ] identified observationの個別削除（P1、可能ならv1）
+- [ ] final App Privacy回答を実装から確定
+- [ ] final native buildでPrivacy Manifest / required-reason API警告を確認
+
+## R5 — Public URLs / Store assets
+
+- [ ] 🔒 本番Privacy PolicyをHTTPS公開
+- [ ] 🔒 本番TermsをHTTPS公開
+- [ ] 🔒 Support URLをHTTPS公開
+- [ ] `PRIVACY_POLICY_URL` のexample.comを削除
+- [ ] `TERMS_URL` のexample.comを削除
+- [ ] アプリ内リンクとApp Store ConnectのURLを一致
+- [ ] 🔒 本番App iconへ差し替え
+- [ ] 🔒 本番splashへ差し替え
+- [ ] Android adaptive icon / Web faviconも本番素材へ
+- [ ] iPhone App Store screenshot 5〜7枚を作成
+- [ ] スクリーンショットに「正確に判定」「食べられる」「薬効が分かる」等の危険訴求を使わない
+
+## R5 — EAS / App Store Connect
+
+- [ ] 🔒 EAS projectId / owner
+- [ ] 🔒 Apple ID
+- [ ] 🔒 App Store Connect App ID
+- [ ] 🔒 Apple Team ID
+- [ ] Production build number/version確認
+- [ ] App name / subtitle
+- [ ] Description
+- [ ] Keywords
+- [ ] Primary / Secondary category
+- [ ] Copyright
+- [ ] Privacy Policy URL
+- [ ] Support URL
+- [ ] App Privacy
+- [ ] Age Rating
+- [ ] Review contact
+- [ ] Reviewer Notes
+- [ ] export compliance回答を最終buildと一致
+
+## R6 — Automated release evidence
+
+Release Candidate SHAに対して以下を記録する。
+
+- [ ] `expo-doctor`
+- [ ] typecheck
+- [ ] lint
+- [ ] Jest（suite/test件数も記録）
+- [ ] web export
+- [ ] production dependency audit
+- [ ] secret scan
+- [ ] native production/preview build
+- [ ] Privacy Manifest確認
+- [ ] build identifier / TestFlight build number
+- [ ] App Privacy回答snapshot
+- [ ] Age Rating回答snapshot
+
+## R6 — TestFlight real-device QA
+
+詳細は [UI_UX_RELEASE_QA.md](./UI_UX_RELEASE_QA.md) を使用。
+
+最低限:
+
+- [ ] 小型iPhone相当
+- [ ] 標準iPhone
+- [ ] 大型iPhone
+- [ ] Light / Dark
+- [ ] VoiceOver
+- [ ] 最大Dynamic Type
+- [ ] Reduce Motion
+- [ ] fresh install
+- [ ] persisted-state migration
+- [ ] camera初回許可
+- [ ] camera拒否→Settings復帰
+- [ ] 1枚撮影
+- [ ] 複数枚撮影
+- [ ] unidentified
+- [ ] out_of_scope
+- [ ] dangerous candidate / look-alike
+- [ ] AI consent OFF
+- [ ] AI consent ON
+- [ ] offline
+- [ ] backend timeout
+- [ ] 429
+- [ ] provider 5xx
+- [ ] malformed provider payload
+- [ ] history 100件境界
+- [ ] 全データ削除
+- [ ] export
+- [ ] background / foreground
+- [ ] 日跨ぎ
+
+## R7 — Submission
+
+- [ ] すべてのP0が完了
+- [ ] Finalization DesignのRelease Completion Definitionを満たす
+- [ ] RC commit SHAを固定
+- [ ] 審査中は新機能を追加しない
+- [ ] Reviewer Notesを最終buildと照合
+- [ ] App Store Connectへ提出
+- [ ] rejection時は指摘原因だけを最小修正
+- [ ] 承認build/commit/tagを記録
+
+## App Store copy guardrails
+
+### 禁止方向
+- 「正確に植物を判定」
+- 「食べられる野草が分かる」
+- 「安全に採取できる」
+- 「薬効が分かる」
+- 「症状を改善する植物が分かる」
+- 「専門家の代わり」
+- 「安全性を保証」
+
+### 推奨方向
+- 「植物観察を補助」
+- 「候補を比較して学べる」
+- 「危険な類似植物も一緒に確認」
+- 「自分のフィールドノート」
+- 「伝統的な利用や植物文化を学ぶ」
+- 「採取・摂取判断には使用しない」
