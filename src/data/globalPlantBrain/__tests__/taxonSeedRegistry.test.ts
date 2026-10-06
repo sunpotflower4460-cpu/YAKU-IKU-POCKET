@@ -4,6 +4,7 @@ import {
   PRODUCT_TAXON_ALIASES,
   getCanonicalTaxonIdForPlant,
   getCurrentCatalogTaxon,
+  inferTaxonRankFromScientificName,
 } from '../taxonSeedRegistry';
 
 describe('current catalog canonical taxon mapping (GPB-006)', () => {
@@ -30,7 +31,19 @@ describe('current catalog canonical taxon mapping (GPB-006)', () => {
     expect(taxon?.productPlantIds).toEqual(['p005', 'p009']);
   });
 
-  it('promotes only the 139 exact accepted COL matches and leaves 10 cases for review', () => {
+  it('preserves infraspecific ranks from scientific names', () => {
+    expect(inferTaxonRankFromScientificName('Veratrum album subsp. oxysepalum')).toBe('subspecies');
+    expect(inferTaxonRankFromScientificName('Hemerocallis fulva var. angustifolia')).toBe('variety');
+    expect(inferTaxonRankFromScientificName('Equisetum arvense')).toBe('species');
+
+    expect(getCurrentCatalogTaxon(getCanonicalTaxonIdForPlant('p042'))?.rank).toBe('subspecies');
+    expect(getCurrentCatalogTaxon(getCanonicalTaxonIdForPlant('p046'))?.rank).toBe('variety');
+    expect(getCurrentCatalogTaxon(getCanonicalTaxonIdForPlant('p047'))?.rank).toBe('variety');
+    expect(getCurrentCatalogTaxon(getCanonicalTaxonIdForPlant('p056'))?.rank).toBe('variety');
+    expect(getCurrentCatalogTaxon(getCanonicalTaxonIdForPlant('p077'))?.rank).toBe('variety');
+  });
+
+  it('promotes only the currently reviewed COL matches until the rank-corrected run is persisted', () => {
     const resolved = CURRENT_CATALOG_TAXA.filter(
       (taxon) => taxon.resolutionStatus === 'externally_resolved',
     );
