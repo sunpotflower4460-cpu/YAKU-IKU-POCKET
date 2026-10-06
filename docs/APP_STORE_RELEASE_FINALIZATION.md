@@ -1,3 +1,5 @@
+> **Global Plant Brain boundary note (2026-10-06):** [global-plant-brain/00_OVERVIEW.md](./global-plant-brain/00_OVERVIEW.md) 以下に長期設計を追加していますが、初回App Store公開のP0/P1判断では引き続き本書が優先されます。Global Brain全体の完成は初回リリース条件ではありません。
+
 # App Store Release Finalization Design
 
 > Status: **ACTIVE / release source of truth**  

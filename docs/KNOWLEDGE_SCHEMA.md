@@ -1,3 +1,5 @@
+> **Global Plant Brain note (2026-10-06):** 現行の `PlantDefinition` / `Observation` はProduct Projectionとして継続利用します。世界規模のCanonical ID、Taxon Concept、MedicinalMaterial、Preparation、Compound、Atomic Claim、Provenance等の中長期正本は [global-plant-brain/01_DOMAIN_MODEL.md](./global-plant-brain/01_DOMAIN_MODEL.md) を参照してください。既存スキーマを即時置換する指示ではありません。
+
 # 知識スキーマ（KNOWLEDGE_SCHEMA）
 
 > 統合仕様書 §10 準拠。PlantDefinitionはPR11で実装済み。Observationの全面移行は今後（PR13）。

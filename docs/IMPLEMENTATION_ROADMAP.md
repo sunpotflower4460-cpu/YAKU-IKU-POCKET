@@ -1,3 +1,5 @@
+> **Global Plant Brain roadmap note (2026-10-06):** App Store初回公開後の中長期実装順は [global-plant-brain/05_IMPLEMENTATION_PLAN.md](./global-plant-brain/05_IMPLEMENTATION_PLAN.md) を参照してください。Global BrainはApp Store P0を延期する理由にはせず、現在の150種・PlantDefinition・ObservationをProduct Projectionとして段階拡張します。
+
 > **Release finalization note (2026-10-06):** App Store初回公開に向けた最新の優先順位・実装順・Release Gateは [APP_STORE_RELEASE_FINALIZATION.md](./APP_STORE_RELEASE_FINALIZATION.md) を上位仕様として参照してください。既存PR計画は履歴・機能開発計画として保持し、App Store公開判断で競合する場合はFinalization Designを優先します。
 
 # 実装ロードマップ（IMPLEMENTATION_ROADMAP）

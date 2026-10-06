@@ -1,3 +1,5 @@
+> **Global Plant Brain note (2026-10-06):** v2の「Living Field Guide」という現在のプロダクト北極星は維持します。その上位の中長期ビジョンとして、世界植物同定・薬草Evidence・Safety・Traditional Knowledge・Living Updateを統合する **Living Plant Intelligence System** を [global-plant-brain/00_OVERVIEW.md](./global-plant-brain/00_OVERVIEW.md) に定義しています。
+
 # プロダクトビジョン v2（PRODUCT_VISION_V2）
 
 > 統合仕様書 §0, §2, §24 の要約。プロダクトの北極星。

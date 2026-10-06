@@ -1,3 +1,5 @@
+> **Global Plant Brain note (2026-10-06):** 現行のGREEN/YELLOW/REDと危険類似種ルールはProduct Projectionとして維持します。Intrinsic toxicity / exposure / interaction / special population / poisoning incident / product quality / pharmacovigilanceを分離する長期Safety Graphは [global-plant-brain/03_MEDICINAL_EVIDENCE_AND_SAFETY.md](./global-plant-brain/03_MEDICINAL_EVIDENCE_AND_SAFETY.md) を参照してください。
+
 # 安全ポリシー（SAFETY_POLICY）
 
 > 対象: 薬育ポケット / 統合仕様書 §9.2D, §10.4, §21 準拠。PR6で確立。
