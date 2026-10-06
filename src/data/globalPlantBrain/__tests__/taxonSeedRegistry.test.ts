@@ -57,15 +57,26 @@ describe('current catalog canonical taxon mapping (GPB-006)', () => {
       (taxon) => taxon.resolutionStatus === 'local_seed',
     );
 
-    expect(resolved).toHaveLength(140);
-    expect(reconciled).toHaveLength(8);
-    expect(conflicted).toHaveLength(1);
+    expect(resolved).toHaveLength(137);
+    expect(reconciled).toHaveLength(7);
+    expect(conflicted).toHaveLength(5);
     expect(localSeeds).toHaveLength(0);
 
-    for (const taxon of [...resolved, ...reconciled]) {
+    for (const taxon of [...resolved, ...reconciled, ...conflicted]) {
       expect(taxon.externalIds.col).toMatch(/^[A-Z0-9]+$/);
       expect(taxon.resolutionEvidence?.provider).toBe('catalogue_of_life');
       expect(taxon.resolutionEvidence?.sourceDatasetKey).toBe('316441');
+    }
+
+    const withWfo = CURRENT_CATALOG_TAXA.filter(
+      (taxon) => Boolean(taxon.externalIds.wfo),
+    );
+    expect(withWfo).toHaveLength(144);
+    for (const taxon of withWfo) {
+      expect(taxon.externalIds.wfo).toMatch(/^wfo-\d+$/);
+      expect(taxon.supportingResolutionEvidence?.some(
+        (evidence) => evidence.provider === 'world_flora_online',
+      )).toBe(true);
     }
 
     for (const taxon of reconciled) {
@@ -79,11 +90,18 @@ describe('current catalog canonical taxon mapping (GPB-006)', () => {
       )).toBe(true);
     }
 
-    expect(conflicted[0]?.id).toBe(getCanonicalTaxonIdForPlant('h047'));
-    expect(conflicted[0]?.scientificName).toBe('Hyssopus officinalis');
-    expect(conflicted[0]?.preferredScientificName).toBeUndefined();
-    expect(conflicted[0]?.externalIds).toEqual({});
-    expect(conflicted[0]?.authorityReferences).toHaveLength(3);
+    expect(conflicted.map((taxon) => taxon.id).sort()).toEqual(
+      ['p001', 'p060', 'p079', 'h043', 'h047']
+        .map((id) => getCanonicalTaxonIdForPlant(id))
+        .sort(),
+    );
+
+    for (const taxon of conflicted) {
+      expect(taxon.preferredScientificName).toBeUndefined();
+      expect(taxon.externalIds.col).toMatch(/^[A-Z0-9]+$/);
+      expect(taxon.externalIds.wfo).toBeUndefined();
+      expect(taxon.authorityReferences).toHaveLength(3);
+    }
   });
 
   it('preserves product-facing catalog scientific names after reconciliation', () => {
