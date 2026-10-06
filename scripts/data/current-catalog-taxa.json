@@ -1,0 +1,1201 @@
+{
+  "schemaVersion": 1,
+  "generatedFrom": "src/data/plants.ts",
+  "generatedAt": "2026-10-06",
+  "taxonCount": 149,
+  "taxa": [
+    {
+      "yakuTaxonConceptId": "yaku:taxon:p001",
+      "representativePlantId": "p001",
+      "productPlantIds": [
+        "p001"
+      ],
+      "scientificName": "Taraxacum officinale"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:p002",
+      "representativePlantId": "p002",
+      "productPlantIds": [
+        "p002"
+      ],
+      "scientificName": "Artemisia princeps"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:p003",
+      "representativePlantId": "p003",
+      "productPlantIds": [
+        "p003"
+      ],
+      "scientificName": "Houttuynia cordata"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:p004",
+      "representativePlantId": "p004",
+      "productPlantIds": [
+        "p004"
+      ],
+      "scientificName": "Plantago asiatica"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:p005",
+      "representativePlantId": "p005",
+      "productPlantIds": [
+        "p005",
+        "p009"
+      ],
+      "scientificName": "Equisetum arvense"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:p006",
+      "representativePlantId": "p006",
+      "productPlantIds": [
+        "p006"
+      ],
+      "scientificName": "Pueraria lobata"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:p007",
+      "representativePlantId": "p007",
+      "productPlantIds": [
+        "p007"
+      ],
+      "scientificName": "Allium macrostemon"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:p008",
+      "representativePlantId": "p008",
+      "productPlantIds": [
+        "p008"
+      ],
+      "scientificName": "Oenanthe javanica"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:p010",
+      "representativePlantId": "p010",
+      "productPlantIds": [
+        "p010"
+      ],
+      "scientificName": "Aralia cordata"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:p011",
+      "representativePlantId": "p011",
+      "productPlantIds": [
+        "p011"
+      ],
+      "scientificName": "Petasites japonicus"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:p012",
+      "representativePlantId": "p012",
+      "productPlantIds": [
+        "p012"
+      ],
+      "scientificName": "Pteridium aquilinum"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:p013",
+      "representativePlantId": "p013",
+      "productPlantIds": [
+        "p013"
+      ],
+      "scientificName": "Osmunda japonica"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:p014",
+      "representativePlantId": "p014",
+      "productPlantIds": [
+        "p014"
+      ],
+      "scientificName": "Erythronium japonicum"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:p015",
+      "representativePlantId": "p015",
+      "productPlantIds": [
+        "p015"
+      ],
+      "scientificName": "Cryptotaenia japonica"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:p016",
+      "representativePlantId": "p016",
+      "productPlantIds": [
+        "p016"
+      ],
+      "scientificName": "Capsella bursa-pastoris"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:p017",
+      "representativePlantId": "p017",
+      "productPlantIds": [
+        "p017"
+      ],
+      "scientificName": "Stellaria media"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:p018",
+      "representativePlantId": "p018",
+      "productPlantIds": [
+        "p018"
+      ],
+      "scientificName": "Perilla frutescens"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:p019",
+      "representativePlantId": "p019",
+      "productPlantIds": [
+        "p019"
+      ],
+      "scientificName": "Reynoutria japonica"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:p020",
+      "representativePlantId": "p020",
+      "productPlantIds": [
+        "p020"
+      ],
+      "scientificName": "Adenophora triphylla"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:p021",
+      "representativePlantId": "p021",
+      "productPlantIds": [
+        "p021"
+      ],
+      "scientificName": "Platycodon grandiflorus"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:p022",
+      "representativePlantId": "p022",
+      "productPlantIds": [
+        "p022"
+      ],
+      "scientificName": "Sambucus racemosa"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:p023",
+      "representativePlantId": "p023",
+      "productPlantIds": [
+        "p023"
+      ],
+      "scientificName": "Lamium amplexicaule"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:p024",
+      "representativePlantId": "p024",
+      "productPlantIds": [
+        "p024"
+      ],
+      "scientificName": "Aconitum japonicum"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:p025",
+      "representativePlantId": "p025",
+      "productPlantIds": [
+        "p025"
+      ],
+      "scientificName": "Convallaria majalis"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:p026",
+      "representativePlantId": "p026",
+      "productPlantIds": [
+        "p026"
+      ],
+      "scientificName": "Portulaca oleracea"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:p027",
+      "representativePlantId": "p027",
+      "productPlantIds": [
+        "p027"
+      ],
+      "scientificName": "Aster yomena"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:p028",
+      "representativePlantId": "p028",
+      "productPlantIds": [
+        "p028"
+      ],
+      "scientificName": "Rumex japonicus"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:p029",
+      "representativePlantId": "p029",
+      "productPlantIds": [
+        "p029"
+      ],
+      "scientificName": "Vicia sativa"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:p030",
+      "representativePlantId": "p030",
+      "productPlantIds": [
+        "p030"
+      ],
+      "scientificName": "Cirsium japonicum"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:p031",
+      "representativePlantId": "p031",
+      "productPlantIds": [
+        "p031"
+      ],
+      "scientificName": "Geranium thunbergii"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:p032",
+      "representativePlantId": "p032",
+      "productPlantIds": [
+        "p032"
+      ],
+      "scientificName": "Swertia japonica"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:p033",
+      "representativePlantId": "p033",
+      "productPlantIds": [
+        "p033"
+      ],
+      "scientificName": "Rumex acetosa"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:p034",
+      "representativePlantId": "p034",
+      "productPlantIds": [
+        "p034"
+      ],
+      "scientificName": "Hemerocallis fulva"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:p035",
+      "representativePlantId": "p035",
+      "productPlantIds": [
+        "p035"
+      ],
+      "scientificName": "Erigeron philadelphicus"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:p036",
+      "representativePlantId": "p036",
+      "productPlantIds": [
+        "p036"
+      ],
+      "scientificName": "Scopolia japonica"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:p037",
+      "representativePlantId": "p037",
+      "productPlantIds": [
+        "p037"
+      ],
+      "scientificName": "Cicuta virosa"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:p038",
+      "representativePlantId": "p038",
+      "productPlantIds": [
+        "p038"
+      ],
+      "scientificName": "Narcissus tazetta"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:p039",
+      "representativePlantId": "p039",
+      "productPlantIds": [
+        "p039"
+      ],
+      "scientificName": "Colchicum autumnale"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:p040",
+      "representativePlantId": "p040",
+      "productPlantIds": [
+        "p040"
+      ],
+      "scientificName": "Allium victorialis"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:p041",
+      "representativePlantId": "p041",
+      "productPlantIds": [
+        "p041"
+      ],
+      "scientificName": "Hosta sieboldiana"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:p042",
+      "representativePlantId": "p042",
+      "productPlantIds": [
+        "p042"
+      ],
+      "scientificName": "Veratrum album subsp. oxysepalum"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:p043",
+      "representativePlantId": "p043",
+      "productPlantIds": [
+        "p043"
+      ],
+      "scientificName": "Datura metel"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:p044",
+      "representativePlantId": "p044",
+      "productPlantIds": [
+        "p044"
+      ],
+      "scientificName": "Aralia elata"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:p045",
+      "representativePlantId": "p045",
+      "productPlantIds": [
+        "p045"
+      ],
+      "scientificName": "Matteuccia struthiopteris"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:p046",
+      "representativePlantId": "p046",
+      "productPlantIds": [
+        "p046"
+      ],
+      "scientificName": "Elatostema umbellatum var. majus"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:p047",
+      "representativePlantId": "p047",
+      "productPlantIds": [
+        "p047"
+      ],
+      "scientificName": "Glechoma hederacea var. grandis"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:p048",
+      "representativePlantId": "p048",
+      "productPlantIds": [
+        "p048"
+      ],
+      "scientificName": "Corydalis incisa"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:p049",
+      "representativePlantId": "p049",
+      "productPlantIds": [
+        "p049"
+      ],
+      "scientificName": "Ranunculus silerifolius"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:p050",
+      "representativePlantId": "p050",
+      "productPlantIds": [
+        "p050"
+      ],
+      "scientificName": "Phytolacca americana"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:p051",
+      "representativePlantId": "p051",
+      "productPlantIds": [
+        "p051"
+      ],
+      "scientificName": "Arisaema serratum"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:p052",
+      "representativePlantId": "p052",
+      "productPlantIds": [
+        "p052"
+      ],
+      "scientificName": "Akebia quinata"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:p053",
+      "representativePlantId": "p053",
+      "productPlantIds": [
+        "p053"
+      ],
+      "scientificName": "Commelina communis"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:p054",
+      "representativePlantId": "p054",
+      "productPlantIds": [
+        "p054"
+      ],
+      "scientificName": "Pinellia ternata"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:p055",
+      "representativePlantId": "p055",
+      "productPlantIds": [
+        "p055"
+      ],
+      "scientificName": "Viola mandshurica"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:p056",
+      "representativePlantId": "p056",
+      "productPlantIds": [
+        "p056"
+      ],
+      "scientificName": "Hemerocallis fulva var. angustifolia"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:p057",
+      "representativePlantId": "p057",
+      "productPlantIds": [
+        "p057"
+      ],
+      "scientificName": "Lamium purpureum"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:p058",
+      "representativePlantId": "p058",
+      "productPlantIds": [
+        "p058"
+      ],
+      "scientificName": "Sonchus oleraceus"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:p059",
+      "representativePlantId": "p059",
+      "productPlantIds": [
+        "p059"
+      ],
+      "scientificName": "Cyperus rotundus"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:p060",
+      "representativePlantId": "p060",
+      "productPlantIds": [
+        "p060"
+      ],
+      "scientificName": "Calystegia japonica"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:p061",
+      "representativePlantId": "p061",
+      "productPlantIds": [
+        "p061"
+      ],
+      "scientificName": "Ajuga decumbens"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:p062",
+      "representativePlantId": "p062",
+      "productPlantIds": [
+        "p062"
+      ],
+      "scientificName": "Imperata cylindrica"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:p063",
+      "representativePlantId": "p063",
+      "productPlantIds": [
+        "p063"
+      ],
+      "scientificName": "Clerodendrum trichotomum"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:p064",
+      "representativePlantId": "p064",
+      "productPlantIds": [
+        "p064"
+      ],
+      "scientificName": "Astragalus sinicus"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:p065",
+      "representativePlantId": "p065",
+      "productPlantIds": [
+        "p065"
+      ],
+      "scientificName": "Conium maculatum"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:p066",
+      "representativePlantId": "p066",
+      "productPlantIds": [
+        "p066"
+      ],
+      "scientificName": "Macleaya cordata"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:p067",
+      "representativePlantId": "p067",
+      "productPlantIds": [
+        "p067"
+      ],
+      "scientificName": "Saururus chinensis"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:p068",
+      "representativePlantId": "p068",
+      "productPlantIds": [
+        "p068"
+      ],
+      "scientificName": "Lapsana apogonoides"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:p069",
+      "representativePlantId": "p069",
+      "productPlantIds": [
+        "p069"
+      ],
+      "scientificName": "Youngia japonica"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:p070",
+      "representativePlantId": "p070",
+      "productPlantIds": [
+        "p070"
+      ],
+      "scientificName": "Oenothera stricta"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:p071",
+      "representativePlantId": "p071",
+      "productPlantIds": [
+        "p071"
+      ],
+      "scientificName": "Coriaria japonica"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:p072",
+      "representativePlantId": "p072",
+      "productPlantIds": [
+        "p072"
+      ],
+      "scientificName": "Nerium oleander"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:p073",
+      "representativePlantId": "p073",
+      "productPlantIds": [
+        "p073"
+      ],
+      "scientificName": "Toxicodendron trichocarpum"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:p074",
+      "representativePlantId": "p074",
+      "productPlantIds": [
+        "p074"
+      ],
+      "scientificName": "Wisteria floribunda"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:p075",
+      "representativePlantId": "p075",
+      "productPlantIds": [
+        "p075"
+      ],
+      "scientificName": "Lespedeza bicolor"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:p076",
+      "representativePlantId": "p076",
+      "productPlantIds": [
+        "p076"
+      ],
+      "scientificName": "Miscanthus sinensis"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:p077",
+      "representativePlantId": "p077",
+      "productPlantIds": [
+        "p077"
+      ],
+      "scientificName": "Dianthus superbus var. longicalycinus"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:p078",
+      "representativePlantId": "p078",
+      "productPlantIds": [
+        "p078"
+      ],
+      "scientificName": "Patrinia scabiosifolia"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:p079",
+      "representativePlantId": "p079",
+      "productPlantIds": [
+        "p079"
+      ],
+      "scientificName": "Eupatorium japonicum"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:h001",
+      "representativePlantId": "h001",
+      "productPlantIds": [
+        "h001"
+      ],
+      "scientificName": "Lavandula angustifolia"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:h002",
+      "representativePlantId": "h002",
+      "productPlantIds": [
+        "h002"
+      ],
+      "scientificName": "Salvia rosmarinus"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:h003",
+      "representativePlantId": "h003",
+      "productPlantIds": [
+        "h003"
+      ],
+      "scientificName": "Thymus vulgaris"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:h004",
+      "representativePlantId": "h004",
+      "productPlantIds": [
+        "h004"
+      ],
+      "scientificName": "Ocimum basilicum"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:h005",
+      "representativePlantId": "h005",
+      "productPlantIds": [
+        "h005"
+      ],
+      "scientificName": "Mentha × piperita"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:h006",
+      "representativePlantId": "h006",
+      "productPlantIds": [
+        "h006"
+      ],
+      "scientificName": "Matricaria chamomilla"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:h007",
+      "representativePlantId": "h007",
+      "productPlantIds": [
+        "h007"
+      ],
+      "scientificName": "Salvia officinalis"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:h008",
+      "representativePlantId": "h008",
+      "productPlantIds": [
+        "h008"
+      ],
+      "scientificName": "Origanum vulgare"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:h009",
+      "representativePlantId": "h009",
+      "productPlantIds": [
+        "h009"
+      ],
+      "scientificName": "Foeniculum vulgare"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:h010",
+      "representativePlantId": "h010",
+      "productPlantIds": [
+        "h010"
+      ],
+      "scientificName": "Anethum graveolens"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:h011",
+      "representativePlantId": "h011",
+      "productPlantIds": [
+        "h011"
+      ],
+      "scientificName": "Coriandrum sativum"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:h012",
+      "representativePlantId": "h012",
+      "productPlantIds": [
+        "h012"
+      ],
+      "scientificName": "Curcuma longa"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:h013",
+      "representativePlantId": "h013",
+      "productPlantIds": [
+        "h013"
+      ],
+      "scientificName": "Cinnamomum verum"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:h014",
+      "representativePlantId": "h014",
+      "productPlantIds": [
+        "h014"
+      ],
+      "scientificName": "Elettaria cardamomum"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:h015",
+      "representativePlantId": "h015",
+      "productPlantIds": [
+        "h015"
+      ],
+      "scientificName": "Syzygium aromaticum"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:h016",
+      "representativePlantId": "h016",
+      "productPlantIds": [
+        "h016"
+      ],
+      "scientificName": "Illicium verum"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:h017",
+      "representativePlantId": "h017",
+      "productPlantIds": [
+        "h017"
+      ],
+      "scientificName": "Crocus sativus"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:h018",
+      "representativePlantId": "h018",
+      "productPlantIds": [
+        "h018"
+      ],
+      "scientificName": "Vanilla planifolia"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:h019",
+      "representativePlantId": "h019",
+      "productPlantIds": [
+        "h019"
+      ],
+      "scientificName": "Cymbopogon citratus"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:h020",
+      "representativePlantId": "h020",
+      "productPlantIds": [
+        "h020"
+      ],
+      "scientificName": "Petroselinum crispum"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:h021",
+      "representativePlantId": "h021",
+      "productPlantIds": [
+        "h021"
+      ],
+      "scientificName": "Anthriscus cerefolium"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:h022",
+      "representativePlantId": "h022",
+      "productPlantIds": [
+        "h022"
+      ],
+      "scientificName": "Artemisia dracunculus"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:h023",
+      "representativePlantId": "h023",
+      "productPlantIds": [
+        "h023"
+      ],
+      "scientificName": "Aspalathus linearis"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:h024",
+      "representativePlantId": "h024",
+      "productPlantIds": [
+        "h024"
+      ],
+      "scientificName": "Echinacea purpurea"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:h025",
+      "representativePlantId": "h025",
+      "productPlantIds": [
+        "h025"
+      ],
+      "scientificName": "Sambucus nigra"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:h026",
+      "representativePlantId": "h026",
+      "productPlantIds": [
+        "h026"
+      ],
+      "scientificName": "Zingiber officinale"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:h027",
+      "representativePlantId": "h027",
+      "productPlantIds": [
+        "h027"
+      ],
+      "scientificName": "Allium sativum"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:h028",
+      "representativePlantId": "h028",
+      "productPlantIds": [
+        "h028"
+      ],
+      "scientificName": "Origanum majorana"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:h029",
+      "representativePlantId": "h029",
+      "productPlantIds": [
+        "h029"
+      ],
+      "scientificName": "Allium schoenoprasum"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:h030",
+      "representativePlantId": "h030",
+      "productPlantIds": [
+        "h030"
+      ],
+      "scientificName": "Pimpinella anisum"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:h031",
+      "representativePlantId": "h031",
+      "productPlantIds": [
+        "h031"
+      ],
+      "scientificName": "Carum carvi"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:h032",
+      "representativePlantId": "h032",
+      "productPlantIds": [
+        "h032"
+      ],
+      "scientificName": "Cuminum cyminum"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:h033",
+      "representativePlantId": "h033",
+      "productPlantIds": [
+        "h033"
+      ],
+      "scientificName": "Melissa officinalis"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:h034",
+      "representativePlantId": "h034",
+      "productPlantIds": [
+        "h034"
+      ],
+      "scientificName": "Myristica fragrans"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:h035",
+      "representativePlantId": "h035",
+      "productPlantIds": [
+        "h035"
+      ],
+      "scientificName": "Capsicum annuum"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:h036",
+      "representativePlantId": "h036",
+      "productPlantIds": [
+        "h036"
+      ],
+      "scientificName": "Brassica juncea"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:h037",
+      "representativePlantId": "h037",
+      "productPlantIds": [
+        "h037"
+      ],
+      "scientificName": "Zingiber mioga"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:h038",
+      "representativePlantId": "h038",
+      "productPlantIds": [
+        "h038"
+      ],
+      "scientificName": "Eutrema japonicum"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:h039",
+      "representativePlantId": "h039",
+      "productPlantIds": [
+        "h039"
+      ],
+      "scientificName": "Angelica keiskei"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:h040",
+      "representativePlantId": "h040",
+      "productPlantIds": [
+        "h040"
+      ],
+      "scientificName": "Arctium lappa"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:h041",
+      "representativePlantId": "h041",
+      "productPlantIds": [
+        "h041"
+      ],
+      "scientificName": "Corchorus olitorius"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:h042",
+      "representativePlantId": "h042",
+      "productPlantIds": [
+        "h042"
+      ],
+      "scientificName": "Morus alba"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:h043",
+      "representativePlantId": "h043",
+      "productPlantIds": [
+        "h043"
+      ],
+      "scientificName": "Citrus junos"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:h044",
+      "representativePlantId": "h044",
+      "productPlantIds": [
+        "h044"
+      ],
+      "scientificName": "Zanthoxylum piperitum"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:h045",
+      "representativePlantId": "h045",
+      "productPlantIds": [
+        "h045"
+      ],
+      "scientificName": "Urtica dioica"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:h046",
+      "representativePlantId": "h046",
+      "productPlantIds": [
+        "h046"
+      ],
+      "scientificName": "Borago officinalis"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:h047",
+      "representativePlantId": "h047",
+      "productPlantIds": [
+        "h047"
+      ],
+      "scientificName": "Hyssopus officinalis"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:h048",
+      "representativePlantId": "h048",
+      "productPlantIds": [
+        "h048"
+      ],
+      "scientificName": "Trigonella foenum-graecum"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:h049",
+      "representativePlantId": "h049",
+      "productPlantIds": [
+        "h049"
+      ],
+      "scientificName": "Piper nigrum"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:h050",
+      "representativePlantId": "h050",
+      "productPlantIds": [
+        "h050"
+      ],
+      "scientificName": "Pimenta dioica"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:h051",
+      "representativePlantId": "h051",
+      "productPlantIds": [
+        "h051"
+      ],
+      "scientificName": "Stevia rebaudiana"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:h052",
+      "representativePlantId": "h052",
+      "productPlantIds": [
+        "h052"
+      ],
+      "scientificName": "Calendula officinalis"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:h053",
+      "representativePlantId": "h053",
+      "productPlantIds": [
+        "h053"
+      ],
+      "scientificName": "Aloysia citrodora"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:h054",
+      "representativePlantId": "h054",
+      "productPlantIds": [
+        "h054"
+      ],
+      "scientificName": "Cichorium intybus"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:h055",
+      "representativePlantId": "h055",
+      "productPlantIds": [
+        "h055"
+      ],
+      "scientificName": "Juniperus communis"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:h056",
+      "representativePlantId": "h056",
+      "productPlantIds": [
+        "h056"
+      ],
+      "scientificName": "Sesamum indicum"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:h057",
+      "representativePlantId": "h057",
+      "productPlantIds": [
+        "h057"
+      ],
+      "scientificName": "Backhousia citriodora"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:h058",
+      "representativePlantId": "h058",
+      "productPlantIds": [
+        "h058"
+      ],
+      "scientificName": "Alpinia zerumbet"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:h059",
+      "representativePlantId": "h059",
+      "productPlantIds": [
+        "h059"
+      ],
+      "scientificName": "Ilex paraguariensis"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:h060",
+      "representativePlantId": "h060",
+      "productPlantIds": [
+        "h060"
+      ],
+      "scientificName": "Passiflora incarnata"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:h061",
+      "representativePlantId": "h061",
+      "productPlantIds": [
+        "h061"
+      ],
+      "scientificName": "Helichrysum italicum"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:h062",
+      "representativePlantId": "h062",
+      "productPlantIds": [
+        "h062"
+      ],
+      "scientificName": "Galium odoratum"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:h063",
+      "representativePlantId": "h063",
+      "productPlantIds": [
+        "h063"
+      ],
+      "scientificName": "Nasturtium officinale"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:h064",
+      "representativePlantId": "h064",
+      "productPlantIds": [
+        "h064"
+      ],
+      "scientificName": "Apium graveolens"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:h065",
+      "representativePlantId": "h065",
+      "productPlantIds": [
+        "h065"
+      ],
+      "scientificName": "Armoracia rusticana"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:h066",
+      "representativePlantId": "h066",
+      "productPlantIds": [
+        "h066"
+      ],
+      "scientificName": "Persicaria hydropiper"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:h067",
+      "representativePlantId": "h067",
+      "productPlantIds": [
+        "h067"
+      ],
+      "scientificName": "Actinidia polygama"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:h068",
+      "representativePlantId": "h068",
+      "productPlantIds": [
+        "h068"
+      ],
+      "scientificName": "Senna alexandrina"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:h069",
+      "representativePlantId": "h069",
+      "productPlantIds": [
+        "h069"
+      ],
+      "scientificName": "Clitoria ternatea"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:h070",
+      "representativePlantId": "h070",
+      "productPlantIds": [
+        "h070"
+      ],
+      "scientificName": "Hibiscus sabdariffa"
+    },
+    {
+      "yakuTaxonConceptId": "yaku:taxon:h071",
+      "representativePlantId": "h071",
+      "productPlantIds": [
+        "h071"
+      ],
+      "scientificName": "Lonicera japonica"
+    }
+  ]
+}
