@@ -33,6 +33,15 @@ export interface TaxonExternalIds {
   ylist?: string;
 }
 
+export interface TaxonResolutionEvidence {
+  provider: 'catalogue_of_life' | 'world_flora_online' | 'wcvp' | 'ipni';
+  providerRecordId: string;
+  sourceRelease: string;
+  sourceDatasetKey?: string;
+  sourceDoi?: string;
+  resolvedAt: string;
+}
+
 export interface TaxonConceptSeed {
   id: YakuTaxonConceptId;
   rank: TaxonRank;
@@ -48,4 +57,5 @@ export interface TaxonConceptSeed {
 
   resolutionStatus: TaxonResolutionStatus;
   externalIds: TaxonExternalIds;
+  resolutionEvidence?: TaxonResolutionEvidence;
 }
