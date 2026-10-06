@@ -40,10 +40,8 @@ jobs:
         run: |
           set -euo pipefail
           find .cache/wfo/backbone -maxdepth 2 -type f -printf '%P\n' | sort | head -80
-          echo "--- meta.xml ---"
-          META="$(find .cache/wfo/backbone -name meta.xml -print -quit)"
-          test -n "$META"
-          sed -n '1,220p' "$META"
+          echo "--- classification.csv header/sample ---"
+          head -5 .cache/wfo/backbone/classification.csv
           echo "--- IPNI/WFO mapping sample ---"
           gzip -dc .cache/wfo/ipni_to_wfo.csv.gz | head -8 || true
 
