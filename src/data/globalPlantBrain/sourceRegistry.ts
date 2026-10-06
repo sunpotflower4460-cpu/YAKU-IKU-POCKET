@@ -41,15 +41,22 @@ const SOURCE_SEEDS: Array<
     purpose: ['taxonomy', 'nomenclature'],
     accessMethod: 'mixed',
     homepageUrl: 'https://www.catalogueoflife.org/',
-    status: 'needs_review',
+    apiBaseUrl: 'https://api.gbif.org/v2/species/match',
+    updateCadence: 'versioned releases; pin dataset/version for each resolution',
+    status: 'approved_core',
+    notes:
+      'COL content is CC BY 4.0 unless otherwise indicated. YAKU pins the release used for each resolution; AI-specific uses remain conditional in policy.',
   },
   {
     localId: 'world-flora-online',
-    name: 'World Flora Online',
+    name: 'World Flora Online Taxonomic Backbone',
     purpose: ['taxonomy', 'nomenclature'],
-    accessMethod: 'mixed',
-    homepageUrl: 'https://www.worldfloraonline.org/',
-    status: 'needs_review',
+    accessMethod: 'bulk',
+    homepageUrl: 'https://www.worldfloraonline.org/downloadData',
+    updateCadence: 'versioned static backbone releases',
+    status: 'approved_core',
+    notes:
+      'Approval is limited to the CC0 Taxonomic Backbone download. WFO page text, images and contributed content may have different rights and are not covered by this entry.',
   },
   {
     localId: 'kew-powo-wcvp',
@@ -205,13 +212,56 @@ export const SOURCE_REGISTRY: SourceRegistryEntry[] = SOURCE_SEEDS.map((seed) =>
   };
 });
 
-export const SOURCE_RIGHTS_POLICIES: RightsPolicy[] = SOURCE_SEEDS.map((seed) =>
-  createUnknownRightsPolicy(
+const REVIEWED_RIGHTS: Partial<Record<string, Omit<RightsPolicy, 'id'>>> = {
+  'catalogue-of-life': {
+    licenseType: 'CC BY 4.0',
+    commercialUse: 'allowed',
+    localStorage: 'allowed',
+    redistribution: 'allowed',
+    derivativeDatabase: 'allowed',
+    attributionRequired: true,
+    shareAlike: false,
+    aiRag: 'conditional',
+    aiEmbedding: 'conditional',
+    aiTraining: 'conditional',
+    aiEvaluation: 'conditional',
+    checkedAt: REVIEWED_AT,
+    notes:
+      'Applies to COL content offered under CC BY 4.0. Preserve attribution and source/release metadata. AI-specific uses remain separately reviewable.',
+  },
+  'world-flora-online': {
+    licenseType: 'CC0 1.0 (Taxonomic Backbone only)',
+    commercialUse: 'allowed',
+    localStorage: 'allowed',
+    redistribution: 'allowed',
+    derivativeDatabase: 'allowed',
+    attributionRequired: false,
+    shareAlike: false,
+    aiRag: 'allowed',
+    aiEmbedding: 'allowed',
+    aiTraining: 'allowed',
+    aiEvaluation: 'allowed',
+    checkedAt: REVIEWED_AT,
+    notes:
+      'Only the WFO Taxonomic Backbone static download is covered. Other WFO content requires its own record/content-level rights decision.',
+  },
+};
+
+export const SOURCE_RIGHTS_POLICIES: RightsPolicy[] = SOURCE_SEEDS.map((seed) => {
+  const reviewed = REVIEWED_RIGHTS[seed.localId];
+  if (reviewed) {
+    return {
+      id: rightsId(seed.localId),
+      ...reviewed,
+    };
+  }
+
+  return createUnknownRightsPolicy(
     rightsId(seed.localId),
     REVIEWED_AT,
     `Fail-closed placeholder for ${seed.name}; resolve source/content-specific terms before production use.`,
-  ),
-);
+  );
+});
 
 const SOURCE_BY_ID = new Map(SOURCE_REGISTRY.map((entry) => [entry.id, entry]));
 const RIGHTS_BY_ID = new Map(
