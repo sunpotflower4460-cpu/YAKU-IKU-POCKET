@@ -11,6 +11,7 @@ import {
   KnowledgeSnapshot,
   TaxonAuthorityReference,
   TaxonConceptSeed,
+  YakuSourceId,
   makeCanonicalId,
 } from '../../types/globalPlantBrain';
 import { CURRENT_CATALOG_TAXA } from './taxonSeedRegistry';
@@ -27,8 +28,8 @@ function localTaxonToken(taxon: TaxonConceptSeed): string {
 
 function authoritySourceIds(
   refs: TaxonAuthorityReference[] | undefined,
-): Array<typeof COL_SOURCE_ID> {
-  const ids = new Set<string>();
+): YakuSourceId[] {
+  const ids = new Set<YakuSourceId>();
 
   for (const ref of refs ?? []) {
     switch (ref.provider) {
@@ -47,7 +48,7 @@ function authoritySourceIds(
     }
   }
 
-  return [...ids] as Array<typeof COL_SOURCE_ID>;
+  return [...ids];
 }
 
 function buildResolutionAssertion(taxon: TaxonConceptSeed): KnowledgeAssertion {
