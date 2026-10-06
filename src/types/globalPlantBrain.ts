@@ -12,3 +12,4 @@ export * from './provenance';
 export * from './knowledgeClaim';
 export * from './sourceRegistry';
 export * from './knowledgeLifecycle';
+export * from './taxonConcept';
