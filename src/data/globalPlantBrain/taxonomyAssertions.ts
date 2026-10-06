@@ -9,6 +9,7 @@
 import {
   KnowledgeAssertion,
   KnowledgeSnapshot,
+  JsonValue,
   TaxonAuthorityReference,
   TaxonConceptSeed,
   YakuSourceId,
@@ -57,29 +58,32 @@ function buildResolutionAssertion(taxon: TaxonConceptSeed): KnowledgeAssertion {
       ? authoritySourceIds(taxon.authorityReferences)
       : [COL_SOURCE_ID];
 
-  const object =
-    taxon.resolutionStatus === 'conflicted'
-      ? {
-          state: 'conflicted',
-          catalogScientificName: taxon.scientificName,
-          catalogRank: taxon.rank,
-          authorityViews: (taxon.authorityReferences ?? []).map((ref) => ({
-            provider: ref.provider,
-            matchedScientificName: ref.matchedScientificName ?? null,
-            matchedStatus: ref.matchedStatus ?? null,
-            acceptedScientificName: ref.acceptedScientificName ?? null,
-            acceptedRank: ref.acceptedRank ?? null,
-            relation: ref.relation,
-          })),
-        }
-      : {
-          state: taxon.resolutionStatus,
-          catalogScientificName: taxon.scientificName,
-          catalogRank: taxon.rank,
-          preferredScientificName: taxon.preferredScientificName ?? null,
-          preferredRank: taxon.preferredRank ?? null,
-          colAcceptedUsageId: taxon.externalIds.col ?? null,
-        };
+  let object: JsonValue;
+
+  if (taxon.resolutionStatus === 'conflicted') {
+    object = {
+      state: 'conflicted',
+      catalogScientificName: taxon.scientificName,
+      catalogRank: taxon.rank,
+      authorityViews: (taxon.authorityReferences ?? []).map((ref) => ({
+        provider: ref.provider,
+        matchedScientificName: ref.matchedScientificName ?? null,
+        matchedStatus: ref.matchedStatus ?? null,
+        acceptedScientificName: ref.acceptedScientificName ?? null,
+        acceptedRank: ref.acceptedRank ?? null,
+        relation: ref.relation,
+      })),
+    };
+  } else {
+    object = {
+      state: taxon.resolutionStatus,
+      catalogScientificName: taxon.scientificName,
+      catalogRank: taxon.rank,
+      preferredScientificName: taxon.preferredScientificName ?? null,
+      preferredRank: taxon.preferredRank ?? null,
+      colAcceptedUsageId: taxon.externalIds.col ?? null,
+    };
+  }
 
   return {
     id: makeCanonicalId(
