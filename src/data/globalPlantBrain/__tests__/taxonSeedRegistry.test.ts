@@ -43,27 +43,65 @@ describe('current catalog canonical taxon mapping (GPB-006)', () => {
     expect(getCurrentCatalogTaxon(getCanonicalTaxonIdForPlant('p077'))?.rank).toBe('variety');
   });
 
-  it('promotes the 140 reviewed COL matches and leaves 9 synonym cases', () => {
+  it('represents all 149 taxa as resolved, reconciled or explicitly conflicted', () => {
     const resolved = CURRENT_CATALOG_TAXA.filter(
       (taxon) => taxon.resolutionStatus === 'externally_resolved',
+    );
+    const reconciled = CURRENT_CATALOG_TAXA.filter(
+      (taxon) => taxon.resolutionStatus === 'externally_reconciled',
+    );
+    const conflicted = CURRENT_CATALOG_TAXA.filter(
+      (taxon) => taxon.resolutionStatus === 'conflicted',
     );
     const localSeeds = CURRENT_CATALOG_TAXA.filter(
       (taxon) => taxon.resolutionStatus === 'local_seed',
     );
 
     expect(resolved).toHaveLength(140);
-    expect(localSeeds).toHaveLength(9);
+    expect(reconciled).toHaveLength(8);
+    expect(conflicted).toHaveLength(1);
+    expect(localSeeds).toHaveLength(0);
 
-    for (const taxon of resolved) {
+    for (const taxon of [...resolved, ...reconciled]) {
       expect(taxon.externalIds.col).toMatch(/^[A-Z0-9]+$/);
       expect(taxon.resolutionEvidence?.provider).toBe('catalogue_of_life');
       expect(taxon.resolutionEvidence?.sourceDatasetKey).toBe('316441');
     }
 
-    for (const taxon of localSeeds) {
-      expect(taxon.externalIds).toEqual({});
-      expect(taxon.resolutionEvidence).toBeUndefined();
+    for (const taxon of reconciled) {
+      expect(taxon.preferredScientificName).toBeTruthy();
+      expect(taxon.preferredRank).toBeTruthy();
+      expect(taxon.authorityReferences?.some(
+        (ref) => ref.provider === 'catalogue_of_life',
+      )).toBe(true);
+      expect(taxon.authorityReferences?.some(
+        (ref) => ref.provider === 'wcvp',
+      )).toBe(true);
     }
+
+    expect(conflicted[0]?.id).toBe(getCanonicalTaxonIdForPlant('h047'));
+    expect(conflicted[0]?.scientificName).toBe('Hyssopus officinalis');
+    expect(conflicted[0]?.preferredScientificName).toBeUndefined();
+    expect(conflicted[0]?.externalIds).toEqual({});
+    expect(conflicted[0]?.authorityReferences).toHaveLength(3);
+  });
+
+  it('preserves product-facing catalog scientific names after reconciliation', () => {
+    expect(
+      getCurrentCatalogTaxon(getCanonicalTaxonIdForPlant('p006'))?.scientificName,
+    ).toBe('Pueraria lobata');
+    expect(
+      getCurrentCatalogTaxon(getCanonicalTaxonIdForPlant('p006'))
+        ?.preferredScientificName,
+    ).toBe('Pueraria montana var. lobata');
+
+    expect(
+      getCurrentCatalogTaxon(getCanonicalTaxonIdForPlant('h070'))?.scientificName,
+    ).toBe('Hibiscus sabdariffa');
+    expect(
+      getCurrentCatalogTaxon(getCanonicalTaxonIdForPlant('h070'))
+        ?.preferredScientificName,
+    ).toBe('Sabdariffa gossypiifolia');
   });
 
   it('does not split duplicate scientific names across different canonical taxa', () => {
