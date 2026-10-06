@@ -5,7 +5,7 @@ on:
   pull_request:
     paths:
       - ".github/workflows/gpb-wfo-resolution.yml"
-      - "scripts/resolve-wfo-taxonomy.mjs"
+      - "scripts/resolve-wfo-taxonomy.py"
       - "scripts/data/current-catalog-taxa.json"
 
 permissions:
@@ -46,7 +46,7 @@ jobs:
           gzip -dc .cache/wfo/ipni_to_wfo.csv.gz | head -8 || true
 
       - name: Resolve current YAKU taxa
-        run: node scripts/resolve-wfo-taxonomy.mjs
+        run: python3 scripts/resolve-wfo-taxonomy.py
 
       - name: Upload WFO resolution artifact
         uses: actions/upload-artifact@v4
