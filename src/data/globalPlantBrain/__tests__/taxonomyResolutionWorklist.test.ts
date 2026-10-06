@@ -1,4 +1,4 @@
-import { CURRENT_CATALOG_TAXA } from '../../taxonSeedRegistry';
+import { CURRENT_CATALOG_TAXA } from '../taxonSeedRegistry';
 import { CURRENT_CATALOG_TAXONOMY_WORKLIST } from '../taxonomyResolutionWorklist';
 
 describe('current catalog taxonomy resolution worklist (G1)', () => {
