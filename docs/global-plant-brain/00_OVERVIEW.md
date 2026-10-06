@@ -102,6 +102,7 @@ Product PlaneはKnowledge Planeから必要部分だけmaterializeする。現�
 - `05_IMPLEMENTATION_PLAN.md`
 - `06_SOURCE_CATALOG.md`
 - `07_GOVERNANCE_REVIEW_AND_ACCEPTANCE.md`
+- `08_G1_TAXONOMY_RESOLUTION.md`
 
 ## 6. Definition of Done
 
