@@ -16,12 +16,12 @@ export const COL_RESOLUTION_SOURCE = {
   datasetKey: '316441',
   checklistKey: '7ddf754f-d193-4cc9-b351-99906754a03b',
   doi: '10.48580/dgz9s',
-  generatedAt: '2026-10-06T12:45:48.294Z',
+  generatedAt: '2026-10-06T12:58:52.213Z',
 } as const;
 
 export const COL_RESOLUTION_SUMMARY = {
-  autoResolve: 139,
-  needsReview: 10,
+  autoResolve: 140,
+  needsReview: 9,
   unresolved: 0,
   transportError: 0,
 } as const;
@@ -77,6 +77,7 @@ export const COL_AUTO_RESOLVED_IDS: Readonly<Record<string, string>> = {
   'yaku:taxon:p053': 'XFFY',
   'yaku:taxon:p054': '6VLK4',
   'yaku:taxon:p055': '5BH4P',
+  'yaku:taxon:p056': '7M4GJ',
   'yaku:taxon:p057': '3S2DF',
   'yaku:taxon:p058': '4Y9CR',
   'yaku:taxon:p059': '33DCV',
@@ -216,14 +217,14 @@ export const COL_REVIEW_QUEUE: readonly ColReviewQueueEntry[] = [
   {
     taxonId: 'yaku:taxon:p042',
     inputScientificName: 'Veratrum album subsp. oxysepalum',
-    reasons: ['rank_mismatch', 'status_synonym', 'confidence_below_auto_threshold'],
+    reasons: ['status_synonym'],
     candidate: {
       colId: '5LQPG',
       scientificName: 'Veratrum album subsp. oxysepalum (Turcz.) Hultén',
       canonicalName: 'Veratrum album oxysepalum',
       rank: 'SUBSPECIES',
       status: 'synonym',
-      confidence: 84,
+      confidence: 100,
       acceptedTaxon: {
         providerRecordId: '7FNJV',
         scientificName: 'Veratrum oxysepalum Turcz.',
@@ -236,14 +237,14 @@ export const COL_REVIEW_QUEUE: readonly ColReviewQueueEntry[] = [
   {
     taxonId: 'yaku:taxon:p046',
     inputScientificName: 'Elatostema umbellatum var. majus',
-    reasons: ['rank_mismatch', 'status_synonym', 'confidence_below_auto_threshold'],
+    reasons: ['status_synonym'],
     candidate: {
       colId: '5NPQZ',
       scientificName: 'Elatostema umbellatum var. majus Maxim.',
       canonicalName: 'Elatostema umbellatum majus',
       rank: 'VARIETY',
       status: 'synonym',
-      confidence: 88,
+      confidence: 100,
       acceptedTaxon: {
         providerRecordId: '6F363',
         scientificName: 'Elatostema involucratum Franch. & Sav.',
@@ -256,14 +257,14 @@ export const COL_REVIEW_QUEUE: readonly ColReviewQueueEntry[] = [
   {
     taxonId: 'yaku:taxon:p047',
     inputScientificName: 'Glechoma hederacea var. grandis',
-    reasons: ['rank_mismatch', 'status_synonym', 'confidence_below_auto_threshold'],
+    reasons: ['status_synonym'],
     candidate: {
-      colId: '5HH3P',
-      scientificName: 'Glechoma hederacea subsp. grandis (A.Gray) H.Hara',
+      colId: '5P5ZD',
+      scientificName: 'Glechoma hederacea var. grandis (A.Gray) Kudô',
       canonicalName: 'Glechoma hederacea grandis',
-      rank: 'SUBSPECIES',
+      rank: 'VARIETY',
       status: 'synonym',
-      confidence: 84,
+      confidence: 100,
       acceptedTaxon: {
         providerRecordId: '3G6WD',
         scientificName: 'Glechoma grandis (A.Gray) Kuprian.',
@@ -271,19 +272,6 @@ export const COL_REVIEW_QUEUE: readonly ColReviewQueueEntry[] = [
         rank: 'SPECIES',
         status: 'unknown',
       },
-    },
-  },
-  {
-    taxonId: 'yaku:taxon:p056',
-    inputScientificName: 'Hemerocallis fulva var. angustifolia',
-    reasons: ['rank_mismatch', 'confidence_below_auto_threshold'],
-    candidate: {
-      colId: '7M4GJ',
-      scientificName: 'Hemerocallis fulva var. angustifolia Baker',
-      canonicalName: 'Hemerocallis fulva angustifolia',
-      rank: 'VARIETY',
-      status: 'accepted',
-      confidence: 88,
     },
   },
   {
@@ -329,14 +317,14 @@ export const COL_REVIEW_QUEUE: readonly ColReviewQueueEntry[] = [
   {
     taxonId: 'yaku:taxon:p077',
     inputScientificName: 'Dianthus superbus var. longicalycinus',
-    reasons: ['rank_mismatch', 'status_synonym', 'confidence_below_auto_threshold'],
+    reasons: ['status_synonym'],
     candidate: {
-      colId: '5GVMQ',
-      scientificName: 'Dianthus superbus subsp. longicalycinus (Maxim.) Kitam.',
+      colId: '5NJHR',
+      scientificName: 'Dianthus superbus var. longicalycinus (Maxim.) F.N.Williams',
       canonicalName: 'Dianthus superbus longicalycinus',
-      rank: 'SUBSPECIES',
+      rank: 'VARIETY',
       status: 'synonym',
-      confidence: 84,
+      confidence: 99,
       acceptedTaxon: {
         providerRecordId: '6CPSD',
         scientificName: 'Dianthus longicalyx Miq.',

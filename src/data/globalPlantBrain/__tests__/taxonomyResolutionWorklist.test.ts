@@ -1,3 +1,4 @@
+import { makeCanonicalId } from '../../../types/globalPlantBrain';
 import { CURRENT_CATALOG_TAXA } from '../taxonSeedRegistry';
 import { CURRENT_CATALOG_TAXONOMY_WORKLIST } from '../taxonomyResolutionWorklist';
 
@@ -12,9 +13,25 @@ describe('current catalog taxonomy resolution worklist (G1)', () => {
   it('keeps every query plant-scoped and linked to the YAKU taxon identity', () => {
     for (const query of CURRENT_CATALOG_TAXONOMY_WORKLIST) {
       expect(query.kingdom).toBe('Plantae');
-      expect(query.expectedRank).toBe('species');
+      expect(['species', 'subspecies', 'variety', 'form']).toContain(
+        query.expectedRank,
+      );
       expect(query.scientificName.trim()).not.toBe('');
       expect(query.yakuTaxonConceptId).toMatch(/^yaku:taxon:/);
+    }
+  });
+
+  it('uses the correct infraspecific rank for the five catalog names below species', () => {
+    const byId = new Map(
+      CURRENT_CATALOG_TAXONOMY_WORKLIST.map((query) => [
+        query.yakuTaxonConceptId,
+        query,
+      ]),
+    );
+
+    expect(byId.get(makeCanonicalId('taxon', 'p042'))?.expectedRank).toBe('subspecies');
+    for (const id of ['p046', 'p047', 'p056', 'p077']) {
+      expect(byId.get(makeCanonicalId('taxon', id))?.expectedRank).toBe('variety');
     }
   });
 });

@@ -68,18 +68,17 @@ The resolver receives an injected JSON transport. The React Native product does 
 Executed on 2026-10-06 against the pinned COL 2026-09-25 XR:
 
 - canonical taxa queried: 149
-- auto-resolve: 139
-- needs review: 10
+- auto-resolve: 140
+- needs review: 9
 - unresolved: 0
 - transport errors: 0
 
-The ten review cases are intentionally not promoted to `externalIds.col`:
+The nine remaining review cases are intentionally not promoted to `externalIds.col`:
 
 - Pueraria lobata
 - Veratrum album subsp. oxysepalum
 - Elatostema umbellatum var. majus
 - Glechoma hederacea var. grandis
-- Hemerocallis fulva var. angustifolia
 - Calystegia japonica
 - Lapsana apogonoides
 - Dianthus superbus var. longicalycinus
@@ -87,3 +86,15 @@ The ten review cases are intentionally not promoted to `externalIds.col`:
 - Hibiscus sabdariffa
 
 Most are synonym/taxon-rank cases. These require WFO/WCVP and nomenclatural cross-check before changing the YAKU accepted-name view.
+
+
+### Rank-corrected rerun
+
+The initial run exposed a YAKU-side modeling issue: five scientific names were infraspecific but had been seeded as species. After correcting canonical ranks and re-running the same pinned COL release:
+
+- auto-resolve: 140
+- needs review: 9
+- unresolved: 0
+- transport errors: 0
+
+`Hemerocallis fulva var. angustifolia` now resolves as an exact accepted variety (COL `7M4GJ`) and is promoted. The other four corrected infraspecific queries remain exact synonyms and therefore stay in review.
