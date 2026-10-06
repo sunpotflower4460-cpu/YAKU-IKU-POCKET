@@ -6,8 +6,8 @@
  * approved resolver and persist reviewed results.
  */
 
-import { CURRENT_CATALOG_TAXA } from '../taxonSeedRegistry';
-import { TaxonomyResolutionQuery } from '../../../types/globalPlantBrain';
+import { CURRENT_CATALOG_TAXA } from './taxonSeedRegistry';
+import { TaxonomyResolutionQuery } from '../../types/globalPlantBrain';
 
 export const CURRENT_CATALOG_TAXONOMY_WORKLIST: TaxonomyResolutionQuery[] =
   CURRENT_CATALOG_TAXA.map((taxon) => ({
