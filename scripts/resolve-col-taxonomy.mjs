@@ -54,11 +54,11 @@ function normalizeMatchType(value) {
   }
 }
 
-function buildUrl(scientificName) {
+function buildUrl(scientificName, expectedRank) {
   const url = new URL(COL.endpoint);
   url.searchParams.set('checklistKey', COL.checklistKey);
   url.searchParams.set('scientificName', scientificName);
-  url.searchParams.set('taxonRank', 'SPECIES');
+  url.searchParams.set('taxonRank', String(expectedRank).toUpperCase());
   url.searchParams.set('kingdom', 'Plantae');
   return url.toString();
 }
@@ -153,7 +153,7 @@ function assess(input, candidate) {
   );
 
   if (!isPlant) reasons.push('kingdom_not_confirmed_plantae');
-  if (String(candidate.rank).toLowerCase() !== 'species') reasons.push('rank_mismatch');
+  if (String(candidate.rank).toLowerCase() !== String(input.expectedRank).toLowerCase()) reasons.push('rank_mismatch');
   if (candidate.matchType !== 'exact') reasons.push(`match_type_${candidate.matchType}`);
   if (candidate.status !== 'accepted') reasons.push(`status_${candidate.status}`);
   if (candidate.confidence != null && candidate.confidence < 95) {
@@ -177,7 +177,7 @@ async function main() {
   const results = [];
   for (let index = 0; index < worklist.taxa.length; index += 1) {
     const input = worklist.taxa[index];
-    const url = buildUrl(input.scientificName);
+    const url = buildUrl(input.scientificName, input.expectedRank);
     let raw;
     let error;
 
