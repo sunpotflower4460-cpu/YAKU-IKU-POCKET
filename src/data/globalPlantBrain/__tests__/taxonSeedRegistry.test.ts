@@ -30,10 +30,26 @@ describe('current catalog canonical taxon mapping (GPB-006)', () => {
     expect(taxon?.productPlantIds).toEqual(['p005', 'p009']);
   });
 
-  it('never invents external taxonomy IDs during local seeding', () => {
-    for (const taxon of CURRENT_CATALOG_TAXA) {
-      expect(taxon.resolutionStatus).toBe('local_seed');
+  it('promotes only the 139 exact accepted COL matches and leaves 10 cases for review', () => {
+    const resolved = CURRENT_CATALOG_TAXA.filter(
+      (taxon) => taxon.resolutionStatus === 'externally_resolved',
+    );
+    const localSeeds = CURRENT_CATALOG_TAXA.filter(
+      (taxon) => taxon.resolutionStatus === 'local_seed',
+    );
+
+    expect(resolved).toHaveLength(139);
+    expect(localSeeds).toHaveLength(10);
+
+    for (const taxon of resolved) {
+      expect(taxon.externalIds.col).toMatch(/^[A-Z0-9]+$/);
+      expect(taxon.resolutionEvidence?.provider).toBe('catalogue_of_life');
+      expect(taxon.resolutionEvidence?.sourceDatasetKey).toBe('316441');
+    }
+
+    for (const taxon of localSeeds) {
       expect(taxon.externalIds).toEqual({});
+      expect(taxon.resolutionEvidence).toBeUndefined();
     }
   });
 
