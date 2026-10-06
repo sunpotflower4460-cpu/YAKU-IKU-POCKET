@@ -1,3 +1,4 @@
+import { makeCanonicalId } from '../../../types/globalPlantBrain';
 import { CURRENT_CATALOG_TAXA } from '../taxonSeedRegistry';
 import { CURRENT_CATALOG_TAXONOMY_WORKLIST } from '../taxonomyResolutionWorklist';
 
@@ -28,9 +29,9 @@ describe('current catalog taxonomy resolution worklist (G1)', () => {
       ]),
     );
 
-    expect(byId.get('yaku:taxon:p042' as any)?.expectedRank).toBe('subspecies');
+    expect(byId.get(makeCanonicalId('taxon', 'p042'))?.expectedRank).toBe('subspecies');
     for (const id of ['p046', 'p047', 'p056', 'p077']) {
-      expect(byId.get(`yaku:taxon:${id}` as any)?.expectedRank).toBe('variety');
+      expect(byId.get(makeCanonicalId('taxon', id))?.expectedRank).toBe('variety');
     }
   });
 });
