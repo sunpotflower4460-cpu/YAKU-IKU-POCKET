@@ -15,6 +15,7 @@ import {
 import {
   makeCanonicalId,
   TaxonConceptSeed,
+  TaxonRank,
   YakuTaxonConceptId,
 } from '../../types/globalPlantBrain';
 
@@ -39,6 +40,15 @@ export function getCanonicalTaxonIdForPlant(
   return makeCanonicalId('taxon', canonicalRepresentativePlantId(plantId));
 }
 
+export function inferTaxonRankFromScientificName(
+  scientificName: string,
+): TaxonRank {
+  if (/\bsubsp\.\s+/i.test(scientificName)) return 'subspecies';
+  if (/\bvar\.\s+/i.test(scientificName)) return 'variety';
+  if (/\bf\.\s+/i.test(scientificName)) return 'form';
+  return 'species';
+}
+
 function buildTaxonSeeds(): TaxonConceptSeed[] {
   const groups = new Map<string, typeof PLANTS>();
 
@@ -58,7 +68,7 @@ function buildTaxonSeeds(): TaxonConceptSeed[] {
 
     return {
       id,
-      rank: 'species',
+      rank: inferTaxonRankFromScientificName(representative.nameLatin),
       scientificName: representative.nameLatin,
       representativePlantId: representativeId,
       productPlantIds: plants.map((plant) => plant.id),
