@@ -17,6 +17,10 @@ import {
   RECONCILED_TAXON_BY_ID,
 } from './taxonomyCrossSourceReview';
 import {
+  WFO_RESOLUTION_SOURCE,
+  WFO_SAFE_ACCEPTED_IDS,
+} from './wfoResolutionSnapshot';
+import {
   makeCanonicalId,
   TaxonConceptSeed,
   TaxonRank,
@@ -71,7 +75,9 @@ function buildTaxonSeeds(): TaxonConceptSeed[] {
     const colId = COL_AUTO_RESOLVED_IDS[id];
     const reconciled = RECONCILED_TAXON_BY_ID.get(id);
     const conflicted = CONFLICTED_TAXON_BY_ID.get(id);
-    const acceptedColId = reconciled?.acceptedColId ?? colId;
+    const acceptedColId =
+      reconciled?.acceptedColId ?? conflicted?.acceptedColId ?? colId;
+    const wfoId = WFO_SAFE_ACCEPTED_IDS[id];
 
     return {
       id,
@@ -86,7 +92,10 @@ function buildTaxonSeeds(): TaxonConceptSeed[] {
           : acceptedColId
             ? 'externally_resolved'
             : 'local_seed',
-      externalIds: acceptedColId ? { col: acceptedColId } : {},
+      externalIds: {
+        ...(acceptedColId ? { col: acceptedColId } : {}),
+        ...(wfoId ? { wfo: wfoId } : {}),
+      },
       resolutionEvidence: acceptedColId
         ? {
             provider: 'catalogue_of_life',
@@ -96,6 +105,17 @@ function buildTaxonSeeds(): TaxonConceptSeed[] {
             sourceDoi: COL_RESOLUTION_SOURCE.doi,
             resolvedAt: COL_RESOLUTION_SOURCE.generatedAt,
           }
+        : undefined,
+      supportingResolutionEvidence: wfoId
+        ? [
+            {
+              provider: 'world_flora_online',
+              providerRecordId: wfoId,
+              sourceRelease: WFO_RESOLUTION_SOURCE.releaseLabel,
+              sourceDoi: WFO_RESOLUTION_SOURCE.doi,
+              resolvedAt: WFO_RESOLUTION_SOURCE.checkedAt,
+            },
+          ]
         : undefined,
       preferredScientificName: reconciled?.preferredScientificName,
       preferredRank: reconciled?.preferredRank,
