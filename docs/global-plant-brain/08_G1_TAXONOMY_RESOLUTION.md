@@ -61,3 +61,29 @@ The resolver receives an injected JSON transport. The React Native product does 
 - create explicit synonym/taxon-concept relations
 - add IPNI LSID reconciliation where available
 - generate a coverage/conflict report before Product Projection is changed
+
+
+## First live COL run
+
+Executed on 2026-10-06 against the pinned COL 2026-09-25 XR:
+
+- canonical taxa queried: 149
+- auto-resolve: 139
+- needs review: 10
+- unresolved: 0
+- transport errors: 0
+
+The ten review cases are intentionally not promoted to `externalIds.col`:
+
+- Pueraria lobata
+- Veratrum album subsp. oxysepalum
+- Elatostema umbellatum var. majus
+- Glechoma hederacea var. grandis
+- Hemerocallis fulva var. angustifolia
+- Calystegia japonica
+- Lapsana apogonoides
+- Dianthus superbus var. longicalycinus
+- Hyssopus officinalis
+- Hibiscus sabdariffa
+
+Most are synonym/taxon-rank cases. These require WFO/WCVP and nomenclatural cross-check before changing the YAKU accepted-name view.
