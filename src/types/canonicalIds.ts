@@ -22,6 +22,8 @@ export type CanonicalIdKind =
   | 'target'
   | 'trial'
   | 'claim'
+  | 'assertion'
+  | 'snapshot'
   | 'source'
   | 'authority'
   | 'provenance'
@@ -41,6 +43,8 @@ export type YakuCompoundId = CanonicalId<'compound'>;
 export type YakuTargetId = CanonicalId<'target'>;
 export type YakuTrialId = CanonicalId<'trial'>;
 export type YakuClaimId = CanonicalId<'claim'>;
+export type YakuAssertionId = CanonicalId<'assertion'>;
+export type YakuKnowledgeSnapshotId = CanonicalId<'snapshot'>;
 export type YakuSourceId = CanonicalId<'source'>;
 export type YakuAuthorityId = CanonicalId<'authority'>;
 export type YakuProvenanceId = CanonicalId<'provenance'>;
@@ -57,6 +61,8 @@ export interface CanonicalIdByKind {
   target: YakuTargetId;
   trial: YakuTrialId;
   claim: YakuClaimId;
+  assertion: YakuAssertionId;
+  snapshot: YakuKnowledgeSnapshotId;
   source: YakuSourceId;
   authority: YakuAuthorityId;
   provenance: YakuProvenanceId;
@@ -74,6 +80,8 @@ const PREFIX_BY_KIND: Record<CanonicalIdKind, string> = {
   target: 'yaku:target:',
   trial: 'yaku:trial:',
   claim: 'yaku:claim:',
+  assertion: 'yaku:assertion:',
+  snapshot: 'yaku:snapshot:',
   source: 'yaku:source:',
   authority: 'yaku:authority:',
   provenance: 'yaku:provenance:',
