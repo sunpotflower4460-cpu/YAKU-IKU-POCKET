@@ -1,3 +1,5 @@
+> **Global Plant Brain note (2026-10-06):** 本書は現行/近未来の識別実装仕様です。Active Evidence Identification、Next Best Observation、open-set、calibration、Safety Critical Mode、YAKU-ID Benchmarkを含む長期正本は [global-plant-brain/02_IDENTIFICATION_AND_BENCHMARK.md](./global-plant-brain/02_IDENTIFICATION_AND_BENCHMARK.md) を参照してください。
+
 # 識別パイプライン（IDENTIFICATION_PIPELINE）
 
 > 統合仕様書 §8, §9 準拠。**実装は PR9/PR10/PR14**。本書はアウトライン。
