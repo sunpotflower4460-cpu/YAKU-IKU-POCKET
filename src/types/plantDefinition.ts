@@ -15,6 +15,7 @@
 // citations, conservation status, native/invasive status — are left
 // `undefined` rather than guessed. See docs/DATA_SOURCES_AND_LICENSES.md.
 
+import { YakuTaxonConceptId } from './canonicalIds';
 import { SafetyProfile } from './observation';
 
 export interface TaxonIds {
@@ -72,6 +73,8 @@ export interface CulturalUseRecord {
 
 export interface PlantDefinition {
   id: string;
+  /** Stable bridge from the product catalog into the Global Plant Brain. */
+  yakuTaxonConceptId: YakuTaxonConceptId;
   taxonomy: Taxonomy;
   classification: Classification;
   morphology: MorphologyProfile;

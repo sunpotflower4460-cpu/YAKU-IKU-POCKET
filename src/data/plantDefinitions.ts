@@ -4,6 +4,7 @@
 
 import { PLANTS } from './plants';
 import { DANGEROUS_LOOKALIKES } from './safety';
+import { getCanonicalTaxonIdForPlant } from './globalPlantBrain/taxonSeedRegistry';
 import { DangerLevel, Plant } from '../types';
 import { SafetyLevel } from '../types/observation';
 import { PlantDefinition } from '../types/plantDefinition';
@@ -251,6 +252,7 @@ function toPlantDefinition(plant: Plant): PlantDefinition {
 
   return {
     id: plant.id,
+    yakuTaxonConceptId: getCanonicalTaxonIdForPlant(plant.id),
     taxonomy: {
       scientificName: plant.nameLatin,
       japaneseNames: [plant.name],

@@ -2,11 +2,18 @@ import { PLANTS, TOTAL_PLANTS } from '../plants';
 import { PLANT_DEFINITIONS, getPlantDefinitionById } from '../plantDefinitions';
 import { getSafetyWarnings } from '../safety';
 import { isAuthoritativeSourceUrl } from '../../utils/sourceRefValidation';
+import { getCanonicalTaxonIdForPlant } from '../globalPlantBrain/taxonSeedRegistry';
 
 describe('PLANT_DEFINITIONS (§10.1 knowledge schema derivation)', () => {
   it('has exactly one definition per cataloged plant, in the same order', () => {
     expect(PLANT_DEFINITIONS).toHaveLength(TOTAL_PLANTS);
     expect(PLANT_DEFINITIONS.map((d) => d.id)).toEqual(PLANTS.map((p) => p.id));
+  });
+
+  it('every definition is linked to its Global Plant Brain canonical taxon', () => {
+    for (const def of PLANT_DEFINITIONS) {
+      expect(def.yakuTaxonConceptId).toBe(getCanonicalTaxonIdForPlant(def.id));
+    }
   });
 
   it('every definition has a non-empty family and genus (editorial botanical knowledge)', () => {
