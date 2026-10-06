@@ -7,7 +7,7 @@ import {
 } from '../taxonomyAssertions';
 
 describe('versioned current-catalog taxonomy assertions (G1)', () => {
-  it('creates 149 resolution assertions, eight synonym relations and three conflict views', () => {
+  it('creates 149 resolution assertions, seven synonym relations and fifteen conflict views', () => {
     const resolution = CURRENT_CATALOG_TAXONOMY_ASSERTIONS.filter(
       (assertion) => assertion.predicate === 'taxonomy_resolution',
     );
@@ -20,9 +20,9 @@ describe('versioned current-catalog taxonomy assertions (G1)', () => {
     );
 
     expect(resolution).toHaveLength(149);
-    expect(synonyms).toHaveLength(8);
-    expect(conflictViews).toHaveLength(3);
-    expect(CURRENT_CATALOG_TAXONOMY_ASSERTIONS).toHaveLength(160);
+    expect(synonyms).toHaveLength(7);
+    expect(conflictViews).toHaveLength(15);
+    expect(CURRENT_CATALOG_TAXONOMY_ASSERTIONS).toHaveLength(171);
   });
 
   it('keeps every assertion structurally valid and source-backed', () => {
@@ -68,8 +68,14 @@ describe('versioned current-catalog taxonomy assertions (G1)', () => {
     expect(
       CURRENT_CATALOG_TAXONOMY_SNAPSHOT.taxonomyVersions.catalogueOfLife,
     ).toContain('2026-09-25 XR');
+    expect(
+      CURRENT_CATALOG_TAXONOMY_SNAPSHOT.taxonomyVersions.worldFloraOnline,
+    ).toContain('2026-06');
+    expect(
+      CURRENT_CATALOG_TAXONOMY_SNAPSHOT.sourceVersions.worldFloraOnline,
+    ).toContain('10.5281/zenodo.20782718');
     expect(CURRENT_CATALOG_TAXONOMY_SNAPSHOT.policyVersion).toBe(
-      'gpb-g1-taxonomy-resolution-v1',
+      'gpb-g1-taxonomy-resolution-v2',
     );
   });
 });
