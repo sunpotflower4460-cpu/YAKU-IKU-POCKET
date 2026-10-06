@@ -1,3 +1,5 @@
+> **Release finalization note (2026-10-06):** App Store初回公開に向けた最新の優先順位・実装順・Release Gateは [APP_STORE_RELEASE_FINALIZATION.md](./APP_STORE_RELEASE_FINALIZATION.md) を上位仕様として参照してください。既存PR計画は履歴・機能開発計画として保持し、App Store公開判断で競合する場合はFinalization Designを優先します。
+
 # 実装ロードマップ（IMPLEMENTATION_ROADMAP）
 
 > 統合仕様書 §19, §22 準拠。1PR=1目的。デザインとデータ破壊を同一PRに混ぜない。
