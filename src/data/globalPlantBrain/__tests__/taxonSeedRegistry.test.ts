@@ -43,7 +43,7 @@ describe('current catalog canonical taxon mapping (GPB-006)', () => {
     expect(getCurrentCatalogTaxon(getCanonicalTaxonIdForPlant('p077'))?.rank).toBe('variety');
   });
 
-  it('promotes only the currently reviewed COL matches until the rank-corrected run is persisted', () => {
+  it('promotes the 140 reviewed COL matches and leaves 9 synonym cases', () => {
     const resolved = CURRENT_CATALOG_TAXA.filter(
       (taxon) => taxon.resolutionStatus === 'externally_resolved',
     );
@@ -51,8 +51,8 @@ describe('current catalog canonical taxon mapping (GPB-006)', () => {
       (taxon) => taxon.resolutionStatus === 'local_seed',
     );
 
-    expect(resolved).toHaveLength(139);
-    expect(localSeeds).toHaveLength(10);
+    expect(resolved).toHaveLength(140);
+    expect(localSeeds).toHaveLength(9);
 
     for (const taxon of resolved) {
       expect(taxon.externalIds.col).toMatch(/^[A-Z0-9]+$/);
