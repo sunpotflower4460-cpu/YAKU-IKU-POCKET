@@ -9,6 +9,10 @@
 
 import { PLANTS } from '../plants';
 import {
+  COL_AUTO_RESOLVED_IDS,
+  COL_RESOLUTION_SOURCE,
+} from './colResolutionSnapshot';
+import {
   makeCanonicalId,
   TaxonConceptSeed,
   YakuTaxonConceptId,
@@ -49,14 +53,27 @@ function buildTaxonSeeds(): TaxonConceptSeed[] {
     const representative =
       plants.find((plant) => plant.id === representativeId) ?? plants[0];
 
+    const id = makeCanonicalId('taxon', representativeId);
+    const colId = COL_AUTO_RESOLVED_IDS[id];
+
     return {
-      id: makeCanonicalId('taxon', representativeId),
+      id,
       rank: 'species',
       scientificName: representative.nameLatin,
       representativePlantId: representativeId,
       productPlantIds: plants.map((plant) => plant.id),
-      resolutionStatus: 'local_seed',
-      externalIds: {},
+      resolutionStatus: colId ? 'externally_resolved' : 'local_seed',
+      externalIds: colId ? { col: colId } : {},
+      resolutionEvidence: colId
+        ? {
+            provider: 'catalogue_of_life',
+            providerRecordId: colId,
+            sourceRelease: COL_RESOLUTION_SOURCE.releaseLabel,
+            sourceDatasetKey: COL_RESOLUTION_SOURCE.datasetKey,
+            sourceDoi: COL_RESOLUTION_SOURCE.doi,
+            resolvedAt: COL_RESOLUTION_SOURCE.generatedAt,
+          }
+        : undefined,
     };
   });
 }
