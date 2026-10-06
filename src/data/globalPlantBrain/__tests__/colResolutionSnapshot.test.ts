@@ -9,13 +9,13 @@ import {
 describe('COL current-catalog resolution snapshot (G1)', () => {
   it('captures the successful 149-taxon live resolution run', () => {
     expect(COL_RESOLUTION_SUMMARY).toEqual({
-      autoResolve: 139,
-      needsReview: 10,
+      autoResolve: 140,
+      needsReview: 9,
       unresolved: 0,
       transportError: 0,
     });
-    expect(Object.keys(COL_AUTO_RESOLVED_IDS)).toHaveLength(139);
-    expect(COL_REVIEW_QUEUE).toHaveLength(10);
+    expect(Object.keys(COL_AUTO_RESOLVED_IDS)).toHaveLength(140);
+    expect(COL_REVIEW_QUEUE).toHaveLength(9);
   });
 
   it('pins every promotion to the exact COL release used by the live run', () => {
@@ -30,7 +30,7 @@ describe('COL current-catalog resolution snapshot (G1)', () => {
     }
   });
 
-  it('preserves the ten non-trivial synonym/rank cases for review', () => {
+  it('preserves the nine remaining synonym cases for review', () => {
     expect([...COL_REVIEW_TAXON_IDS].sort()).toEqual(
       [
         'yaku:taxon:h047',
@@ -39,7 +39,6 @@ describe('COL current-catalog resolution snapshot (G1)', () => {
         'yaku:taxon:p042',
         'yaku:taxon:p046',
         'yaku:taxon:p047',
-        'yaku:taxon:p056',
         'yaku:taxon:p060',
         'yaku:taxon:p068',
         'yaku:taxon:p077',
