@@ -66,7 +66,12 @@ def slim(row: Dict[str, str]) -> Dict[str, str | None]:
 
 
 def iter_backbone() -> Iterable[Dict[str, str]]:
-    with CLASSIFICATION.open("r", encoding="utf-8-sig", newline="") as fh:
+    with CLASSIFICATION.open(
+        "r",
+        encoding="utf-8-sig",
+        errors="replace",
+        newline="",
+    ) as fh:
         reader = csv.DictReader(fh, delimiter="\t", quotechar='"')
         required = {
             "taxonID",
@@ -79,7 +84,22 @@ def iter_backbone() -> Iterable[Dict[str, str]]:
         missing = required - set(reader.fieldnames or [])
         if missing:
             raise RuntimeError(f"WFO classification.csv missing columns: {sorted(missing)}")
-        yield from reader
+        for row in reader:
+            # The 2026-06 export contains a small amount of legacy byte noise
+            # in free-text fields. Never use a row whose identity-bearing
+            # fields were affected by replacement decoding.
+            identity = "".join(
+                [
+                    row.get("taxonID") or "",
+                    row.get("scientificName") or "",
+                    row.get("taxonRank") or "",
+                    row.get("taxonomicStatus") or "",
+                    row.get("acceptedNameUsageID") or "",
+                ]
+            )
+            if "\ufffd" in identity:
+                continue
+            yield row
 
 
 def main() -> None:
