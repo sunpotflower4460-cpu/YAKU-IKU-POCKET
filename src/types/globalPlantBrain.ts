@@ -11,3 +11,4 @@ export * from './sourceRef';
 export * from './provenance';
 export * from './knowledgeClaim';
 export * from './sourceRegistry';
+export * from './knowledgeLifecycle';
