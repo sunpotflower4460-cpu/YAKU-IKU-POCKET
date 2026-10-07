@@ -15,3 +15,4 @@ export * from './knowledgeLifecycle';
 export * from './taxonConcept';
 export * from './taxonomyResolution';
 export * from './plantName';
+export * from './taxonomyConflict';

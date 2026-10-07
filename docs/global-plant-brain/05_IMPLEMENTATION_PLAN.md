@@ -34,6 +34,26 @@
 
 ### G1 — Global Taxonomy Foundation
 
+> Current-catalog foundation status (2026-10-07): **PASS** for the present 150 product cards / 149 canonical taxa.  
+> Global-scale ingestion status: **IN PROGRESS**. Passing the current-catalog gate is not a claim of complete world-plant coverage.
+
+Implemented current-catalog foundation:
+- canonical taxonomy for all current product cards
+- pinned Catalogue of Life + WFO resolution
+- Kew/WCVP cross-source review
+- Plant Name / IPNI nomenclature graph
+- versioned taxonomy/nomenclature assertions
+- explicit authority-conflict policy
+- machine-readable G1 acceptance gate
+
+Global-scale work still required:
+- global COL/WFO index/ingestion
+- scalable Taxon Concept allocation
+- global vernacular-name graph
+- authority diff/conflict generation
+- release update processing
+
+Planned/continuing source coverage:
 - Catalogue of Life
 - WFO
 - WCVP/POWO
