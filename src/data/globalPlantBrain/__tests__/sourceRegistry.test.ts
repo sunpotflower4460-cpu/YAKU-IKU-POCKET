@@ -33,9 +33,10 @@ describe('Global Plant Brain source registry (G0)', () => {
         expect.stringMatching(/:catalogue-of-life$/),
         expect.stringMatching(/:world-flora-online$/),
         expect.stringMatching(/:kew-powo-wcvp$/),
+        expect.stringMatching(/:ipni$/),
       ]),
     );
-    expect(approved).toHaveLength(3);
+    expect(approved).toHaveLength(4);
   });
 
   it('allows reviewed core storage while keeping unresolved AI-use rights fail-closed', () => {
@@ -48,6 +49,9 @@ describe('Global Plant Brain source registry (G0)', () => {
     const kew = SOURCE_REGISTRY.find((source) =>
       source.id.endsWith(':kew-powo-wcvp'),
     )!;
+    const ipni = SOURCE_REGISTRY.find((source) =>
+      source.id.endsWith(':ipni'),
+    )!;
 
     expect(evaluateSourceUse(col.id, 'local_storage')).toBe('allow');
     expect(evaluateSourceUse(col.id, 'commercial_use')).toBe('allow');
@@ -59,6 +63,11 @@ describe('Global Plant Brain source registry (G0)', () => {
     expect(evaluateSourceUse(kew.id, 'local_storage')).toBe('allow');
     expect(evaluateSourceUse(kew.id, 'commercial_use')).toBe('allow');
     expect(evaluateSourceUse(kew.id, 'ai_training')).toBe('review');
+
+    expect(ipni.lastTermsReviewAt).toBe('2026-10-07');
+    expect(evaluateSourceUse(ipni.id, 'local_storage')).toBe('allow');
+    expect(evaluateSourceUse(ipni.id, 'commercial_use')).toBe('allow');
+    expect(evaluateSourceUse(ipni.id, 'ai_training')).toBe('review');
   });
 
   it('keeps all unreviewed sources fail-closed for commercial use', () => {
