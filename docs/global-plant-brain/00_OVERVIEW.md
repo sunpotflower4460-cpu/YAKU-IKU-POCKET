@@ -1,7 +1,7 @@
 # YAKU Global Plant Brain — Overview
 
 > Status: **PROPOSED / LONG-TERM SOURCE OF TRUTH**  
-> Last updated: 2026-10-06  
+> Last updated: 2026-10-07  
 > Scope: 薬育ポケットの世界植物・薬草知識基盤  
 > Release relationship: App Store初回公開については `../APP_STORE_RELEASE_FINALIZATION.md` を優先する。本ディレクトリはリリース後を含む中長期設計の正本。  
 > Core principle: **「全部知っている」ではなく、「人類が現在どこまで知っているかを、根拠・時点・権利・不確実性を失わず辿れる」システムを作る。**
@@ -107,6 +107,7 @@ Product PlaneはKnowledge Planeから必要部分だけmaterializeする。現�
 - `10_G1_VERSIONED_TAXONOMY_ASSERTIONS.md`
 - `11_G1_WFO_SNAPSHOT_AND_CONFLICTS.md`
 - `12_G1_NAME_NOMENCLATURE_LAYER.md`
+- `13_G1_CONFLICT_POLICY_AND_ACCEPTANCE.md`
 
 ## 6. Definition of Done
 
