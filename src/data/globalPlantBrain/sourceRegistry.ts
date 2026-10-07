@@ -33,6 +33,7 @@ function rightsId(localId: string) {
 const SOURCE_SEEDS: Array<
   Omit<SourceRegistryEntry, 'id' | 'rightsPolicyId' | 'lastTermsReviewAt'> & {
     localId: string;
+    termsReviewedAt?: string;
   }
 > = [
   {
@@ -75,7 +76,11 @@ const SOURCE_SEEDS: Array<
     purpose: ['nomenclature', 'taxonomy'],
     accessMethod: 'database',
     homepageUrl: 'https://www.ipni.org/',
-    status: 'needs_review',
+    updateCadence: 'continuously curated; website updated daily',
+    status: 'approved_core',
+    termsReviewedAt: '2026-10-07',
+    notes:
+      'IPNI is a nomenclatural index, not a taxonomic authority for accepted concepts. Data are CC BY; preserve attribution. Public API is not generally available, so use WFO/Kew mappings or approved reconciliation/export workflows.',
   },
   {
     localId: 'gbif',
@@ -206,12 +211,12 @@ const SOURCE_SEEDS: Array<
 ];
 
 export const SOURCE_REGISTRY: SourceRegistryEntry[] = SOURCE_SEEDS.map((seed) => {
-  const { localId, ...entry } = seed;
+  const { localId, termsReviewedAt, ...entry } = seed;
   return {
     ...entry,
     id: sourceId(localId),
     rightsPolicyId: rightsId(localId),
-    lastTermsReviewAt: REVIEWED_AT,
+    lastTermsReviewAt: termsReviewedAt ?? REVIEWED_AT,
   };
 });
 
@@ -263,6 +268,22 @@ const REVIEWED_RIGHTS: Partial<Record<string, Omit<RightsPolicy, 'id'>>> = {
     checkedAt: REVIEWED_AT,
     notes:
       'Scoped only to the Kew Names and Taxonomic Backbone / WCVP components identified by POWO as CC BY 3.0. Images, specimens and third-party data require separate record-level rights decisions.',
+  },
+  ipni: {
+    licenseType: 'CC BY (IPNI data)',
+    commercialUse: 'allowed',
+    localStorage: 'allowed',
+    redistribution: 'allowed',
+    derivativeDatabase: 'allowed',
+    attributionRequired: true,
+    shareAlike: false,
+    aiRag: 'conditional',
+    aiEmbedding: 'conditional',
+    aiTraining: 'conditional',
+    aiEvaluation: 'conditional',
+    checkedAt: '2026-10-07',
+    notes:
+      'IPNI states that its site data are licensed under Creative Commons Attribution. Keep nomenclatural identity separate from accepted-taxonomy decisions and retain attribution.',
   },
 };
 
