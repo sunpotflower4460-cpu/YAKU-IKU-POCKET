@@ -29,7 +29,6 @@ export interface TaxonExternalIds {
   col?: string;
   wfo?: string;
   wcvp?: string;
-  ipni?: string;
   gbif?: string;
   plantnet?: string;
   inaturalist?: string;
