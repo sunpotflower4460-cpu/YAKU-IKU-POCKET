@@ -136,7 +136,7 @@ The WFO backbone exposes `scientificNameID` and the release also provides an IPN
 
 IPNI identifies **names/nomenclatural records**, not the YAKU taxon concept itself. Therefore G1 does not blindly fill `TaxonExternalIds.ipni` from every WFO record.
 
-The next slice introduces name-level nomenclatural references so that:
+The name-level nomenclature layer is implemented in `12_G1_NAME_NOMENCLATURE_LAYER.md`:
 
 ```text
 Taxon Concept
@@ -146,7 +146,7 @@ Plant Name
 IPNI LSID
 ```
 
-is preserved correctly.
+This deliberately prevents IPNI LSIDs from being treated as Taxon Concept IDs.
 
 ## 9. Product boundary
 

@@ -42,7 +42,6 @@ interface TaxonConcept {
     col?: string;
     wfo?: string;
     wcvp?: string;
-    ipni?: string;
     gbif?: string;
     plantnet?: string;
     inaturalist?: string;
@@ -66,7 +65,7 @@ type TaxonConceptRelation =
 
 ```ts
 interface PlantName {
-  id: string;
+  id: YakuPlantNameID;
   value: string;
   language?: string;
   script?: string;
@@ -81,12 +80,23 @@ interface PlantName {
     | 'crude_drug'
     | 'traditional';
 
-  taxonConceptIds: string[];
-  sourceRef: string;
+  role?:
+    | 'catalog_scientific'
+    | 'preferred_accepted'
+    | 'authority_usage';
+
+  taxonConceptIds: YakuTaxonConceptID[];
+
+  nomenclaturalIds?: {
+    ipniLsid?: string;
+    wfoNameUsageId?: string;
+  };
+
+  sourceRefIds: YakuSourceID[];
 }
 ```
 
-同じ俗名が複数taxaを指し得る。1 taxonが多数の俗名を持つことも前提とする。
+同じ俗名が複数taxaを指し得る。1 taxonが多数の俗名を持つことも前提とする。**IPNI LSIDはTaxon ConceptではなくPlant Nameへ付与する。** 命名記録とaccepted taxon判断を分離することで、後からsynonym関係や分類体系が変わっても名称履歴を保持する。
 
 ## 4. Specimen / Molecular Identity
 
