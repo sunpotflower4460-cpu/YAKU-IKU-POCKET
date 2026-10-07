@@ -106,6 +106,7 @@ Product PlaneはKnowledge Planeから必要部分だけmaterializeする。現�
 - `09_G1_CROSS_SOURCE_RECONCILIATION.md`
 - `10_G1_VERSIONED_TAXONOMY_ASSERTIONS.md`
 - `11_G1_WFO_SNAPSHOT_AND_CONFLICTS.md`
+- `12_G1_NAME_NOMENCLATURE_LAYER.md`
 
 ## 6. Definition of Done
 
